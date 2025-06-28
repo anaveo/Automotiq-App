@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'providers/auth_provider.dart';
 import 'screens/home_screen.dart';
 import 'screens/splash_screen.dart';
+import 'screens/add_vehicle_screen.dart';
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -13,11 +14,18 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Torque Clone',
       theme: ThemeData.dark(),
-      home: authProvider.isLoading
-          ? const SplashScreen()
-          : authProvider.user == null
-              ? const SplashScreen() // placeholder, add login later
-              : const HomeScreen(),
+
+      // Use named routes
+      initialRoute: '/',
+      routes: {
+        '/': (context) => authProvider.isLoading
+            ? const SplashScreen()
+            : authProvider.user == null
+                ? const SplashScreen() // can be LoginScreen later
+                : const HomeScreen(),
+
+        '/addVehicle': (context) => AddVehiclePage(),
+      },
     );
   }
 }
