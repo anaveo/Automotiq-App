@@ -1,4 +1,4 @@
-package com.example.autonomiq_app
+package com.autonomiq.obdapp
 
 import io.flutter.embedding.android.FlutterActivity
 
