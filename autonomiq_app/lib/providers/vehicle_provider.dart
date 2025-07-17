@@ -1,36 +1,121 @@
-// providers/vehicle_provider.dart
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/vehicle_model.dart';
 import '../services/firestore_service.dart';
+import '../utils/logger.dart';
 
 class VehicleProvider extends ChangeNotifier {
-  final FirestoreService _firestore = FirestoreService();
-
+  final FirestoreService _firestore;
+  final FirebaseAuth _firebaseAuth;
   List<Vehicle> _vehicles = [];
   Vehicle? _selected;
-  bool _isLoading = true;
+  bool _isLoading = false;
 
   List<Vehicle> get vehicles => _vehicles;
   Vehicle? get selectedVehicle => _selected;
   bool get isLoading => _isLoading;
 
+  VehicleProvider({FirestoreService? firestore, required FirebaseAuth firebaseAuth})
+      : _firestore = firestore ?? FirestoreService(),
+        _firebaseAuth = firebaseAuth;
+
   Future<void> loadVehicles() async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) return;
+    final user = _firebaseAuth.currentUser;
+    if (user == null) {
+      _vehicles = [];
+      _selected = null;
+      _isLoading = false;
+      notifyListeners();
+      throw StateError('No user is signed in');
+    }
 
-    _isLoading = true;
-    notifyListeners();
-
-    _vehicles = await _firestore.getUserVehicles(uid);
-    _selected = _vehicles.isNotEmpty ? _vehicles.first : null;
-
-    _isLoading = false;
-    notifyListeners();
+    try {
+      _isLoading = true;
+      notifyListeners();
+      _vehicles = await _firestore.getUserVehicles(user.uid);
+      _selected = _vehicles.isNotEmpty ? _vehicles.first : null;
+    } catch (e, stackTrace) {
+      AppLogger.logError(e, stackTrace, 'VehicleProvider.loadVehicles');
+      _vehicles = [];
+      _selected = null;
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 
   void selectVehicle(Vehicle vehicle) {
-    _selected = vehicle;
-    notifyListeners();
+    if (_vehicles.contains(vehicle)) {
+      _selected = vehicle;
+      notifyListeners();
+    } else {
+      AppLogger.logError(
+        Exception('Invalid vehicle selected'),
+        StackTrace.current,
+        'VehicleProvider.selectVehicle',
+      );
+    }
+  }
+
+  Future<void> addVehicle(Map<String, dynamic> vehicleData) async {
+    final user = _firebaseAuth.currentUser;
+    if (user == null) {
+      AppLogger.logError(
+        StateError('No user is signed in'),
+        StackTrace.current,
+        'VehicleProvider.addVehicle',
+      );
+      return;
+    }
+
+    try {
+      _isLoading = true;
+      notifyListeners();
+      final vehicleId = await _firestore.addVehicle(user.uid, vehicleData);
+      final newVehicle = Vehicle(
+        id: vehicleId,
+        name: vehicleData['name'] ?? 'Unknown',
+        vin: vehicleData['vin'] ?? 'Unknown',
+        year: vehicleData['year'] ?? 0,
+        odometer: vehicleData['odometer'] ?? 0,
+        isConnected: vehicleData['isConnected'] ?? false,
+        diagnosticTroubleCodes: vehicleData['diagnosticTroubleCodes'] ?? [],
+      );
+      _vehicles.insert(0, newVehicle); // Prioritize new vehicle
+      _selected = newVehicle;
+    } catch (e, stackTrace) {
+      AppLogger.logError(e, stackTrace, 'VehicleProvider.addVehicle');
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> removeVehicle(String vehicleId) async {
+    final user = _firebaseAuth.currentUser;
+    if (user == null) {
+      AppLogger.logError(
+        StateError('No user is signed in'),
+        StackTrace.current,
+        'VehicleProvider.removeVehicle',
+      );
+      return;
+    }
+
+    try {
+      _isLoading = true;
+      notifyListeners();
+      await _firestore.removeVehicle(user.uid, vehicleId);
+      _vehicles.removeWhere((v) => v.id == vehicleId);
+      _selected = _vehicles.isNotEmpty ? _vehicles.first : null;
+    } catch (e, stackTrace) {
+      AppLogger.logError(e, stackTrace, 'VehicleProvider.removeVehicle');
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 }

@@ -46,10 +46,16 @@ dependencies:
 
   # State management
   provider: 6.1.2
+  path_provider: ^2.1.5
+
+  # Logging
+  logger: ^2.4.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  mockito: ^5.4.4
+  build_runner: ^2.4.6
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
