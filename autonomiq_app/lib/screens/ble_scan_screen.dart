@@ -1,15 +1,17 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../providers/vehicle_provider.dart';
+import '../services/ble_service.dart';
 import '../utils/navigation.dart';
 import '../utils/logger.dart';
 
 class BleScanScreen extends StatefulWidget {
-  const BleScanScreen({super.key});
+  final BleService bleService;
+
+  const BleScanScreen({super.key, required this.bleService});
 
   @override
   State<BleScanScreen> createState() => _BleScanScreenState();
@@ -28,36 +30,29 @@ class _BleScanScreenState extends State<BleScanScreen> {
   }
 
   Future<void> _checkPermissions() async {
-    if (await Permission.bluetoothScan.isDenied ||
-        await Permission.bluetoothConnect.isDenied) {
-      final status = await Permission.bluetooth.request();
-      if (status.isDenied) {
-        setState(() {
-          _errorMessage = 'Bluetooth permission denied';
-        });
-        return;
-      }
+    try {
+      await widget.bleService.requestPermissions();
+      _startScan();
+    } catch (e, stackTrace) {
+      AppLogger.logError(e, stackTrace, 'BleScanScreen.checkPermissions');
+      setState(() {
+        _errorMessage = 'Permission request failed: $e';
+      });
     }
-    _startScan();
   }
 
   Future<void> _startScan() async {
     setState(() {
       _isScanning = true;
       _errorMessage = null;
+      _devices = [];
     });
     try {
-      FlutterBluePlus.startScan(timeout: const Duration(seconds: 10));
-      FlutterBluePlus.scanResults.listen((results) {
-        setState(() {
-          _devices = results.map((r) => r.device).toList();
-        });
-      });
-      await Future.delayed(const Duration(seconds: 10));
+      final devices = await widget.bleService.scanForElmDevices(timeout: const Duration(seconds: 10));
       setState(() {
+        _devices = devices;
         _isScanning = false;
       });
-      FlutterBluePlus.stopScan();
     } catch (e, stackTrace) {
       AppLogger.logError(e, stackTrace, 'BleScanScreen.startScan');
       setState(() {
@@ -69,15 +64,10 @@ class _BleScanScreenState extends State<BleScanScreen> {
 
   Future<void> _pairAndSaveDevice(BluetoothDevice device) async {
     try {
-      await device.connect();
-      if (!await _isElm327(device)) {
-        await device.disconnect();
-        setState(() {
-          _errorMessage = 'Device is not an ELM327';
-        });
-        return;
-      }
+      await widget.bleService.connect(device);
       final vehicleProvider = Provider.of<VehicleProvider>(context, listen: false);
+
+      // TODO: Replace with actual values
       final newVehicle = {
         'name': 'Vehicle_${DateTime.now().millisecondsSinceEpoch}',
         'vin': 'VIN_${DateTime.now().millisecondsSinceEpoch}',
@@ -86,32 +76,16 @@ class _BleScanScreenState extends State<BleScanScreen> {
         'isConnected': true,
         'deviceId': device.id.id,
       };
-      // await _firestore
-      //     .collection('users')
-      //     .doc(Provider.of<VehicleProvider>(context, listen: false).userId)
-      //     .collection('vehicles')
-      //     .add(newVehicle);
       vehicleProvider.addVehicle(newVehicle);
-      // vehicleProvider.selectVehicle(newVehicle);
       navigateToHome(context);
     } catch (e, stackTrace) {
       AppLogger.logError(e, stackTrace, 'BleScanScreen.pairAndSave');
       setState(() {
         _errorMessage = 'Failed to pair or save: $e';
       });
-      if (device.isConnected) await device.disconnect();
-    }
-  }
-
-  Future<bool> _isElm327(BluetoothDevice device) async {
-    try {
-      await device.connect();
-      final services = await device.discoverServices();
-      await device.disconnect();
-      return services.any((s) => s.uuid.toString().contains('elm327')); // Placeholder check
-    } catch (e, stackTrace) {
-      AppLogger.logError(e, stackTrace, 'BleScanScreen.isElm327');
-      return false;
+      if (await widget.bleService.getDeviceState(device) == BluetoothConnectionState.connected) {
+        await widget.bleService.disconnect(device);
+      }
     }
   }
 
@@ -149,8 +123,8 @@ class _BleScanScreenState extends State<BleScanScreen> {
                         itemBuilder: (context, index) {
                           final device = _devices[index];
                           return ListTile(
-                            title: Text(device.name ?? 'Unknown Device', style: const TextStyle(color: Colors.white)),
-                            subtitle: Text(device.id.id, style: const TextStyle(color: Colors.white70)),
+                            title: Text(device.platformName, style: const TextStyle(color: Colors.white)),
+                            subtitle: Text(device.remoteId.str, style: const TextStyle(color: Colors.white70)),
                             onTap: () => _pairAndSaveDevice(device),
                           );
                         },

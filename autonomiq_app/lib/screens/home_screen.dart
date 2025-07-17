@@ -68,19 +68,9 @@ class _HomeScreenState extends State<HomeScreen> {
       title: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text(
-            'Autonomiq',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(width: 16),
           SizedBox(
             width: 200,
-            child: vehicleProvider.vehicles.isNotEmpty
-                ? VehicleDropdown()
-                : const Text(
-                    'No Vehicles',
-                    style: TextStyle(color: Colors.white70, fontSize: 14),
-                  ),
+            child: VehicleDropdown()
           ),
         ],
       ),

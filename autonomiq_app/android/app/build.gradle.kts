@@ -2,7 +2,6 @@ plugins {
     id("com.android.application")
     id("com.google.gms.google-services")
     id("kotlin-android")
-    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
 
@@ -22,8 +21,6 @@ android {
 
     defaultConfig {
         applicationId = "com.autonomiq.obdapp"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = 23
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
@@ -32,9 +29,7 @@ android {
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("debug") // TODO: Update with release signing config
         }
     }
 }
@@ -44,16 +39,13 @@ flutter {
 }
 
 dependencies {
-  // Import the Firebase BoM
-  implementation(platform("com.google.firebase:firebase-bom:33.16.0"))
+    // Import the Firebase BoM (use latest stable version)
+    implementation(platform("com.google.firebase:firebase-bom:33.2.0"))
 
-  // Import the Firebase Auth
-  implementation("com.google.firebase:firebase-auth")
-  
-  // Import the Firebase Firestore
-  implementation("com.google.firebase:firebase-firestore")
+    // Firebase dependencies (no versions specified with BoM)
+    implementation("com.google.firebase:firebase-auth")
+    implementation("com.google.firebase:firebase-firestore")
 
-  // TODO: Add the dependencies for Firebase products you want to use
-  // When using the BoM, don't specify versions in Firebase dependencies
-  // https://firebase.google.com/docs/android/setup#available-libraries
+    // Add Google Play Services base for GoogleApiManager
+    implementation("com.google.android.gms:play-services-base:18.5.0")
 }

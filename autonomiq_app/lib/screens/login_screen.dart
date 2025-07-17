@@ -1,6 +1,8 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import '../utils/logger.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -16,6 +18,7 @@ class _LoginScreenState extends State<LoginScreen> {
   String? _errorMessage;
   bool _showEmailForm = false;
   bool _isLinkingAccount = false;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   @override
   void initState() {
@@ -32,10 +35,28 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _signInAnonymously() async {
     final authProvider = Provider.of<AppAuthProvider>(context, listen: false);
     try {
+      // Sign in anonymously
       await authProvider.signInAnonymously();
-    } catch (e) {
+
+      // Create user document in Firestore
+      final userId = authProvider.user?.uid;
+      if (userId == null) {
+        throw Exception('User ID is null after anonymous login');
+      }
+
+      final userDocRef = _firestore.collection('users').doc(userId);
+      final userDoc = await userDocRef.get();
+
+      if (!userDoc.exists) {
+        await userDocRef.set({
+          'createdAt': FieldValue.serverTimestamp(),
+          // 'vehicles' collection is implicitly empty
+        });
+      }
+    } catch (e, stackTrace) {
+      AppLogger.logError(e, stackTrace, 'LoginScreen.signInAnonymously');
       setState(() {
-        _errorMessage = 'Failed to sign in anonymously. Please try again.';
+        _errorMessage = 'Failed to sign in or create user profile: $e';
       });
     }
   }
@@ -49,7 +70,8 @@ class _LoginScreenState extends State<LoginScreen> {
         _emailController.text.trim(),
         _passwordController.text,
       );
-    } catch (e) {
+    } catch (e, stackTrace) {
+      AppLogger.logError(e, stackTrace, 'LoginScreen.signInWithEmail');
       setState(() {
         _errorMessage = 'Failed to sign in: $e';
       });
@@ -65,7 +87,8 @@ class _LoginScreenState extends State<LoginScreen> {
         _emailController.text.trim(),
         _passwordController.text,
       );
-    } catch (e) {
+    } catch (e, stackTrace) {
+      AppLogger.logError(e, stackTrace, 'LoginScreen.linkWithEmail');
       setState(() {
         _errorMessage = 'Failed to create account: $e';
       });
