@@ -1,4 +1,5 @@
 // widgets/vehicle_dropdown.dart
+import 'package:autonomiq_app/utils/navigation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/vehicle_model.dart';
@@ -27,7 +28,7 @@ class VehicleDropdown extends StatelessWidget {
         ],
         onChanged: (selected) {
           if (selected == null) {
-            Navigator.pushNamed(context, '/addVehicle');
+            navigateToObdSetup(context);
           } else {
             provider.selectVehicle(selected);
           }

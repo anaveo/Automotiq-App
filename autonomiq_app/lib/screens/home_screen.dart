@@ -1,3 +1,4 @@
+import 'package:autonomiq_app/utils/navigation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
@@ -231,9 +232,7 @@ class _EmptyView extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           ElevatedButton(
-            onPressed: () {
-              Navigator.pushNamed(context, '/addVehicle');
-            },
+            onPressed: () => navigateToObdSetup(context),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.redAccent,
               padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),

@@ -5,7 +5,6 @@ import 'screens/home_screen.dart';
 import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/obd_setup_screen.dart';
-import 'screens/ble_scan_screen.dart';
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -53,7 +52,6 @@ class MyApp extends StatelessWidget {
           return const LoginScreen();
         },
         '/obdSetup': (context) => const ObdSetupScreen(),
-        '/bleScan': (context) => const BleScanScreen(),
       },
       // Handle invalid routes
       onUnknownRoute: (settings) => MaterialPageRoute(

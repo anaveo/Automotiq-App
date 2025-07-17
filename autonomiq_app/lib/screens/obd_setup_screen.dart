@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../utils/navigation.dart';
+import 'ble_scan_screen.dart';
 
 class ObdSetupScreen extends StatelessWidget {
   const ObdSetupScreen({super.key});
@@ -23,7 +23,12 @@ class ObdSetupScreen extends StatelessWidget {
             ),
             const SizedBox(height: 24),
             ElevatedButton(
-              onPressed: () => navigateToBleScan(context),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const BleScanScreen()),
+                );
+              },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.redAccent,
                 padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),

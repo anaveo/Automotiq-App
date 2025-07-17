@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../mocks.mocks.dart';
 import 'package:autonomiq_app/services/firestore_service.dart';
 
