@@ -77,17 +77,15 @@ class VehicleProvider extends ChangeNotifier {
     try {
       _isLoading = true;
       notifyListeners();
+
+      // Add vehicle to Firestore, get document ID
       final vehicleId = await _vehicleRepository.addVehicle(user.uid, vehicleData);
-      final newVehicle = Vehicle(
-        id: vehicleId,
-        name: vehicleData['name'] ?? 'Unknown',
-        vin: vehicleData['vin'] ?? 'Unknown',
-        year: vehicleData['year'] ?? 0,
-        odometer: vehicleData['odometer'] ?? 0,
-        isConnected: vehicleData['isConnected'] ?? false,
-        diagnosticTroubleCodes: vehicleData['diagnosticTroubleCodes'] ?? [],
-      );
-      _vehicles.insert(0, newVehicle); // Prioritize new vehicle
+      
+      // Create Vehicle model object
+      final newVehicle = Vehicle.fromMap(vehicleId, vehicleData);
+
+      // Prioritize new vehicle
+      _vehicles.insert(0, newVehicle);
       _selected = newVehicle;
     } catch (e, stackTrace) {
       AppLogger.logError(e, stackTrace, 'VehicleProvider.addVehicle');

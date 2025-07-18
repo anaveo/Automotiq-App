@@ -47,8 +47,8 @@ void main() {
     await scanStreamController.close();
   });
 
-  group('scanForElmDevices', () {
-    test('returns ELM/OBD devices', () async {
+  group('scanForDevices', () {
+    test('returns devices', () async {
       final streamController = StreamController<List<ScanResult>>();
 
       // Stub adapter behavior
@@ -56,11 +56,11 @@ void main() {
       when(mockAdapter.startScan(timeout: anyNamed('timeout')))
           .thenAnswer((_) async {});
       when(mockAdapter.stopScan()).thenAnswer((_) async {});
-      when(mockDevice.platformName).thenReturn('VEEPEAK');
+      when(mockDevice.platformName).thenReturn('test-ble-device');
       when(mockScanResult.device).thenReturn(mockDevice);
 
       // Simulate scan results
-      final scanFuture = bleService.scanForElmDevices(timeout: Duration(seconds: 1));
+      final scanFuture = bleService.scanForDevices(timeout: Duration(seconds: 1));
       streamController.add([mockScanResult]);
 
       final devices = await scanFuture;
@@ -74,34 +74,16 @@ void main() {
       verify(mockAdapter.stopScan()).called(2); // once explicitly, once after timeout
     });
 
-    test('filters non-ELM/OBD devices', () async {
-      // Fake device with non-matching name
-      when(mockDevice.platformName).thenReturn('JBL-Fetty-Wap');
-      when(mockScanResult.device).thenReturn(mockDevice);
-
-      // Simulate scan result before calling the method
-      scanStreamController.add([mockScanResult]);
-
-      final devices = await bleService.scanForElmDevices(timeout: Duration(milliseconds: 100));
-
-      // Expect no devices matched
-      expect(devices.isEmpty, true);
-
-      // Optional: verify scan start/stop called
-      verify(mockAdapter.startScan(timeout: anyNamed('timeout'))).called(1);
-      verify(mockAdapter.stopScan()).called(greaterThanOrEqualTo(1));
-    });
-
     test('throws on permission denied', () async {
       when(mockPermissions.bluetoothScanStatus).thenAnswer((_) async => PermissionStatus.denied);
       when(mockPermissions.requestBluetoothScan()).thenAnswer((_) async => PermissionStatus.denied);
 
-      expect(() => bleService.scanForElmDevices(), throwsException);
+      expect(() => bleService.scanForDevices(), throwsException);
     });
 
     test('throws on scan failure', () async {
       when(mockAdapter.startScan(timeout: anyNamed('timeout'))).thenThrow(Exception('Scan error'));
-      expect(() => bleService.scanForElmDevices(), throwsException);
+      expect(() => bleService.scanForDevices(), throwsException);
     });
   });
 

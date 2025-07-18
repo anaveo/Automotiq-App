@@ -1,10 +1,9 @@
 import 'dart:async';
-
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
-import 'permission_service.dart';
-import 'package:autonomiq_app/utils/bluetooth_adapter.dart';
-import '../utils/logger.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'permission_service.dart';
+import '../utils/bluetooth_adapter.dart';
+import '../utils/logger.dart';
 
 class BleService {
   final BluetoothAdapter adapter;
@@ -15,8 +14,8 @@ class BleService {
     required this.permissionService,
   });
 
-  /// Scan for ELM327 or OBD devices
-  Future<List<BluetoothDevice>> scanForElmDevices({
+  /// Scan for Bluetooth devices
+  Future<List<BluetoothDevice>> scanForDevices({
     Duration timeout = const Duration(seconds: 5),
   }) async {
     try {
@@ -33,9 +32,7 @@ class BleService {
         // Listen for scan results
         scanSubscription = adapter.scanResults.listen((results) {
           for (ScanResult result in results) {
-            final name = result.device.platformName.toLowerCase();
-            if ((name.contains("veepeak") || name.contains("autonomiq")) &&
-                !devices.contains(result.device)) {
+            if (!devices.contains(result.device)) {
               devices.add(result.device);
             }
           }
@@ -54,8 +51,25 @@ class BleService {
 
       return devices;
     } catch (e, stackTrace) {
-      AppLogger.logError(e, stackTrace, 'BleService.scanForElmDevices');
-      throw Exception('Failed to scan for ELM devices: $e');
+      AppLogger.logError(e, stackTrace, 'BleService.scanForDevices');
+      throw Exception('Failed to scan for devices: $e');
+    }
+  }
+
+  /// Reconnect to a device by MAC address
+  Future<BluetoothDevice> reconnectToDevice(String deviceId) async {
+    try {
+      await requestPermissions();
+      final devices = await scanForDevices(timeout: const Duration(seconds: 5));
+      final targetDevice = devices.firstWhere(
+        (device) => device.remoteId.str == deviceId,
+        orElse: () => throw Exception('Device with ID $deviceId not found'),
+      );
+      await connect(targetDevice);
+      return targetDevice;
+    } catch (e, stackTrace) {
+      AppLogger.logError(e, stackTrace, 'BleService.reconnectToDevice');
+      throw Exception('Failed to reconnect to device: $e');
     }
   }
 
@@ -70,7 +84,7 @@ class BleService {
       if (state != BluetoothConnectionState.connected) {
         await device.connect(timeout: const Duration(seconds: 10));
       }
-    } on TimeoutException{
+    } on TimeoutException {
       rethrow;
     } catch (e, stackTrace) {
       AppLogger.logError(e, stackTrace, 'BleService.connect');
@@ -107,6 +121,16 @@ class BleService {
     } catch (e, stackTrace) {
       AppLogger.logError(e, stackTrace, 'BleService.getDeviceState');
       throw Exception('Failed to get device state: $e');
+    }
+  }
+
+  /// Stream connection state of a device
+  Stream<BluetoothConnectionState> getDeviceStateStream(BluetoothDevice device) {
+    try {
+      return device.connectionState;
+    } catch (e, stackTrace) {
+      AppLogger.logError(e, stackTrace, 'BleService.getDeviceStateStream');
+      throw Exception('Failed to stream device state: $e');
     }
   }
 

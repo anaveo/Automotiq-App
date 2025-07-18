@@ -27,14 +27,7 @@ class CustomFileOutput extends LogOutput {
 // Singleton Logger instance
 class AppLogger {
   static final Logger _logger = Logger(
-    printer: PrettyPrinter(
-      methodCount: 1, // Show calling function
-      errorMethodCount: 5, // More stack trace for errors
-      lineLength: 120,
-      colors: true,
-      printEmojis: true,
-      dateTimeFormat: DateTimeFormat.onlyTime,
-    ),
+    printer: CallerPrinter(),
     output: MultiOutput([
       ConsoleOutput(),
       // TODO: Uncomment when ready to use file logging
@@ -55,5 +48,26 @@ class AppLogger {
       error: error,
       stackTrace: stackTrace,
     );
+  }
+}
+
+class CallerPrinter extends LogPrinter {
+  @override
+  List<String> log(LogEvent event) {
+    final trace = StackTrace.current.toString().split('\n');
+    final callerLine = trace.length > 4 ? trace[4] : trace[0];
+    final callerInfo = _extractCaller(callerLine);
+
+    final level = event.level.name;
+    final time = DateTime.now().toIso8601String().split('T').last;
+
+    return [
+      '[$callerInfo] $level: ${event.message}',
+    ];
+  }
+
+  String _extractCaller(String line) {
+    final match = RegExp(r'#\d+\s+(.+?) \(').firstMatch(line);
+    return match != null ? match.group(1) ?? 'unknown' : 'unknown';
   }
 }

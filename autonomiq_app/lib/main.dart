@@ -1,8 +1,13 @@
 import 'package:autonomiq_app/repositories/user_repository.dart';
+import 'package:autonomiq_app/services/ble_service.dart';
+import 'package:autonomiq_app/services/bluetooth_manager.dart';
+import 'package:autonomiq_app/services/permission_service.dart';
+import 'package:autonomiq_app/utils/bluetooth_adapter.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 import 'utils/firebase_options.dart';
 import 'providers/auth_provider.dart';
@@ -59,6 +64,20 @@ void main() async {
 
             return provider;
           },
+        ),
+        Provider<SystemPermissionService>(
+          create: (_) => SystemPermissionService(),
+        ),
+        Provider<BleService>(
+          create: (_) => BleService(
+            adapter: FlutterBlueAdapter(),
+            permissionService: SystemPermissionService(),
+          ),
+        ),
+        Provider<BluetoothManager>(
+          create: (context) => BluetoothManager(
+            bleService: Provider.of<BleService>(context, listen: false),
+          ),
         ),
       ],
       child: const MyApp(),

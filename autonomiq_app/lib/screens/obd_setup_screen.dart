@@ -1,8 +1,6 @@
-import 'package:autonomiq_app/services/permission_service.dart';
-import 'package:autonomiq_app/utils/bluetooth_adapter.dart';
-import 'package:autonomiq_app/services/ble_service.dart';
-import 'package:autonomiq_app/services/permission_service.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:autonomiq_app/services/bluetooth_manager.dart';
 import 'ble_scan_screen.dart';
 
 class ObdSetupScreen extends StatelessWidget {
@@ -10,6 +8,8 @@ class ObdSetupScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bluetoothManager = Provider.of<BluetoothManager>(context, listen: false);
+
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
@@ -28,10 +28,13 @@ class ObdSetupScreen extends StatelessWidget {
             const SizedBox(height: 24),
             ElevatedButton(
               onPressed: () {
-                final bleService = BleService(adapter: FlutterBlueAdapter(), permissionService: SystemPermissionService());
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => BleScanScreen(bleService: bleService)),
+                  MaterialPageRoute(
+                    builder: (context) => BleScanScreen(
+                      bluetoothManager: bluetoothManager,
+                    ),
+                  ),
                 );
               },
               style: ElevatedButton.styleFrom(

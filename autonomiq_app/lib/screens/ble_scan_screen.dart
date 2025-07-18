@@ -1,17 +1,17 @@
 import 'dart:async';
+import 'package:autonomiq_app/repositories/vehicle_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:provider/provider.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../providers/vehicle_provider.dart';
-import '../services/ble_service.dart';
+import '../services/bluetooth_manager.dart';
 import '../utils/navigation.dart';
 import '../utils/logger.dart';
 
 class BleScanScreen extends StatefulWidget {
-  final BleService bleService;
+  final BluetoothManager bluetoothManager;
 
-  const BleScanScreen({super.key, required this.bleService});
+  const BleScanScreen({super.key, required this.bluetoothManager});
 
   @override
   State<BleScanScreen> createState() => _BleScanScreenState();
@@ -21,7 +21,6 @@ class _BleScanScreenState extends State<BleScanScreen> {
   List<BluetoothDevice> _devices = [];
   bool _isScanning = false;
   String? _errorMessage;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   @override
   void initState() {
@@ -31,7 +30,7 @@ class _BleScanScreenState extends State<BleScanScreen> {
 
   Future<void> _checkPermissions() async {
     try {
-      await widget.bleService.requestPermissions();
+      await widget.bluetoothManager.bleService.requestPermissions();
       _startScan();
     } catch (e, stackTrace) {
       AppLogger.logError(e, stackTrace, 'BleScanScreen.checkPermissions');
@@ -48,7 +47,7 @@ class _BleScanScreenState extends State<BleScanScreen> {
       _devices = [];
     });
     try {
-      final devices = await widget.bleService.scanForElmDevices(timeout: const Duration(seconds: 10));
+      final devices = await widget.bluetoothManager.scanForElmDevices(timeout: const Duration(seconds: 10));
       setState(() {
         _devices = devices;
         _isScanning = false;
@@ -65,28 +64,24 @@ class _BleScanScreenState extends State<BleScanScreen> {
   Future<void> _pairAndSaveDevice(BluetoothDevice device) async {
     try {
       final vehicleProvider = Provider.of<VehicleProvider>(context, listen: false);
+      // Sort out provider TODO
       // final userId = Provider.of<VehicleProvider>(context, listen: false).userId;
       // if (userId == null || userId.isEmpty) {
       //   throw Exception('User ID is null or empty');
       // }
 
-      await widget.bleService.connect(device);
+      await widget.bluetoothManager.bleService.connect(device);
 
       final newVehicle = {
-        'name': 'Vehicle_${DateTime.now().millisecondsSinceEpoch}',
-        'vin': 'VIN_${DateTime.now().millisecondsSinceEpoch}',
+        'name': 'Test_${DateTime.now().millisecond}',
+        'vin': '1234567890ABCDEF',
         'year': 2020 + (DateTime.now().year % 10),
         'odometer': 10000 + (DateTime.now().millisecondsSinceEpoch % 50000),
-        'isConnected': true,
-        'deviceId': device.id.id,
+        'isConnected': false,
+        'deviceId': device.remoteId.str,
       };
 
-      // Add vehicle to Firestore
-      // final firestoreService = FirestoreService();
-      // final vehicleId = await firestoreService.addVehicle(userId, newVehicle);
-
-      // Add to VehicleProvider with Firestore document ID
-      // newVehicle['id'] = vehicleId;
+      // Add vehicle to firestore
       vehicleProvider.addVehicle(newVehicle);
 
       navigateToHome(context);
@@ -95,8 +90,8 @@ class _BleScanScreenState extends State<BleScanScreen> {
       setState(() {
         _errorMessage = 'Failed to pair or save vehicle: $e';
       });
-      if (await widget.bleService.getDeviceState(device) == BluetoothConnectionState.connected) {
-        await widget.bleService.disconnect(device);
+      if (await widget.bluetoothManager.bleService.getDeviceState(device) == BluetoothConnectionState.connected) {
+        await widget.bluetoothManager.bleService.disconnect(device);
       }
     }
   }

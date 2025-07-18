@@ -1,13 +1,97 @@
-import 'package:autonomiq_app/utils/navigation.dart';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import '../providers/auth_provider.dart';
 import '../providers/vehicle_provider.dart';
+import '../services/bluetooth_manager.dart';
+import '../services/obd_communication_service.dart';
 import '../utils/logger.dart';
+import '../utils/navigation.dart';
 import '../widgets/vehicle_dropdown.dart';
 import '../widgets/vehicle_info_card.dart';
 import '../models/vehicle_model.dart';
-import 'login_screen.dart';
+
+class HomeScreenController {
+  final BluetoothManager bluetoothManager;
+  String connectionStatus = 'Disconnected';
+  String obdData = 'No Data';
+  StreamSubscription<BluetoothConnectionState>? _connectionStateSubscription;
+  ObdCommunicationService? _obdService;
+
+  HomeScreenController({required this.bluetoothManager});
+
+  Future<void> startBluetoothReconnection(Vehicle? selectedVehicle, VoidCallback onStateChange) async {
+    if (selectedVehicle == null || selectedVehicle.deviceId.isEmpty) {
+      connectionStatus = 'No device selected';
+      onStateChange();
+      return;
+    }
+
+    try {
+      connectionStatus = 'Connecting';
+      onStateChange();
+      await bluetoothManager.initializeDevice(selectedVehicle.deviceId);
+      _connectionStateSubscription?.cancel();
+      _connectionStateSubscription = bluetoothManager.getConnectionStateStream().listen(
+        (state) {
+          connectionStatus = state == BluetoothConnectionState.connected ? 'Connected' : 'Disconnected';
+          if (state == BluetoothConnectionState.connected) {
+            _initializeObdCommunication(onStateChange);
+          } else {
+            obdData = 'No Data';
+            _obdService?.dispose();
+            _obdService = null;
+            onStateChange();
+          }
+        },
+        onError: (e, stackTrace) {
+          AppLogger.logError(e, stackTrace, 'HomeScreenController.connectionState');
+          connectionStatus = 'Error: $e';
+          onStateChange();
+        },
+      );
+    } catch (e, stackTrace) {
+      AppLogger.logError(e, stackTrace, 'HomeScreenController.startBluetoothReconnection');
+      connectionStatus = 'Error: $e';
+      onStateChange();
+    }
+  }
+
+  Future<void> _initializeObdCommunication(VoidCallback onStateChange) async {
+    try {
+      final device = bluetoothManager.getCurrentDevice();
+      if (device == null) throw Exception('No device connected');
+      _obdService?.dispose();
+      _obdService = ObdCommunicationService(device: device);
+      await _obdService!.initialize();
+      await Future.delayed(const Duration(seconds: 2)); // Allow time for initialization
+      await _obdService!.sendCommand('ATZ\r'); // Reset OBD2
+      _obdService!.obdDataStream.listen(
+        (data) {
+          AppLogger.logInfo('OBD Data: $data');
+          obdData = 'RPM: $data';
+          onStateChange();
+        },
+        onError: (e, stackTrace) {
+          AppLogger.logError(e, stackTrace, 'HomeScreenController.obdData');
+          obdData = 'Error: $e';
+          onStateChange();
+        },
+      );
+    } catch (e, stackTrace) {
+      AppLogger.logError(e, stackTrace, 'HomeScreenController.initializeObdCommunication');
+      connectionStatus = 'Error: $e';
+      onStateChange();
+    }
+  }
+
+  void dispose() {
+    _connectionStateSubscription?.cancel();
+    _obdService?.dispose();
+    bluetoothManager.disconnectDevice();
+  }
+}
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -18,45 +102,48 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   String? _errorMessage;
+  late HomeScreenController _controller;
 
   @override
   void initState() {
     super.initState();
+    final bluetoothManager = context.read<BluetoothManager>();
+    _controller = HomeScreenController(bluetoothManager: bluetoothManager);
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final vehicleProvider = context.read<VehicleProvider>();
       try {
         await vehicleProvider.loadVehicles();
-        setState(() {
-          _errorMessage = null;
-        });
+        setState(() => _errorMessage = null);
+        _controller.startBluetoothReconnection(vehicleProvider.selectedVehicle, () => setState(() {}));
       } catch (e, stackTrace) {
-        AppLogger.logError(e, stackTrace, 'HomeScreen._loadVehicles');
-        setState(() {
-          _errorMessage = 'Failed to load vehicles: $e';
-        });
+        AppLogger.logError(e, stackTrace, 'HomeScreen.initState');
+        setState(() => _errorMessage = 'Failed to load vehicles: $e');
       }
     });
   }
 
   Future<void> _loadVehicles() async {
-    final vehicleProvider = Provider.of<VehicleProvider>(context, listen: false);
+    final vehicleProvider = context.read<VehicleProvider>();
     try {
       await vehicleProvider.loadVehicles();
-      setState(() {
-        _errorMessage = null;
-      });
+      setState(() => _errorMessage = null);
+      _controller.startBluetoothReconnection(vehicleProvider.selectedVehicle, () => setState(() {}));
     } catch (e, stackTrace) {
       AppLogger.logError(e, stackTrace, 'HomeScreen.loadVehicles');
-      setState(() {
-        _errorMessage = 'Failed to load vehicles: $e';
-      });
+      setState(() => _errorMessage = 'Failed to load vehicles: $e');
     }
   }
 
   @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final authProvider = Provider.of<AppAuthProvider>(context);
-    final vehicleProvider = Provider.of<VehicleProvider>(context);
+    final authProvider = context.watch<AppAuthProvider>();
+    final vehicleProvider = context.watch<VehicleProvider>();
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -80,8 +167,25 @@ class _HomeScreenState extends State<HomeScreen> {
         mainAxisSize: MainAxisSize.min,
         children: [
           SizedBox(
-            width: 200,
-            child: VehicleDropdown()
+            width: 120,
+            child: VehicleDropdown(
+              onChanged: (vehicle) {
+                vehicleProvider.selectVehicle(vehicle);
+                _controller.startBluetoothReconnection(vehicle, () => setState(() {}));
+              },
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            _controller.connectionStatus,
+            style: TextStyle(
+              color: _controller.connectionStatus == 'Connected'
+                  ? Colors.green
+                  : _controller.connectionStatus.startsWith('Error')
+                      ? Colors.redAccent
+                      : Colors.white70,
+              fontSize: 14,
+            ),
           ),
         ],
       ),
@@ -92,10 +196,7 @@ class _HomeScreenState extends State<HomeScreen> {
             onPressed: () async {
               try {
                 // await authProvider.signOut();
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (_) => const LoginScreen()),
-                );
+                // navigateTo(context, '/login');
               } catch (e, stackTrace) {
                 AppLogger.logError(e, stackTrace, 'HomeScreen.signOut');
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -110,14 +211,14 @@ class _HomeScreenState extends State<HomeScreen> {
         if (authProvider.user?.isAnonymous == true)
           IconButton(
             icon: const Icon(Icons.account_circle, color: Colors.white70),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const LoginScreen()),
-              );
-            },
+            onPressed: () => navigateToObdSetup(context), // TODO
             tooltip: 'Create Account',
           ),
+        IconButton(
+          icon: const Icon(Icons.bluetooth, color: Colors.white70),
+          onPressed: () => navigateToObdSetup(context), // TODO
+          tooltip: 'OBD2 Setup',
+        ),
       ],
     );
   }
@@ -127,14 +228,8 @@ class _HomeScreenState extends State<HomeScreen> {
     AppAuthProvider authProvider,
     VehicleProvider vehicleProvider,
   ) {
-    if (authProvider.user == null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const LoginScreen()),
-        );
-      });
-      return const _UnauthenticatedView();
+    if (authProvider.isLoading) {
+      return const _LoadingView();
     }
 
     if (vehicleProvider.isLoading) {
@@ -154,20 +249,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return _ContentView(
       selectedVehicle: vehicleProvider.selectedVehicle,
-    );
-  }
-}
-
-class _UnauthenticatedView extends StatelessWidget {
-  const _UnauthenticatedView();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Scaffold(
-      backgroundColor: Colors.black,
-      body: Center(
-        child: CircularProgressIndicator(color: Colors.redAccent),
-      ),
+      obdData: _controller.obdData,
     );
   }
 }
@@ -251,18 +333,29 @@ class _EmptyView extends StatelessWidget {
 
 class _ContentView extends StatelessWidget {
   final Vehicle? selectedVehicle;
+  final String obdData;
 
-  const _ContentView({this.selectedVehicle});
+  const _ContentView({this.selectedVehicle, required this.obdData});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      child: selectedVehicle != null
-        ? VehicleInfoCard(vehicle: selectedVehicle!)
-        : const Text(
-            'Please select a vehicle',
-            style: TextStyle(color: Colors.white70),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          if (selectedVehicle != null) VehicleInfoCard(vehicle: selectedVehicle!),
+          if (selectedVehicle == null)
+            const Text(
+              'Please select a vehicle',
+              style: TextStyle(color: Colors.white70),
+            ),
+          const SizedBox(height: 16),
+          Text(
+            obdData,
+            style: const TextStyle(color: Colors.white70, fontSize: 16),
           ),
+        ],
+      ),
     );
   }
 }

@@ -189,8 +189,9 @@ void main() {
       expect(vehicleProvider.vehicles[0].vin, 'Unknown');
       expect(vehicleProvider.vehicles[0].year, 0);
       expect(vehicleProvider.vehicles[0].odometer, 0);
-      expect(vehicleProvider.vehicles[0].isConnected, false);
       expect(vehicleProvider.vehicles[0].diagnosticTroubleCodes, []);
+      expect(vehicleProvider.vehicles[0].deviceId, 'Unknown');
+      expect(vehicleProvider.vehicles[0].isConnected, false);
       expect(vehicleProvider.selectedVehicle, vehicleProvider.vehicles[0]);
       verify(mockVehicleRepository.addVehicle('testUserId', vehicleData)).called(1);
     });

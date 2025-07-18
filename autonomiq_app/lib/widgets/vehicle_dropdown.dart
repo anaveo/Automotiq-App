@@ -5,7 +5,9 @@ import '../models/vehicle_model.dart';
 import '../providers/vehicle_provider.dart';
 
 class VehicleDropdown extends StatelessWidget {
-  const VehicleDropdown({super.key});
+  final Function(Vehicle)? onChanged; // Changed to Vehicle to exclude Add Vehicle
+
+  const VehicleDropdown({super.key, this.onChanged});
 
   @override
   Widget build(BuildContext context) {
@@ -16,8 +18,9 @@ class VehicleDropdown extends StatelessWidget {
     void handleSelection(dynamic value) {
       if (value == '__add_vehicle__') {
         navigateToObdSetup(context);
-      } else if (value is Vehicle) {
+      } else if (value is Vehicle && value != selected) {
         vehicleProvider.selectVehicle(value);
+        onChanged?.call(value); // Trigger onChanged for vehicle selection
       }
     }
 
@@ -25,7 +28,7 @@ class VehicleDropdown extends StatelessWidget {
       return ElevatedButton.icon(
         icon: const Icon(Icons.add),
         label: const Text('Add Vehicle'),
-        onPressed: () => navigateToObdSetup(context),
+        onPressed: () => navigateToObdSetup(context), // No onChanged
       );
     }
 

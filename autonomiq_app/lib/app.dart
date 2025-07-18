@@ -44,14 +44,11 @@ class MyApp extends StatelessWidget {
           if (authProvider.isLoading) {
             return const SplashScreen();
           }
-          // Seamless flow: anonymous or authenticated → HomeScreen, logged-out → LoginScreen
           final user = authProvider.user;
-          if (user != null) {
-            return const HomeScreen();
-          }
-          return const LoginScreen();
+          return user != null ? const HomeScreen() : const LoginScreen();
         },
         '/obdSetup': (context) => const ObdSetupScreen(),
+        '/home': (context) => const HomeScreen(),
       },
       // Handle invalid routes
       onUnknownRoute: (settings) => MaterialPageRoute(
