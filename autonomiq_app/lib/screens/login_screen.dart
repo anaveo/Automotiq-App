@@ -1,8 +1,8 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../utils/logger.dart';
+import '../repositories/user_repository.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -18,7 +18,6 @@ class _LoginScreenState extends State<LoginScreen> {
   String? _errorMessage;
   bool _showEmailForm = false;
   bool _isLinkingAccount = false;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   @override
   void initState() {
@@ -34,29 +33,27 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _signInAnonymously() async {
     final authProvider = Provider.of<AppAuthProvider>(context, listen: false);
+    final userRepository = Provider.of<UserRepository>(context, listen: false);
+
+    setState(() {
+      _errorMessage = null;
+    });
+
     try {
-      // Sign in anonymously
+      // Step 1: Sign in
       await authProvider.signInAnonymously();
 
-      // Create user document in Firestore
       final userId = authProvider.user?.uid;
-      if (userId == null) {
-        throw Exception('User ID is null after anonymous login');
+      if (userId == null || userId.isEmpty) {
+        throw Exception('Anonymous login succeeded, but UID is missing.');
       }
 
-      final userDocRef = _firestore.collection('users').doc(userId);
-      final userDoc = await userDocRef.get();
-
-      if (!userDoc.exists) {
-        await userDocRef.set({
-          'createdAt': FieldValue.serverTimestamp(),
-          // 'vehicles' collection is implicitly empty
-        });
-      }
+      // Step 2: Ensure user document exists
+      await userRepository.createUserIfNotExists(userId);
     } catch (e, stackTrace) {
-      AppLogger.logError(e, stackTrace, 'LoginScreen.signInAnonymously');
+      AppLogger.logError(e, stackTrace, 'LoginScreen._signInAnonymously');
       setState(() {
-        _errorMessage = 'Failed to sign in or create user profile: $e';
+        _errorMessage = 'Unable to sign in: ${e.toString()}';
       });
     }
   }

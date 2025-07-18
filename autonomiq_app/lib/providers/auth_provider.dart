@@ -11,6 +11,7 @@ class AppAuthProvider extends ChangeNotifier {
 
   User? get user => _user;
   bool get isLoading => _isLoading;
+  FirebaseAuth get firebaseAuth => _firebaseAuth;
 
   AppAuthProvider({AuthService? authService, required FirebaseAuth firebaseAuth})
       : _authService = authService ?? AuthService(firebaseAuth: firebaseAuth),
@@ -33,6 +34,7 @@ class AppAuthProvider extends ChangeNotifier {
       notifyListeners();
       final userCredential = await _authService.signInAnonymously();
       _user = userCredential.user;
+      AppLogger.logInfo('User signed in anonymously: ${_user?.uid}', 'AppAuthProvider.signInAnonymously');
     } catch (e, stackTrace) {
       AppLogger.logError(e, stackTrace, 'AppAuthProvider.signInAnonymously');
       rethrow;
@@ -55,6 +57,7 @@ class AppAuthProvider extends ChangeNotifier {
       notifyListeners();
       final userCredential = await _authService.signInWithEmailAndPassword(email, password);
       _user = userCredential.user;
+      AppLogger.logInfo('User signed in with email: ${_user?.uid}', 'AppAuthProvider.signInWithEmail');
     } catch (e, stackTrace) {
       AppLogger.logError(e, stackTrace, 'AppAuthProvider.signInWithEmail');
       rethrow;
@@ -82,6 +85,7 @@ class AppAuthProvider extends ChangeNotifier {
         final credential = EmailAuthProvider.credential(email: email, password: password);
         final userCredential = await _user!.linkWithCredential(credential);
         _user = userCredential.user; // Update user after linking
+        AppLogger.logInfo('User linked to email: ${_user?.uid}', 'AppAuthProvider.linkAnonymousToEmail');
       } else {
         throw StateError('Current user is not anonymous');
       }

@@ -1,3 +1,4 @@
+import 'package:autonomiq_app/repositories/user_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -6,8 +7,6 @@ import 'package:provider/provider.dart';
 import 'utils/firebase_options.dart';
 import 'providers/auth_provider.dart';
 import 'providers/vehicle_provider.dart';
-import 'services/auth_service.dart';
-import 'repositories/user_repository.dart';
 import 'repositories/vehicle_repository.dart';
 import 'app.dart';
 import 'utils/logger.dart';
@@ -30,17 +29,36 @@ void main() async {
   runApp(
     MultiProvider(
       providers: [
-        ChangeNotifierProvider(
-          create: (_) => AppAuthProvider(
-            firebaseAuth: FirebaseAuth.instance,
-          ),
+        Provider<UserRepository>(
+          create: (_) => UserRepository(firestoreInstance: FirebaseFirestore.instance),
         ),
-        // Defer vehicle loading to HomeScreen to ensure auth is complete
-        ChangeNotifierProvider(
+        ChangeNotifierProvider<AppAuthProvider>(
+          create: (_) => AppAuthProvider(firebaseAuth: FirebaseAuth.instance),
+        ),
+        ChangeNotifierProxyProvider<AppAuthProvider, VehicleProvider>(
           create: (_) => VehicleProvider(
             vehicleRepository: VehicleRepository(firestoreInstance: FirebaseFirestore.instance),
             firebaseAuth: FirebaseAuth.instance,
           ),
+          update: (_, authProvider, previous) {
+            final provider = previous ??
+                VehicleProvider(
+                  vehicleRepository: VehicleRepository(firestoreInstance: FirebaseFirestore.instance),
+                  firebaseAuth: authProvider.firebaseAuth,
+                );
+
+            provider.updateAuth(authProvider.firebaseAuth);
+
+            final user = authProvider.user;
+            final notAlreadyLoading = provider.isLoading == false;
+            final isEmpty = provider.vehicles.isEmpty;
+
+            if (user != null && notAlreadyLoading && isEmpty) {
+              provider.loadVehicles();
+            }
+
+            return provider;
+          },
         ),
       ],
       child: const MyApp(),

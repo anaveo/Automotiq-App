@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../models/vehicle_model.dart';
-import '../utils/logger.dart';
+import 'package:autonomiq_app/models/vehicle_model.dart';
+import 'package:autonomiq_app/utils/logger.dart';
 
 class VehicleRepository {
   final FirebaseFirestore firestore;

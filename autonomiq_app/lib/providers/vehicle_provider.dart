@@ -6,7 +6,7 @@ import '../utils/logger.dart';
 
 class VehicleProvider extends ChangeNotifier {
   final VehicleRepository _vehicleRepository;
-  final FirebaseAuth _firebaseAuth;
+  late FirebaseAuth _firebaseAuth;
   List<Vehicle> _vehicles = [];
   Vehicle? _selected;
   bool _isLoading = false;
@@ -18,6 +18,10 @@ class VehicleProvider extends ChangeNotifier {
   VehicleProvider({required VehicleRepository vehicleRepository, required FirebaseAuth firebaseAuth})
       : _vehicleRepository = vehicleRepository,
         _firebaseAuth = firebaseAuth;
+
+  void updateAuth(FirebaseAuth auth) {
+    _firebaseAuth = auth;
+  }
 
   Future<void> loadVehicles() async {
     final user = _firebaseAuth.currentUser;
@@ -34,6 +38,7 @@ class VehicleProvider extends ChangeNotifier {
       notifyListeners();
       _vehicles = await _vehicleRepository.getVehicles(user.uid);
       _selected = _vehicles.isNotEmpty ? _vehicles.first : null;
+      AppLogger.logInfo('Loaded ${_vehicles.length} vehicle(s) for UID: ${_firebaseAuth.currentUser?.uid}', 'VehicleProvider.loadVehicles');
     } catch (e, stackTrace) {
       AppLogger.logError(e, stackTrace, 'VehicleProvider.loadVehicles');
       _vehicles = [];

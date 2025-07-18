@@ -22,8 +22,19 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadVehicles();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final vehicleProvider = context.read<VehicleProvider>();
+      try {
+        await vehicleProvider.loadVehicles();
+        setState(() {
+          _errorMessage = null;
+        });
+      } catch (e, stackTrace) {
+        AppLogger.logError(e, stackTrace, 'HomeScreen._loadVehicles');
+        setState(() {
+          _errorMessage = 'Failed to load vehicles: $e';
+        });
+      }
     });
   }
 
