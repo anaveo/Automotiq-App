@@ -1,25 +1,25 @@
 import 'dart:async';
-import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'package:flutter_reactive_ble/flutter_reactive_ble.dart';
 import 'ble_service.dart';
 import '../utils/logger.dart';
 
 class BluetoothManager {
   final BleService bleService;
-  BluetoothDevice? _device;
-  StreamSubscription<BluetoothConnectionState>? _subscription;
-  final StreamController<BluetoothConnectionState> _stateController =
-      StreamController<BluetoothConnectionState>.broadcast();
+  DiscoveredDevice? _device;
+  StreamSubscription<DeviceConnectionState>? _subscription;
+  final StreamController<DeviceConnectionState> _stateController =
+      StreamController<DeviceConnectionState>.broadcast();
 
   BluetoothManager({required this.bleService});
 
   /// Scan for ELM327 or OBD devices
-  Future<List<BluetoothDevice>> scanForElmDevices({
+  Future<List<DiscoveredDevice>> scanForElmDevices({
     Duration timeout = const Duration(seconds: 5),
   }) async {
     try {
       final devices = await bleService.scanForDevices(timeout: timeout);
       return devices.where((device) {
-        final name = device.platformName.toLowerCase();
+        final name = device.name.toLowerCase();
         return name.contains('veepeak') || name.contains('autonomiq');
       }).toList();
     } catch (e, stackTrace) {
@@ -31,16 +31,18 @@ class BluetoothManager {
   /// Initialize connection for a device by ID
   Future<void> initializeDevice(String deviceId) async {
     try {
-      if (_device != null && _device!.id.id == deviceId) return;
+      if (_device != null && _device!.id == deviceId) return;
 
       await disconnectDevice();
-      _device = await bleService.reconnectToDevice(deviceId);
+      await bleService.connectToDevice(deviceId);
+      _device = (await bleService.scanForDevices(timeout: const Duration(seconds: 1)))
+          .firstWhere((d) => d.id == deviceId, orElse: () => throw Exception('Device not found'));
 
       _subscription?.cancel();
-      _subscription = _device!.connectionState.listen(
+      _subscription = bleService.getDeviceStateStream(deviceId).listen(
         (state) {
           _stateController.add(state);
-          if (state == BluetoothConnectionState.disconnected) {
+          if (state == DeviceConnectionState.disconnected) {
             _startAutoReconnect(deviceId);
           }
         },
@@ -57,7 +59,7 @@ class BluetoothManager {
   }
 
   /// Get connection state stream
-  Stream<BluetoothConnectionState> getConnectionStateStream() {
+  Stream<DeviceConnectionState> getConnectionStateStream() {
     if (_device == null) {
       throw Exception('No device initialized');
     }
@@ -65,7 +67,7 @@ class BluetoothManager {
   }
 
   /// Get current device
-  BluetoothDevice? getCurrentDevice() => _device;
+  DiscoveredDevice? getCurrentDevice() => _device;
 
   /// Auto-reconnect with exponential backoff
   Future<void> _startAutoReconnect(String deviceId) async {
@@ -75,8 +77,10 @@ class BluetoothManager {
 
     while (retryCount < maxRetries) {
       try {
-        _device = await bleService.reconnectToDevice(deviceId);
-        _stateController.add(BluetoothConnectionState.connected);
+        await bleService.connectToDevice(deviceId);
+        _device = (await bleService.scanForDevices(timeout: const Duration(seconds: 1)))
+            .firstWhere((d) => d.id == deviceId, orElse: () => throw Exception('Device not found'));
+        _stateController.add(DeviceConnectionState.connected);
         return;
       } catch (e, stackTrace) {
         retryCount++;
@@ -93,7 +97,7 @@ class BluetoothManager {
   Future<void> disconnectDevice() async {
     try {
       if (_device != null) {
-        await bleService.disconnect(_device!);
+        await bleService.disconnectDevice(_device!.id);
         await _subscription?.cancel();
         _device = null;
       }

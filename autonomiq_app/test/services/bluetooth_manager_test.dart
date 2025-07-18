@@ -1,8 +1,7 @@
 import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
-import 'package:flutter_blue_plus/flutter_blue_plus.dart';
-import 'package:autonomiq_app/services/ble_service.dart';
+import 'package:flutter_reactive_ble/flutter_reactive_ble.dart';
 import 'package:autonomiq_app/services/bluetooth_manager.dart';
 import '../mocks.mocks.dart';
 
@@ -11,19 +10,17 @@ void main() {
 
   late MockBleService mockBleService;
   late BluetoothManager bluetoothManager;
-  late MockBluetoothDevice mockDevice;
-  late MockScanResult mockScanResult;
-  late StreamController<BluetoothConnectionState> stateStreamController;
+  late MockDiscoveredDevice mockDevice;
+  late StreamController<DeviceConnectionState> stateStreamController;
 
   setUp(() {
     mockBleService = MockBleService();
-    mockDevice = MockBluetoothDevice();
-    mockScanResult = MockScanResult();
+    mockDevice = MockDiscoveredDevice();
     bluetoothManager = BluetoothManager(bleService: mockBleService);
 
     // Stub device state behavior
-    stateStreamController = StreamController<BluetoothConnectionState>.broadcast();
-    when(mockDevice.connectionState).thenAnswer((_) => stateStreamController.stream);
+    stateStreamController = StreamController<DeviceConnectionState>.broadcast();
+    when(mockBleService.getDeviceStateStream(any)).thenAnswer((_) => stateStreamController.stream);
   });
 
   tearDown(() async {
@@ -32,8 +29,7 @@ void main() {
 
   group('scanForElmDevices', () {
     test('returns ELM/OBD devices', () async {
-      when(mockDevice.platformName).thenReturn('VEEPEAK');
-      when(mockScanResult.device).thenReturn(mockDevice);
+      when(mockDevice.name).thenReturn('VEEPEAK');
       when(mockBleService.scanForDevices(timeout: anyNamed('timeout')))
           .thenAnswer((_) async => [mockDevice]);
 
@@ -45,8 +41,7 @@ void main() {
     });
 
     test('filters non-ELM/OBD devices', () async {
-      when(mockDevice.platformName).thenReturn('JBL-Fetty-Wap');
-      when(mockScanResult.device).thenReturn(mockDevice);
+      when(mockDevice.name).thenReturn('JBL-Fetty-Wap');
       when(mockBleService.scanForDevices(timeout: anyNamed('timeout')))
           .thenAnswer((_) async => [mockDevice]);
 
@@ -76,29 +71,35 @@ void main() {
 
   group('initializeDevice', () {
     test('initializes device and sets up state stream', () async {
-      when(mockDevice.id).thenReturn(DeviceIdentifier('TEST_DEVICE_ID'));
-      when(mockBleService.reconnectToDevice('TEST_DEVICE_ID')).thenAnswer((_) async => mockDevice);
-      stateStreamController.add(BluetoothConnectionState.connected);
+      when(mockDevice.id).thenReturn('TEST_DEVICE_ID');
+      when(mockBleService.scanForDevices(timeout: anyNamed('timeout')))
+          .thenAnswer((_) async => [mockDevice]);
+      when(mockBleService.connectToDevice('TEST_DEVICE_ID')).thenAnswer((_) async {});
+      stateStreamController.add(DeviceConnectionState.connected);
 
       await bluetoothManager.initializeDevice('TEST_DEVICE_ID');
 
       expect(bluetoothManager.getCurrentDevice(), mockDevice);
-      verify(mockBleService.reconnectToDevice('TEST_DEVICE_ID')).called(1);
+      verify(mockBleService.connectToDevice('TEST_DEVICE_ID')).called(1);
     });
 
     test('skips if same device ID', () async {
-      when(mockDevice.id).thenReturn(DeviceIdentifier('TEST_DEVICE_ID'));
-      when(mockBleService.reconnectToDevice('TEST_DEVICE_ID')).thenAnswer((_) async => mockDevice);
-      stateStreamController.add(BluetoothConnectionState.connected);
+      when(mockDevice.id).thenReturn('TEST_DEVICE_ID');
+      when(mockBleService.scanForDevices(timeout: anyNamed('timeout')))
+          .thenAnswer((_) async => [mockDevice]);
+      when(mockBleService.connectToDevice('TEST_DEVICE_ID')).thenAnswer((_) async {});
+      stateStreamController.add(DeviceConnectionState.connected);
 
       await bluetoothManager.initializeDevice('TEST_DEVICE_ID');
       await bluetoothManager.initializeDevice('TEST_DEVICE_ID');
 
-      verify(mockBleService.reconnectToDevice('TEST_DEVICE_ID')).called(1);
+      verify(mockBleService.connectToDevice('TEST_DEVICE_ID')).called(1);
     });
 
     test('throws on initialization failure', () async {
-      when(mockBleService.reconnectToDevice('TEST_DEVICE_ID')).thenThrow(Exception('Reconnect error'));
+      when(mockBleService.scanForDevices(timeout: anyNamed('timeout')))
+          .thenAnswer((_) async => [mockDevice]);
+      when(mockBleService.connectToDevice('TEST_DEVICE_ID')).thenThrow(Exception('Connect error'));
 
       expect(() => bluetoothManager.initializeDevice('TEST_DEVICE_ID'), throwsException);
     });
@@ -106,36 +107,39 @@ void main() {
 
   group('getConnectionStateStream', () {
     test('streams connection state', () async {
-      when(mockDevice.id).thenReturn(DeviceIdentifier('TEST_DEVICE_ID'));
-      when(mockBleService.reconnectToDevice('TEST_DEVICE_ID')).thenAnswer((_) async => mockDevice);
+      when(mockDevice.id).thenReturn('TEST_DEVICE_ID');
+      when(mockBleService.scanForDevices(timeout: anyNamed('timeout')))
+          .thenAnswer((_) async => [mockDevice]);
+      when(mockBleService.connectToDevice('TEST_DEVICE_ID')).thenAnswer((_) async {});
 
       // Initialize device
       await bluetoothManager.initializeDevice('TEST_DEVICE_ID');
 
       // Subscribe to stream and collect states
       final stream = bluetoothManager.getConnectionStateStream();
-      final states = <BluetoothConnectionState>[];
+      final states = <DeviceConnectionState>[];
       final subscription = stream.listen(states.add);
 
       // Emit states after subscription
-      stateStreamController.add(BluetoothConnectionState.connected);
-      await Future.delayed(Duration(milliseconds: 100)); // Wait for first state
-      stateStreamController.add(BluetoothConnectionState.disconnected);
-      await Future.delayed(Duration(milliseconds: 100)); // Wait for second state
+      stateStreamController.add(DeviceConnectionState.connected);
+      await Future.delayed(Duration(milliseconds: 100));
+      stateStreamController.add(DeviceConnectionState.disconnected);
+      await Future.delayed(Duration(milliseconds: 100));
 
       // Simulate auto-reconnect
-      when(mockBleService.reconnectToDevice('TEST_DEVICE_ID')).thenAnswer((_) async {
-        stateStreamController.add(BluetoothConnectionState.connected); // Simulate reconnect
-        return mockDevice;
+      when(mockBleService.connectToDevice('TEST_DEVICE_ID')).thenAnswer((_) async {
+        stateStreamController.add(DeviceConnectionState.connected);
+        when(mockBleService.scanForDevices(timeout: anyNamed('timeout')))
+            .thenAnswer((_) async => [mockDevice]);
       });
 
-      await Future.delayed(Duration(milliseconds: 200)); // Wait for auto-reconnect
+      await Future.delayed(Duration(milliseconds: 200));
       await subscription.cancel();
 
       expect(states, [
-        BluetoothConnectionState.connected,
-        BluetoothConnectionState.disconnected,
-        BluetoothConnectionState.connected,
+        DeviceConnectionState.connected,
+        DeviceConnectionState.disconnected,
+        DeviceConnectionState.connected,
       ]);
     });
 
@@ -146,22 +150,26 @@ void main() {
 
   group('disconnectDevice', () {
     test('disconnects and cleans up', () async {
-      when(mockDevice.id).thenReturn(DeviceIdentifier('TEST_DEVICE_ID'));
-      when(mockBleService.reconnectToDevice('TEST_DEVICE_ID')).thenAnswer((_) async => mockDevice);
-      when(mockBleService.disconnect(mockDevice)).thenAnswer((_) async {});
-      stateStreamController.add(BluetoothConnectionState.connected);
+      when(mockDevice.id).thenReturn('TEST_DEVICE_ID');
+      when(mockBleService.scanForDevices(timeout: anyNamed('timeout')))
+          .thenAnswer((_) async => [mockDevice]);
+      when(mockBleService.connectToDevice('TEST_DEVICE_ID')).thenAnswer((_) async {});
+      when(mockBleService.disconnectDevice('TEST_DEVICE_ID')).thenAnswer((_) async {});
+      stateStreamController.add(DeviceConnectionState.connected);
 
       await bluetoothManager.initializeDevice('TEST_DEVICE_ID');
       await bluetoothManager.disconnectDevice();
 
       expect(bluetoothManager.getCurrentDevice(), null);
-      verify(mockBleService.disconnect(mockDevice)).called(1);
+      verify(mockBleService.disconnectDevice('TEST_DEVICE_ID')).called(1);
     });
 
     test('throws on disconnect failure', () async {
-      when(mockDevice.id).thenReturn(DeviceIdentifier('TEST_DEVICE_ID'));
-      when(mockBleService.reconnectToDevice('TEST_DEVICE_ID')).thenAnswer((_) async => mockDevice);
-      when(mockBleService.disconnect(mockDevice)).thenThrow(Exception('Disconnect error'));
+      when(mockDevice.id).thenReturn('TEST_DEVICE_ID');
+      when(mockBleService.scanForDevices(timeout: anyNamed('timeout')))
+          .thenAnswer((_) async => [mockDevice]);
+      when(mockBleService.connectToDevice('TEST_DEVICE_ID')).thenAnswer((_) async {});
+      when(mockBleService.disconnectDevice('TEST_DEVICE_ID')).thenThrow(Exception('Disconnect error'));
 
       await bluetoothManager.initializeDevice('TEST_DEVICE_ID');
       expect(() => bluetoothManager.disconnectDevice(), throwsException);

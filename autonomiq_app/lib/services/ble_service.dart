@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'package:flutter_reactive_ble/flutter_reactive_ble.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'permission_service.dart';
 import '../utils/bluetooth_adapter.dart';
@@ -14,38 +14,34 @@ class BleService {
     required this.permissionService,
   });
 
-  /// Scan for Bluetooth devices
-  Future<List<BluetoothDevice>> scanForDevices({
+  /// Scan for BLE devices
+  Future<List<DiscoveredDevice>> scanForDevices({
     Duration timeout = const Duration(seconds: 5),
+    List<Uuid> withServices = const [],
   }) async {
     try {
-      // Request permissions
       await requestPermissions();
-
-      final List<BluetoothDevice> devices = [];
-      StreamSubscription? scanSubscription;
+      final devices = <DiscoveredDevice>[];
+      StreamSubscription<DiscoveredDevice>? scanSubscription;
 
       try {
-        // Clear any existing scan
-        await adapter.stopScan();
-
-        // Listen for scan results
-        scanSubscription = adapter.scanResults.listen((results) {
-          for (ScanResult result in results) {
-            if (!devices.contains(result.device)) {
-              devices.add(result.device);
+        scanSubscription = adapter.scanForDevices(withServices: withServices).listen(
+          (device) {
+            if (!devices.any((d) => d.id == device.id)) {
+              devices.add(device);
             }
-          }
-        });
+          },
+          onError: (e, stackTrace) {
+            AppLogger.logError(e, stackTrace, 'BleService.scanForDevices');
+            throw Exception('Scan error: $e');
+          },
+        );
 
-        // Start scan
-        await adapter.startScan(timeout: timeout);
-
-        // Wait for scan to complete
         await Future.delayed(timeout);
+      } catch (e, stackTrace) {
+        AppLogger.logError(e, stackTrace, 'BleService.scanForDevices');
+        throw Exception('Failed to scan for devices: $e');
       } finally {
-        // Ensure scan is stopped and subscription is cancelled
-        await adapter.stopScan();
         await scanSubscription?.cancel();
       }
 
@@ -56,17 +52,12 @@ class BleService {
     }
   }
 
-  /// Reconnect to a device by MAC address
-  Future<BluetoothDevice> reconnectToDevice(String deviceId) async {
+  /// Reconnect to a device by ID
+  Future<void> reconnectToDevice(String deviceId) async {
     try {
       await requestPermissions();
-      final devices = await scanForDevices(timeout: const Duration(seconds: 5));
-      final targetDevice = devices.firstWhere(
-        (device) => device.remoteId.str == deviceId,
-        orElse: () => throw Exception('Device with ID $deviceId not found'),
-      );
-      await connect(targetDevice);
-      return targetDevice;
+      await adapter.connectToDevice(deviceId);
+      AppLogger.logInfo('Reconnected to device: $deviceId', 'BleService.reconnectToDevice');
     } catch (e, stackTrace) {
       AppLogger.logError(e, stackTrace, 'BleService.reconnectToDevice');
       throw Exception('Failed to reconnect to device: $e');
@@ -74,50 +65,41 @@ class BleService {
   }
 
   /// Connect to a BLE device
-  Future<void> connect(BluetoothDevice device) async {
+  Future<void> connectToDevice(String deviceId) async {
     try {
-      final state = await device.connectionState.first.timeout(
+      await adapter.connectToDevice(deviceId).timeout(
         const Duration(seconds: 5),
-        onTimeout: () => throw TimeoutException('Connection state timeout'),
+        onTimeout: () => throw TimeoutException('Connection timeout for device: $deviceId'),
       );
-
-      if (state != BluetoothConnectionState.connected) {
-        await device.connect(timeout: const Duration(seconds: 10));
-      }
-    } on TimeoutException {
-      rethrow;
+      AppLogger.logInfo('Connected to device: $deviceId', 'BleService.connectToDevice');
     } catch (e, stackTrace) {
-      AppLogger.logError(e, stackTrace, 'BleService.connect');
+      AppLogger.logError(e, stackTrace, 'BleService.connectToDevice');
       throw Exception('Failed to connect to device: $e');
     }
   }
 
   /// Disconnect from a BLE device
-  Future<void> disconnect(BluetoothDevice device) async {
+  Future<void> disconnectDevice(String deviceId) async {
     try {
-      final state = await device.connectionState.first.timeout(
+      await adapter.disconnectDevice(deviceId).timeout(
         const Duration(seconds: 5),
-        onTimeout: () => throw TimeoutException('Connection state timeout'),
+        onTimeout: () => throw TimeoutException('Disconnection timeout for device: $deviceId'),
       );
-
-      if (state == BluetoothConnectionState.connected) {
-        await device.disconnect();
-      }
-    } on TimeoutException {
-      rethrow;
+      AppLogger.logInfo('Disconnected from device: $deviceId', 'BleService.disconnectDevice');
     } catch (e, stackTrace) {
-      AppLogger.logError(e, stackTrace, 'BleService.disconnect');
+      AppLogger.logError(e, stackTrace, 'BleService.disconnectDevice');
       throw Exception('Failed to disconnect from device: $e');
     }
   }
 
   /// Get current connection state of a device
-  Future<BluetoothConnectionState> getDeviceState(BluetoothDevice device) async {
+  Future<DeviceConnectionState> getDeviceState(String deviceId) async {
     try {
-      return await device.connectionState
-          .first.timeout(const Duration(seconds: 3));
-    } on TimeoutException {
-      rethrow;
+      return await adapter
+          .getConnectionStateStream(deviceId)
+          .first
+          .timeout(const Duration(seconds: 3), onTimeout: () => throw TimeoutException('Connection state timeout'))
+          .then((state) => state.connectionState);
     } catch (e, stackTrace) {
       AppLogger.logError(e, stackTrace, 'BleService.getDeviceState');
       throw Exception('Failed to get device state: $e');
@@ -125,22 +107,57 @@ class BleService {
   }
 
   /// Stream connection state of a device
-  Stream<BluetoothConnectionState> getDeviceStateStream(BluetoothDevice device) {
+  Stream<DeviceConnectionState> getDeviceStateStream(String deviceId) {
     try {
-      return device.connectionState;
+      return adapter.getConnectionStateStream(deviceId).map((state) => state.connectionState);
     } catch (e, stackTrace) {
       AppLogger.logError(e, stackTrace, 'BleService.getDeviceStateStream');
       throw Exception('Failed to stream device state: $e');
     }
   }
 
-  /// List all currently connected BLE devices
-  Future<List<BluetoothDevice>> getConnectedDevices() async {
+  /// Request MTU for a device
+  Future<void> requestMtu(String deviceId, int mtu) async {
     try {
-      return await adapter.connectedDevices;
+      await adapter.requestMtu(deviceId, mtu);
+      AppLogger.logInfo('MTU set to $mtu for device: $deviceId', 'BleService.requestMtu');
     } catch (e, stackTrace) {
-      AppLogger.logError(e, stackTrace, 'BleService.getConnectedDevices');
-      throw Exception('Failed to get connected devices: $e');
+      AppLogger.logError(e, stackTrace, 'BleService.requestMtu');
+      throw Exception('Failed to request MTU: $e');
+    }
+  }
+
+  /// Clear GATT cache for a device
+  Future<void> clearGattCache(String deviceId) async {
+    try {
+      await adapter.clearGattCache(deviceId);
+      AppLogger.logInfo('GATT cache cleared for device: $deviceId', 'BleService.clearGattCache');
+    } catch (e, stackTrace) {
+      AppLogger.logError(e, stackTrace, 'BleService.clearGattCache');
+      throw Exception('Failed to clear GATT cache: $e');
+    }
+  }
+
+  /// Read from a characteristic
+  Future<List<int>> readCharacteristic(QualifiedCharacteristic characteristic) async {
+    try {
+      final value = await adapter.readCharacteristic(characteristic);
+      AppLogger.logInfo('Read characteristic ${characteristic.characteristicId}: $value', 'BleService.readCharacteristic');
+      return value;
+    } catch (e, stackTrace) {
+      AppLogger.logError(e, stackTrace, 'BleService.readCharacteristic');
+      throw Exception('Failed to read characteristic: $e');
+    }
+  }
+
+  /// Write to a characteristic
+  Future<void> writeCharacteristic(QualifiedCharacteristic characteristic, List<int> value, {bool withResponse = true}) async {
+    try {
+      await adapter.writeCharacteristic(characteristic, value, withResponse: withResponse);
+      AppLogger.logInfo('Wrote to characteristic ${characteristic.characteristicId}: $value', 'BleService.writeCharacteristic');
+    } catch (e, stackTrace) {
+      AppLogger.logError(e, stackTrace, 'BleService.writeCharacteristic');
+      throw Exception('Failed to write characteristic: $e');
     }
   }
 
