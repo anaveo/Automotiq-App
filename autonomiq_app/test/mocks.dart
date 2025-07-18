@@ -3,8 +3,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:autonomiq_app/providers/auth_provider.dart';
 import 'package:autonomiq_app/providers/vehicle_provider.dart';
+import 'package:autonomiq_app/repositories/user_repository.dart';
+import 'package:autonomiq_app/repositories/vehicle_repository.dart';
 import 'package:autonomiq_app/services/auth_service.dart';
-import 'package:autonomiq_app/services/firestore_service.dart';
 import 'package:autonomiq_app/services/permission_service.dart';
 import 'package:autonomiq_app/models/vehicle_model.dart';
 import 'package:autonomiq_app/utils/bluetooth_adapter.dart';
@@ -23,10 +24,13 @@ import 'dart:async';
   QuerySnapshot<Map<String, dynamic>>,
   QueryDocumentSnapshot<Map<String, dynamic>>,
 
+  // Repositories
+  UserRepository,
+  VehicleRepository,
+
   // Providers & services
   AppAuthProvider,
   AuthService,
-  FirestoreService,
   VehicleProvider,
   Vehicle,
 

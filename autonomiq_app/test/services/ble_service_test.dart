@@ -14,7 +14,6 @@ void main() {
   late MockBluetoothAdapter mockAdapter;
   late BleService bleService;
   late MockBluetoothDevice mockDevice;
-  late MockStreamSubscription<List<ScanResult>> mockSubscription;
   late MockScanResult mockScanResult;
   late MockPermissionService mockPermissions;
 
@@ -23,7 +22,6 @@ void main() {
   setUp(() {
     mockAdapter = MockBluetoothAdapter();
     mockDevice = MockBluetoothDevice();
-    mockSubscription = MockStreamSubscription<List<ScanResult>>();
     mockScanResult = MockScanResult();
     mockPermissions = MockPermissionService();
     bleService = BleService(adapter: mockAdapter, permissionService: mockPermissions);

@@ -64,10 +64,14 @@ class _BleScanScreenState extends State<BleScanScreen> {
 
   Future<void> _pairAndSaveDevice(BluetoothDevice device) async {
     try {
-      await widget.bleService.connect(device);
       final vehicleProvider = Provider.of<VehicleProvider>(context, listen: false);
+      // final userId = Provider.of<VehicleProvider>(context, listen: false).userId;
+      // if (userId == null || userId.isEmpty) {
+      //   throw Exception('User ID is null or empty');
+      // }
 
-      // TODO: Replace with actual values
+      await widget.bleService.connect(device);
+
       final newVehicle = {
         'name': 'Vehicle_${DateTime.now().millisecondsSinceEpoch}',
         'vin': 'VIN_${DateTime.now().millisecondsSinceEpoch}',
@@ -76,12 +80,20 @@ class _BleScanScreenState extends State<BleScanScreen> {
         'isConnected': true,
         'deviceId': device.id.id,
       };
+
+      // Add vehicle to Firestore
+      // final firestoreService = FirestoreService();
+      // final vehicleId = await firestoreService.addVehicle(userId, newVehicle);
+
+      // Add to VehicleProvider with Firestore document ID
+      // newVehicle['id'] = vehicleId;
       vehicleProvider.addVehicle(newVehicle);
+
       navigateToHome(context);
     } catch (e, stackTrace) {
       AppLogger.logError(e, stackTrace, 'BleScanScreen.pairAndSave');
       setState(() {
-        _errorMessage = 'Failed to pair or save: $e';
+        _errorMessage = 'Failed to pair or save vehicle: $e';
       });
       if (await widget.bleService.getDeviceState(device) == BluetoothConnectionState.connected) {
         await widget.bleService.disconnect(device);

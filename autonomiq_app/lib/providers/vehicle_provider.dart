@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/vehicle_model.dart';
-import '../services/firestore_service.dart';
+import '../repositories/vehicle_repository.dart';
 import '../utils/logger.dart';
 
 class VehicleProvider extends ChangeNotifier {
-  final FirestoreService _firestore;
+  final VehicleRepository _vehicleRepository;
   final FirebaseAuth _firebaseAuth;
   List<Vehicle> _vehicles = [];
   Vehicle? _selected;
@@ -15,8 +15,8 @@ class VehicleProvider extends ChangeNotifier {
   Vehicle? get selectedVehicle => _selected;
   bool get isLoading => _isLoading;
 
-  VehicleProvider({FirestoreService? firestore, required FirebaseAuth firebaseAuth})
-      : _firestore = firestore ?? FirestoreService(),
+  VehicleProvider({required VehicleRepository vehicleRepository, required FirebaseAuth firebaseAuth})
+      : _vehicleRepository = vehicleRepository,
         _firebaseAuth = firebaseAuth;
 
   Future<void> loadVehicles() async {
@@ -32,7 +32,7 @@ class VehicleProvider extends ChangeNotifier {
     try {
       _isLoading = true;
       notifyListeners();
-      _vehicles = await _firestore.getUserVehicles(user.uid);
+      _vehicles = await _vehicleRepository.getVehicles(user.uid);
       _selected = _vehicles.isNotEmpty ? _vehicles.first : null;
     } catch (e, stackTrace) {
       AppLogger.logError(e, stackTrace, 'VehicleProvider.loadVehicles');
@@ -72,7 +72,7 @@ class VehicleProvider extends ChangeNotifier {
     try {
       _isLoading = true;
       notifyListeners();
-      final vehicleId = await _firestore.addVehicle(user.uid, vehicleData);
+      final vehicleId = await _vehicleRepository.addVehicle(user.uid, vehicleData);
       final newVehicle = Vehicle(
         id: vehicleId,
         name: vehicleData['name'] ?? 'Unknown',
@@ -107,7 +107,7 @@ class VehicleProvider extends ChangeNotifier {
     try {
       _isLoading = true;
       notifyListeners();
-      await _firestore.removeVehicle(user.uid, vehicleId);
+      await _vehicleRepository.removeVehicle(user.uid, vehicleId);
       _vehicles.removeWhere((v) => v.id == vehicleId);
       _selected = _vehicles.isNotEmpty ? _vehicles.first : null;
     } catch (e, stackTrace) {

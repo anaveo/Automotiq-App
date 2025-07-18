@@ -5,15 +5,16 @@
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'dart:async' as _i7;
 import 'dart:typed_data' as _i10;
-import 'dart:ui' as _i12;
+import 'dart:ui' as _i15;
 
-import 'package:autonomiq_app/models/vehicle_model.dart' as _i15;
-import 'package:autonomiq_app/providers/auth_provider.dart' as _i11;
-import 'package:autonomiq_app/providers/vehicle_provider.dart' as _i16;
-import 'package:autonomiq_app/services/auth_service.dart' as _i13;
-import 'package:autonomiq_app/services/firestore_service.dart' as _i14;
-import 'package:autonomiq_app/services/permission_service.dart' as _i18;
-import 'package:autonomiq_app/utils/bluetooth_adapter.dart' as _i17;
+import 'package:autonomiq_app/models/vehicle_model.dart' as _i13;
+import 'package:autonomiq_app/providers/auth_provider.dart' as _i14;
+import 'package:autonomiq_app/providers/vehicle_provider.dart' as _i17;
+import 'package:autonomiq_app/repositories/user_repository.dart' as _i11;
+import 'package:autonomiq_app/repositories/vehicle_repository.dart' as _i12;
+import 'package:autonomiq_app/services/auth_service.dart' as _i16;
+import 'package:autonomiq_app/services/permission_service.dart' as _i19;
+import 'package:autonomiq_app/utils/bluetooth_adapter.dart' as _i18;
 import 'package:cloud_firestore/cloud_firestore.dart' as _i6;
 import 'package:cloud_firestore_platform_interface/cloud_firestore_platform_interface.dart'
     as _i5;
@@ -24,7 +25,7 @@ import 'package:firebase_core/firebase_core.dart' as _i2;
 import 'package:flutter_blue_plus/flutter_blue_plus.dart' as _i8;
 import 'package:mockito/mockito.dart' as _i1;
 import 'package:mockito/src/dummies.dart' as _i9;
-import 'package:permission_handler/permission_handler.dart' as _i19;
+import 'package:permission_handler/permission_handler.dart' as _i20;
 
 // ignore_for_file: type=lint
 // ignore_for_file: avoid_redundant_argument_values
@@ -1993,10 +1994,92 @@ class MockQueryDocumentSnapshot<T extends Object?> extends _i1.Mock
       super.noSuchMethod(Invocation.method(#[], [field]));
 }
 
+/// A class which mocks [UserRepository].
+///
+/// See the documentation for Mockito's code generation for more information.
+class MockUserRepository extends _i1.Mock implements _i11.UserRepository {
+  MockUserRepository() {
+    _i1.throwOnMissingStub(this);
+  }
+
+  @override
+  _i6.FirebaseFirestore get firestore =>
+      (super.noSuchMethod(
+            Invocation.getter(#firestore),
+            returnValue: _FakeFirebaseFirestore_16(
+              this,
+              Invocation.getter(#firestore),
+            ),
+          )
+          as _i6.FirebaseFirestore);
+
+  @override
+  _i7.Future<void> createUserIfNotExists(String? uid) =>
+      (super.noSuchMethod(
+            Invocation.method(#createUserIfNotExists, [uid]),
+            returnValue: _i7.Future<void>.value(),
+            returnValueForMissingStub: _i7.Future<void>.value(),
+          )
+          as _i7.Future<void>);
+}
+
+/// A class which mocks [VehicleRepository].
+///
+/// See the documentation for Mockito's code generation for more information.
+class MockVehicleRepository extends _i1.Mock implements _i12.VehicleRepository {
+  MockVehicleRepository() {
+    _i1.throwOnMissingStub(this);
+  }
+
+  @override
+  _i6.FirebaseFirestore get firestore =>
+      (super.noSuchMethod(
+            Invocation.getter(#firestore),
+            returnValue: _FakeFirebaseFirestore_16(
+              this,
+              Invocation.getter(#firestore),
+            ),
+          )
+          as _i6.FirebaseFirestore);
+
+  @override
+  _i7.Future<List<_i13.Vehicle>> getVehicles(String? uid) =>
+      (super.noSuchMethod(
+            Invocation.method(#getVehicles, [uid]),
+            returnValue: _i7.Future<List<_i13.Vehicle>>.value(<_i13.Vehicle>[]),
+          )
+          as _i7.Future<List<_i13.Vehicle>>);
+
+  @override
+  _i7.Future<String> addVehicle(
+    String? uid,
+    Map<String, dynamic>? vehicleData,
+  ) =>
+      (super.noSuchMethod(
+            Invocation.method(#addVehicle, [uid, vehicleData]),
+            returnValue: _i7.Future<String>.value(
+              _i9.dummyValue<String>(
+                this,
+                Invocation.method(#addVehicle, [uid, vehicleData]),
+              ),
+            ),
+          )
+          as _i7.Future<String>);
+
+  @override
+  _i7.Future<void> removeVehicle(String? uid, String? vehicleId) =>
+      (super.noSuchMethod(
+            Invocation.method(#removeVehicle, [uid, vehicleId]),
+            returnValue: _i7.Future<void>.value(),
+            returnValueForMissingStub: _i7.Future<void>.value(),
+          )
+          as _i7.Future<void>);
+}
+
 /// A class which mocks [AppAuthProvider].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockAppAuthProvider extends _i1.Mock implements _i11.AppAuthProvider {
+class MockAppAuthProvider extends _i1.Mock implements _i14.AppAuthProvider {
   MockAppAuthProvider() {
     _i1.throwOnMissingStub(this);
   }
@@ -2039,13 +2122,13 @@ class MockAppAuthProvider extends _i1.Mock implements _i11.AppAuthProvider {
           as _i7.Future<void>);
 
   @override
-  void addListener(_i12.VoidCallback? listener) => super.noSuchMethod(
+  void addListener(_i15.VoidCallback? listener) => super.noSuchMethod(
     Invocation.method(#addListener, [listener]),
     returnValueForMissingStub: null,
   );
 
   @override
-  void removeListener(_i12.VoidCallback? listener) => super.noSuchMethod(
+  void removeListener(_i15.VoidCallback? listener) => super.noSuchMethod(
     Invocation.method(#removeListener, [listener]),
     returnValueForMissingStub: null,
   );
@@ -2066,7 +2149,7 @@ class MockAppAuthProvider extends _i1.Mock implements _i11.AppAuthProvider {
 /// A class which mocks [AuthService].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockAuthService extends _i1.Mock implements _i13.AuthService {
+class MockAuthService extends _i1.Mock implements _i16.AuthService {
   MockAuthService() {
     _i1.throwOnMissingStub(this);
   }
@@ -2104,63 +2187,21 @@ class MockAuthService extends _i1.Mock implements _i13.AuthService {
           as _i7.Future<_i4.UserCredential>);
 }
 
-/// A class which mocks [FirestoreService].
-///
-/// See the documentation for Mockito's code generation for more information.
-class MockFirestoreService extends _i1.Mock implements _i14.FirestoreService {
-  MockFirestoreService() {
-    _i1.throwOnMissingStub(this);
-  }
-
-  @override
-  _i7.Future<List<_i15.Vehicle>> getUserVehicles(String? uid) =>
-      (super.noSuchMethod(
-            Invocation.method(#getUserVehicles, [uid]),
-            returnValue: _i7.Future<List<_i15.Vehicle>>.value(<_i15.Vehicle>[]),
-          )
-          as _i7.Future<List<_i15.Vehicle>>);
-
-  @override
-  _i7.Future<String> addVehicle(
-    String? uid,
-    Map<String, dynamic>? vehicleData,
-  ) =>
-      (super.noSuchMethod(
-            Invocation.method(#addVehicle, [uid, vehicleData]),
-            returnValue: _i7.Future<String>.value(
-              _i9.dummyValue<String>(
-                this,
-                Invocation.method(#addVehicle, [uid, vehicleData]),
-              ),
-            ),
-          )
-          as _i7.Future<String>);
-
-  @override
-  _i7.Future<void> removeVehicle(String? uid, String? vehicleId) =>
-      (super.noSuchMethod(
-            Invocation.method(#removeVehicle, [uid, vehicleId]),
-            returnValue: _i7.Future<void>.value(),
-            returnValueForMissingStub: _i7.Future<void>.value(),
-          )
-          as _i7.Future<void>);
-}
-
 /// A class which mocks [VehicleProvider].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockVehicleProvider extends _i1.Mock implements _i16.VehicleProvider {
+class MockVehicleProvider extends _i1.Mock implements _i17.VehicleProvider {
   MockVehicleProvider() {
     _i1.throwOnMissingStub(this);
   }
 
   @override
-  List<_i15.Vehicle> get vehicles =>
+  List<_i13.Vehicle> get vehicles =>
       (super.noSuchMethod(
             Invocation.getter(#vehicles),
-            returnValue: <_i15.Vehicle>[],
+            returnValue: <_i13.Vehicle>[],
           )
-          as List<_i15.Vehicle>);
+          as List<_i13.Vehicle>);
 
   @override
   bool get isLoading =>
@@ -2182,7 +2223,7 @@ class MockVehicleProvider extends _i1.Mock implements _i16.VehicleProvider {
           as _i7.Future<void>);
 
   @override
-  void selectVehicle(_i15.Vehicle? vehicle) => super.noSuchMethod(
+  void selectVehicle(_i13.Vehicle? vehicle) => super.noSuchMethod(
     Invocation.method(#selectVehicle, [vehicle]),
     returnValueForMissingStub: null,
   );
@@ -2206,13 +2247,13 @@ class MockVehicleProvider extends _i1.Mock implements _i16.VehicleProvider {
           as _i7.Future<void>);
 
   @override
-  void addListener(_i12.VoidCallback? listener) => super.noSuchMethod(
+  void addListener(_i15.VoidCallback? listener) => super.noSuchMethod(
     Invocation.method(#addListener, [listener]),
     returnValueForMissingStub: null,
   );
 
   @override
-  void removeListener(_i12.VoidCallback? listener) => super.noSuchMethod(
+  void removeListener(_i15.VoidCallback? listener) => super.noSuchMethod(
     Invocation.method(#removeListener, [listener]),
     returnValueForMissingStub: null,
   );
@@ -2233,7 +2274,7 @@ class MockVehicleProvider extends _i1.Mock implements _i16.VehicleProvider {
 /// A class which mocks [Vehicle].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockVehicle extends _i1.Mock implements _i15.Vehicle {
+class MockVehicle extends _i1.Mock implements _i13.Vehicle {
   MockVehicle() {
     _i1.throwOnMissingStub(this);
   }
@@ -2295,7 +2336,7 @@ class MockVehicle extends _i1.Mock implements _i15.Vehicle {
 /// A class which mocks [BluetoothAdapter].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockBluetoothAdapter extends _i1.Mock implements _i17.BluetoothAdapter {
+class MockBluetoothAdapter extends _i1.Mock implements _i18.BluetoothAdapter {
   MockBluetoothAdapter() {
     _i1.throwOnMissingStub(this);
   }
@@ -2776,68 +2817,68 @@ class MockStreamSubscription<T> extends _i1.Mock
 /// A class which mocks [PermissionService].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockPermissionService extends _i1.Mock implements _i18.PermissionService {
+class MockPermissionService extends _i1.Mock implements _i19.PermissionService {
   MockPermissionService() {
     _i1.throwOnMissingStub(this);
   }
 
   @override
-  _i7.Future<_i19.PermissionStatus> get bluetoothScanStatus =>
+  _i7.Future<_i20.PermissionStatus> get bluetoothScanStatus =>
       (super.noSuchMethod(
             Invocation.getter(#bluetoothScanStatus),
-            returnValue: _i7.Future<_i19.PermissionStatus>.value(
-              _i19.PermissionStatus.denied,
+            returnValue: _i7.Future<_i20.PermissionStatus>.value(
+              _i20.PermissionStatus.denied,
             ),
           )
-          as _i7.Future<_i19.PermissionStatus>);
+          as _i7.Future<_i20.PermissionStatus>);
 
   @override
-  _i7.Future<_i19.PermissionStatus> get bluetoothConnectStatus =>
+  _i7.Future<_i20.PermissionStatus> get bluetoothConnectStatus =>
       (super.noSuchMethod(
             Invocation.getter(#bluetoothConnectStatus),
-            returnValue: _i7.Future<_i19.PermissionStatus>.value(
-              _i19.PermissionStatus.denied,
+            returnValue: _i7.Future<_i20.PermissionStatus>.value(
+              _i20.PermissionStatus.denied,
             ),
           )
-          as _i7.Future<_i19.PermissionStatus>);
+          as _i7.Future<_i20.PermissionStatus>);
 
   @override
-  _i7.Future<_i19.PermissionStatus> get locationStatus =>
+  _i7.Future<_i20.PermissionStatus> get locationStatus =>
       (super.noSuchMethod(
             Invocation.getter(#locationStatus),
-            returnValue: _i7.Future<_i19.PermissionStatus>.value(
-              _i19.PermissionStatus.denied,
+            returnValue: _i7.Future<_i20.PermissionStatus>.value(
+              _i20.PermissionStatus.denied,
             ),
           )
-          as _i7.Future<_i19.PermissionStatus>);
+          as _i7.Future<_i20.PermissionStatus>);
 
   @override
-  _i7.Future<_i19.PermissionStatus> requestBluetoothScan() =>
+  _i7.Future<_i20.PermissionStatus> requestBluetoothScan() =>
       (super.noSuchMethod(
             Invocation.method(#requestBluetoothScan, []),
-            returnValue: _i7.Future<_i19.PermissionStatus>.value(
-              _i19.PermissionStatus.denied,
+            returnValue: _i7.Future<_i20.PermissionStatus>.value(
+              _i20.PermissionStatus.denied,
             ),
           )
-          as _i7.Future<_i19.PermissionStatus>);
+          as _i7.Future<_i20.PermissionStatus>);
 
   @override
-  _i7.Future<_i19.PermissionStatus> requestBluetoothConnect() =>
+  _i7.Future<_i20.PermissionStatus> requestBluetoothConnect() =>
       (super.noSuchMethod(
             Invocation.method(#requestBluetoothConnect, []),
-            returnValue: _i7.Future<_i19.PermissionStatus>.value(
-              _i19.PermissionStatus.denied,
+            returnValue: _i7.Future<_i20.PermissionStatus>.value(
+              _i20.PermissionStatus.denied,
             ),
           )
-          as _i7.Future<_i19.PermissionStatus>);
+          as _i7.Future<_i20.PermissionStatus>);
 
   @override
-  _i7.Future<_i19.PermissionStatus> requestLocation() =>
+  _i7.Future<_i20.PermissionStatus> requestLocation() =>
       (super.noSuchMethod(
             Invocation.method(#requestLocation, []),
-            returnValue: _i7.Future<_i19.PermissionStatus>.value(
-              _i19.PermissionStatus.denied,
+            returnValue: _i7.Future<_i20.PermissionStatus>.value(
+              _i20.PermissionStatus.denied,
             ),
           )
-          as _i7.Future<_i19.PermissionStatus>);
+          as _i7.Future<_i20.PermissionStatus>);
 }

@@ -1,17 +1,18 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
+import 'package:autonomiq_app/repositories/vehicle_repository.dart';
 import '../mocks.mocks.dart';
-import 'package:autonomiq_app/services/firestore_service.dart';
 
 void main() {
-  late FirestoreService firestoreService;
+  late VehicleRepository repository;
   late MockFirebaseFirestore mockFirestore;
   late MockCollectionReference<Map<String, dynamic>> mockCollection;
   late MockDocumentReference<Map<String, dynamic>> mockDocument;
   late MockQuerySnapshot<Map<String, dynamic>> mockSnapshot;
   late MockQueryDocumentSnapshot<Map<String, dynamic>> mockDocSnapshot;
+
   const testUserId = 'testUserId';
-  const testVehicleId = 'testVehicleId';
+  const testVehicleId = 'vehicleId';
 
   setUp(() {
     mockFirestore = MockFirebaseFirestore();
@@ -19,15 +20,15 @@ void main() {
     mockDocument = MockDocumentReference<Map<String, dynamic>>();
     mockSnapshot = MockQuerySnapshot<Map<String, dynamic>>();
     mockDocSnapshot = MockQueryDocumentSnapshot<Map<String, dynamic>>();
-    firestoreService = FirestoreService(firestore: mockFirestore);
+
+    repository = VehicleRepository(firestoreInstance: mockFirestore);
 
     when(mockFirestore.collection('users')).thenReturn(mockCollection);
     when(mockCollection.doc(testUserId)).thenReturn(mockDocument);
     when(mockDocument.collection('vehicles')).thenReturn(mockCollection);
   });
-
-  group('getUserVehicles', () {
-    test('returns vehicles with Vehicle model', () async {
+group('getVehicles', () {
+    test('returns list of vehicles', () async {
       when(mockCollection.get()).thenAnswer((_) async => mockSnapshot);
       when(mockSnapshot.docs).thenReturn([mockDocSnapshot]);
       when(mockDocSnapshot.id).thenReturn('vehicle1');
@@ -39,7 +40,8 @@ void main() {
         'isConnected': false,
       });
 
-      final vehicles = await firestoreService.getUserVehicles(testUserId);
+      final vehicles = await repository.getVehicles(testUserId);
+
       expect(vehicles.length, 1);
       expect(vehicles[0].id, 'vehicle1');
       expect(vehicles[0].name, 'Car 1');
@@ -51,7 +53,7 @@ void main() {
     });
 
     test('throws on empty UID', () async {
-      expect(() => firestoreService.getUserVehicles(''), throwsArgumentError);
+      expect(() => repository.getVehicles(''), throwsArgumentError);
     });
   });
 
@@ -68,7 +70,7 @@ void main() {
         'isConnected': true,
       };
 
-      final result = await firestoreService.addVehicle(testUserId, vehicleData);
+      final result = await repository.addVehicle(testUserId, vehicleData);
       expect(result, 'newVehicleId');
       verify(mockCollection.add(vehicleData)).called(1);
     });
@@ -81,7 +83,7 @@ void main() {
       });
       when(mockDocument.id).thenReturn('vehicleId');
 
-      final result = await firestoreService.addVehicle(testUserId, {
+      final result = await repository.addVehicle(testUserId, {
         'name': '  TrimmedName  ',
         'vin': 'VIN456',
       });
@@ -95,22 +97,22 @@ void main() {
       when(mockCollection.add(any)).thenAnswer((_) async => mockDocument);
       when(mockDocument.id).thenReturn('vehicleId');
 
-      await firestoreService.addVehicle(testUserId, inputCopy);
+      await repository.addVehicle(testUserId, inputCopy);
       expect(inputCopy, originalMap);
     });
 
     test('throws on empty userId', () async {
-      expect(() => firestoreService.addVehicle('', {'name': 'Test Vehicle'}), throwsArgumentError);
+      expect(() => repository.addVehicle('', {'name': 'Test Vehicle'}), throwsArgumentError);
     });
 
     test('throws on missing or empty name', () async {
-      expect(() => firestoreService.addVehicle(testUserId, {'vin': 'VIN123'}), throwsArgumentError);
-      expect(() => firestoreService.addVehicle(testUserId, {'name': '', 'vin': 'VIN123'}), throwsArgumentError);
+      expect(() => repository.addVehicle(testUserId, {'vin': 'VIN123'}), throwsArgumentError);
+      expect(() => repository.addVehicle(testUserId, {'name': '', 'vin': 'VIN123'}), throwsArgumentError);
     });
 
     test('throws on Firestore failure', () async {
       when(mockCollection.add(any)).thenThrow(Exception('Firestore error'));
-      expect(() => firestoreService.addVehicle(testUserId, {'name': 'Failing Vehicle', 'vin': 'VIN000'}), throwsException);
+      expect(() => repository.addVehicle(testUserId, {'name': 'Failing Vehicle', 'vin': 'VIN000'}), throwsException);
       verify(mockCollection.add(any)).called(1);
     });
   });
@@ -122,7 +124,7 @@ void main() {
       when(mockDocSnapshot.exists).thenReturn(true);
       when(mockDocument.delete()).thenAnswer((_) async {});
 
-      await firestoreService.removeVehicle(testUserId, testVehicleId);
+      await repository.removeVehicle(testUserId, testVehicleId);
 
       verify(mockCollection.doc(testVehicleId)).called(1);
       verify(mockDocument.get()).called(1);
@@ -130,11 +132,11 @@ void main() {
     });
 
     test('throws on empty userId', () async {
-      expect(() => firestoreService.removeVehicle('', testVehicleId), throwsArgumentError);
+      expect(() => repository.removeVehicle('', testVehicleId), throwsArgumentError);
     });
 
     test('throws on empty vehicleId', () async {
-      expect(() => firestoreService.removeVehicle(testUserId, ''), throwsArgumentError);
+      expect(() => repository.removeVehicle(testUserId, ''), throwsArgumentError);
     });
 
     test('throws on non-existent vehicleId', () async {
@@ -142,7 +144,7 @@ void main() {
       when(mockDocument.get()).thenAnswer((_) async => mockDocSnapshot);
       when(mockDocSnapshot.exists).thenReturn(false);
 
-      expect(() => firestoreService.removeVehicle(testUserId, testVehicleId), throwsArgumentError);
+      expect(() => repository.removeVehicle(testUserId, testVehicleId), throwsArgumentError);
 
       verify(mockCollection.doc(testVehicleId)).called(1);
       verify(mockDocument.get()).called(1);
@@ -155,7 +157,7 @@ void main() {
       when(mockDocSnapshot.exists).thenReturn(true);
       when(mockDocument.delete()).thenThrow(Exception('Firestore error'));
 
-      expect(() => firestoreService.removeVehicle(testUserId, testVehicleId), throwsException);
+      expect(() => repository.removeVehicle(testUserId, testVehicleId), throwsException);
 
       verify(mockCollection.doc(testVehicleId)).called(1);
       verify(mockDocument.get()).called(1);

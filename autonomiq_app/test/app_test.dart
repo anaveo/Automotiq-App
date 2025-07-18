@@ -8,20 +8,17 @@ import 'package:autonomiq_app/providers/vehicle_provider.dart';
 import 'package:autonomiq_app/screens/home_screen.dart';
 import 'package:autonomiq_app/screens/login_screen.dart';
 import 'package:autonomiq_app/screens/splash_screen.dart';
-import 'package:autonomiq_app/services/firestore_service.dart';
 import 'mocks.mocks.dart';
 
 void main() {
   late MockAppAuthProvider mockAuthProvider;
   late MockVehicleProvider mockVehicleProvider;
   late MockUser mockUser;
-  late MockFirestoreService mockFirestoreService;
 
   setUp(() {
     mockAuthProvider = MockAppAuthProvider();
     mockVehicleProvider = MockVehicleProvider();
     mockUser = MockUser();
-    mockFirestoreService = MockFirestoreService();
     // Stub VehicleProvider methods to avoid null issues
     when(mockVehicleProvider.isLoading).thenReturn(false);
     when(mockVehicleProvider.vehicles).thenReturn([]);

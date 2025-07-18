@@ -7,7 +7,8 @@ import 'utils/firebase_options.dart';
 import 'providers/auth_provider.dart';
 import 'providers/vehicle_provider.dart';
 import 'services/auth_service.dart';
-import 'services/firestore_service.dart';
+import 'repositories/user_repository.dart';
+import 'repositories/vehicle_repository.dart';
 import 'app.dart';
 import 'utils/logger.dart';
 
@@ -31,14 +32,13 @@ void main() async {
       providers: [
         ChangeNotifierProvider(
           create: (_) => AppAuthProvider(
-            authService: AuthService(firebaseAuth: FirebaseAuth.instance),
             firebaseAuth: FirebaseAuth.instance,
           ),
         ),
         // Defer vehicle loading to HomeScreen to ensure auth is complete
         ChangeNotifierProvider(
           create: (_) => VehicleProvider(
-            firestore: FirestoreService(firestore: FirebaseFirestore.instance),
+            vehicleRepository: VehicleRepository(firestoreInstance: FirebaseFirestore.instance),
             firebaseAuth: FirebaseAuth.instance,
           ),
         ),
