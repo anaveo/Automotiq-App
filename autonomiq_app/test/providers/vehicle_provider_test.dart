@@ -161,12 +161,11 @@ void main() {
 
     test('adds vehicle successfully', () async {
       final vehicleData = {
+        'deviceId': 'Test Device',
         'name': 'New Car',
         'vin': 'VIN123',
         'year': 2021,
         'odometer': 15000,
-        'deviceName': 'Test Device',
-        'manufacturerData': base64Encode(Uint8List.fromList([1, 2, 3, 4])),
       };
 
       final Vehicle vehicle = Vehicle.fromMap('newVehicleId', vehicleData);
@@ -183,27 +182,26 @@ void main() {
     });
 
     test('handles default values for missing fields', () async {
-      final Vehicle vehicle = Vehicle.fromMap('minimalId', {'deviceName': 'test device', 'manufacturerData': 'ABCD'});
+      final Vehicle vehicle = Vehicle.fromMap('minimalId', {'deviceId': 'test device'});
       when(mockVehicleRepository.addVehicle('testUserId', vehicle)).thenAnswer((_) async => 'minimalId');
 
       await vehicleProvider.addVehicle(vehicle);
 
       expect(vehicleProvider.vehicles.length, 1);
+      expect(vehicleProvider.vehicles[0].deviceId, 'test device');
       expect(vehicleProvider.vehicles[0].id, 'minimalId');
       expect(vehicleProvider.vehicles[0].name, 'Unknown');
       expect(vehicleProvider.vehicles[0].vin, 'Unknown');
       expect(vehicleProvider.vehicles[0].year, 0);
       expect(vehicleProvider.vehicles[0].odometer, 0);
       expect(vehicleProvider.vehicles[0].diagnosticTroubleCodes, []);
-      expect(vehicleProvider.vehicles[0].deviceName, 'test device');
-      expect(vehicleProvider.vehicles[0].manufacturerData, base64Decode('ABCD'));
       expect(vehicleProvider.selectedVehicle, vehicleProvider.vehicles[0]);
       verify(mockVehicleRepository.addVehicle('testUserId', vehicle)).called(1);
     });
 
     test('logs error and returns when no user signed in', () async {
       when(mockAuth.currentUser).thenReturn(null);
-      final vehicleData = {'deviceName': 'test device', 'manufacturerData': 'ABCD'};
+      final vehicleData = {'deviceId': 'test device'};
       final Vehicle vehicle = Vehicle.fromMap('minimalId', vehicleData);
 
       await vehicleProvider.addVehicle(vehicle);
@@ -214,7 +212,7 @@ void main() {
     });
 
     test('throws and logs error on Firestore failure', () async {
-      final Vehicle vehicle = Vehicle.fromMap('minimalId', {'deviceName': 'test device', 'manufacturerData': 'ABCD'});
+      final Vehicle vehicle = Vehicle.fromMap('minimalId', {'deviceId': 'test device'});
       when(mockVehicleRepository.addVehicle('testUserId', vehicle)).thenThrow(Exception('Firestore error'));
 
       expect(() => vehicleProvider.addVehicle(vehicle), throwsException);
@@ -240,7 +238,7 @@ void main() {
       when(mockUser.uid).thenReturn('testUserId');
 
       // Pre-populate vehicles using addVehicle mock
-      Vehicle initialVehicle = Vehicle.fromMap(testVehicleId, {'deviceName': 'test device', 'manufacturerData': 'ABCD'});
+      Vehicle initialVehicle = Vehicle.fromMap(testVehicleId, {'deviceId': 'test device'});
       when(mockVehicleRepository.addVehicle('testUserId', initialVehicle)).thenAnswer((_) async => testVehicleId);
       vehicleProvider.addVehicle(initialVehicle); // Sets initial state
     });
@@ -258,7 +256,7 @@ void main() {
 
     test('updates selected to first vehicle if multiple exist', () async {
       // Add second vehicle to test selection update
-      Vehicle secondVehicle = Vehicle.fromMap(testVehicleId, {'name': 'Second Car', 'deviceName': 'test device', 'manufacturerData': 'ABCD'});
+      Vehicle secondVehicle = Vehicle.fromMap(testVehicleId, {'name': 'Second Car', 'deviceId': 'test device'});
       when(mockVehicleRepository.addVehicle('testUserId', secondVehicle)).thenAnswer((_) async => 'id2');
       await vehicleProvider.addVehicle(secondVehicle);
       expect(vehicleProvider.vehicles.length, 2);

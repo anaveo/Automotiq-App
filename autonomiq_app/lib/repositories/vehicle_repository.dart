@@ -28,8 +28,7 @@ class VehicleRepository {
 
   Future<String> addVehicle(String uid, Vehicle newVehicle) async {
     if (uid.isEmpty) throw ArgumentError('User ID cannot be empty');
-    if (newVehicle.deviceName.isEmpty) throw ArgumentError('Vehicle name is required');
-    if (newVehicle.manufacturerData.isEmpty) throw ArgumentError('Manufacturer data is required');
+    if (newVehicle.deviceId.isEmpty) throw ArgumentError('Device ID is required');
 
     try {
       final docRef = await firestore
