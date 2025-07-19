@@ -26,18 +26,17 @@ class VehicleRepository {
     }
   }
 
-  Future<String> addVehicle(String uid, Map<String, dynamic> vehicleData) async {
+  Future<String> addVehicle(String uid, Vehicle newVehicle) async {
     if (uid.isEmpty) throw ArgumentError('User ID cannot be empty');
-    final name = vehicleData['name']?.toString().trim();
-    if (name == null || name.isEmpty) throw ArgumentError('Vehicle name is required');
+    if (newVehicle.deviceName.isEmpty) throw ArgumentError('Vehicle name is required');
+    if (newVehicle.manufacturerData.isEmpty) throw ArgumentError('Manufacturer data is required');
 
     try {
-      final cleanData = {...vehicleData, 'name': name};
       final docRef = await firestore
           .collection('users')
           .doc(uid)
           .collection('vehicles')
-          .add(cleanData);
+          .add(newVehicle.toMap());
       return docRef.id;
     } catch (e, stackTrace) {
       AppLogger.logError(e, stackTrace, 'VehicleRepository.addVehicle');

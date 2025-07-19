@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -163,44 +165,48 @@ void main() {
         'vin': 'VIN123',
         'year': 2021,
         'odometer': 15000,
-        'isConnected': true,
+        'deviceName': 'Test Device',
+        'manufacturerData': base64Encode(Uint8List.fromList([1, 2, 3, 4])),
       };
-      when(mockVehicleRepository.addVehicle('testUserId', vehicleData)).thenAnswer((_) async => 'newVehicleId');
 
-      await vehicleProvider.addVehicle(vehicleData);
+      final Vehicle vehicle = Vehicle.fromMap('newVehicleId', vehicleData);
+      when(mockVehicleRepository.addVehicle('testUserId', vehicle)).thenAnswer((_) async => 'newVehicleId');
+
+      await vehicleProvider.addVehicle(vehicle);
 
       expect(vehicleProvider.vehicles.length, 1);
       expect(vehicleProvider.vehicles[0].id, 'newVehicleId');
       expect(vehicleProvider.vehicles[0].name, 'New Car');
       expect(vehicleProvider.selectedVehicle, vehicleProvider.vehicles[0]);
-      verify(mockVehicleRepository.addVehicle('testUserId', vehicleData)).called(1);
+      verify(mockVehicleRepository.addVehicle('testUserId', vehicle)).called(1);
       expect(vehicleProvider.isLoading, false);
     });
 
     test('handles default values for missing fields', () async {
-      final vehicleData = {'name': 'Minimal Car'};
-      when(mockVehicleRepository.addVehicle('testUserId', vehicleData)).thenAnswer((_) async => 'minimalId');
+      final Vehicle vehicle = Vehicle.fromMap('minimalId', {'deviceName': 'test device', 'manufacturerData': 'ABCD'});
+      when(mockVehicleRepository.addVehicle('testUserId', vehicle)).thenAnswer((_) async => 'minimalId');
 
-      await vehicleProvider.addVehicle(vehicleData);
+      await vehicleProvider.addVehicle(vehicle);
 
       expect(vehicleProvider.vehicles.length, 1);
       expect(vehicleProvider.vehicles[0].id, 'minimalId');
-      expect(vehicleProvider.vehicles[0].name, 'Minimal Car');
+      expect(vehicleProvider.vehicles[0].name, 'Unknown');
       expect(vehicleProvider.vehicles[0].vin, 'Unknown');
       expect(vehicleProvider.vehicles[0].year, 0);
       expect(vehicleProvider.vehicles[0].odometer, 0);
       expect(vehicleProvider.vehicles[0].diagnosticTroubleCodes, []);
-      expect(vehicleProvider.vehicles[0].deviceId, 'Unknown');
-      expect(vehicleProvider.vehicles[0].isConnected, false);
+      expect(vehicleProvider.vehicles[0].deviceName, 'test device');
+      expect(vehicleProvider.vehicles[0].manufacturerData, base64Decode('ABCD'));
       expect(vehicleProvider.selectedVehicle, vehicleProvider.vehicles[0]);
-      verify(mockVehicleRepository.addVehicle('testUserId', vehicleData)).called(1);
+      verify(mockVehicleRepository.addVehicle('testUserId', vehicle)).called(1);
     });
 
     test('logs error and returns when no user signed in', () async {
       when(mockAuth.currentUser).thenReturn(null);
-      final vehicleData = {'name': 'NoUserCar'};
+      final vehicleData = {'deviceName': 'test device', 'manufacturerData': 'ABCD'};
+      final Vehicle vehicle = Vehicle.fromMap('minimalId', vehicleData);
 
-      await vehicleProvider.addVehicle(vehicleData);
+      await vehicleProvider.addVehicle(vehicle);
 
       expect(vehicleProvider.vehicles, isEmpty);
       expect(vehicleProvider.isLoading, false);
@@ -208,13 +214,13 @@ void main() {
     });
 
     test('throws and logs error on Firestore failure', () async {
-      final vehicleData = {'name': 'FailingCar'};
-      when(mockVehicleRepository.addVehicle('testUserId', vehicleData)).thenThrow(Exception('Firestore error'));
+      final Vehicle vehicle = Vehicle.fromMap('minimalId', {'deviceName': 'test device', 'manufacturerData': 'ABCD'});
+      when(mockVehicleRepository.addVehicle('testUserId', vehicle)).thenThrow(Exception('Firestore error'));
 
-      expect(() => vehicleProvider.addVehicle(vehicleData), throwsException);
+      expect(() => vehicleProvider.addVehicle(vehicle), throwsException);
       expect(vehicleProvider.vehicles, isEmpty);
       expect(vehicleProvider.isLoading, false);
-      verify(mockVehicleRepository.addVehicle('testUserId', vehicleData)).called(1);
+      verify(mockVehicleRepository.addVehicle('testUserId', vehicle)).called(1);
     });
   });
 
@@ -234,7 +240,7 @@ void main() {
       when(mockUser.uid).thenReturn('testUserId');
 
       // Pre-populate vehicles using addVehicle mock
-      final initialVehicle = {'name': 'Initial Car', 'vin': 'VIN000'};
+      Vehicle initialVehicle = Vehicle.fromMap(testVehicleId, {'deviceName': 'test device', 'manufacturerData': 'ABCD'});
       when(mockVehicleRepository.addVehicle('testUserId', initialVehicle)).thenAnswer((_) async => testVehicleId);
       vehicleProvider.addVehicle(initialVehicle); // Sets initial state
     });
@@ -252,9 +258,9 @@ void main() {
 
     test('updates selected to first vehicle if multiple exist', () async {
       // Add second vehicle to test selection update
-      final secondVehicleData = {'name': 'Second Car', 'vin': 'VIN001'};
-      when(mockVehicleRepository.addVehicle('testUserId', secondVehicleData)).thenAnswer((_) async => 'id2');
-      await vehicleProvider.addVehicle(secondVehicleData);
+      Vehicle secondVehicle = Vehicle.fromMap(testVehicleId, {'name': 'Second Car', 'deviceName': 'test device', 'manufacturerData': 'ABCD'});
+      when(mockVehicleRepository.addVehicle('testUserId', secondVehicle)).thenAnswer((_) async => 'id2');
+      await vehicleProvider.addVehicle(secondVehicle);
       expect(vehicleProvider.vehicles.length, 2);
       // Set selected to second vehicle
       vehicleProvider.selectVehicle(vehicleProvider.vehicles[1]);

@@ -1,3 +1,7 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
+import 'package:autonomiq_app/models/vehicle_model.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:autonomiq_app/repositories/vehicle_repository.dart';
@@ -37,7 +41,9 @@ group('getVehicles', () {
         'vin': '1HGCM82633A004352',
         'year': 2020,
         'odometer': 50000,
-        'isConnected': false,
+        'diagnosticTroubleCodes': [],
+        'deviceName': 'OBD-II Device',
+        'manufacturerData': base64.encode(Uint8List.fromList([1, 2, 3])),
       });
 
       final vehicles = await repository.getVehicles(testUserId);
@@ -48,8 +54,9 @@ group('getVehicles', () {
       expect(vehicles[0].vin, '1HGCM82633A004352');
       expect(vehicles[0].year, 2020);
       expect(vehicles[0].odometer, 50000);
-      expect(vehicles[0].isConnected, false);
       expect(vehicles[0].diagnosticTroubleCodes, []);
+      expect(vehicles[0].deviceName, 'OBD-II Device');
+      expect(vehicles[0].manufacturerData, Uint8List.fromList([1, 2, 3]));
     });
 
     test('throws on empty UID', () async {
@@ -67,52 +74,47 @@ group('getVehicles', () {
         'vin': 'VIN123',
         'year': 2020,
         'odometer': 10000,
-        'isConnected': true,
+        'deviceName': 'Test Device',
+        'manufacturerData': base64.encode(Uint8List.fromList([1, 2, 3, 4])),
       };
 
-      final result = await repository.addVehicle(testUserId, vehicleData);
+      final vehicle = Vehicle.fromMap(testVehicleId, vehicleData);
+      final result = await repository.addVehicle(testUserId, vehicle);
       expect(result, 'newVehicleId');
-      verify(mockCollection.add(vehicleData)).called(1);
+
+      // Use content match instead of instance match
+      verify(mockCollection.add(argThat(equals(vehicle.toMap())))).called(1);
     });
 
-    test('trims name before saving', () async {
-      when(mockCollection.add(any)).thenAnswer((invocation) async {
-        final addedData = invocation.positionalArguments[0] as Map<String, dynamic>;
-        expect(addedData['name'], 'TrimmedName');
-        return mockDocument;
-      });
-      when(mockDocument.id).thenReturn('vehicleId');
-
-      final result = await repository.addVehicle(testUserId, {
-        'name': '  TrimmedName  ',
-        'vin': 'VIN456',
-      });
-      expect(result, 'vehicleId');
-    });
 
     test('does not mutate original input map', () async {
-      final originalMap = {'name': 'UnchangedName', 'vin': 'VIN789'};
+      final originalMap = {'deviceName': 'test device', 'manufacturerData': 'ABCD'};
       final inputCopy = Map<String, dynamic>.from(originalMap);
 
       when(mockCollection.add(any)).thenAnswer((_) async => mockDocument);
       when(mockDocument.id).thenReturn('vehicleId');
 
-      await repository.addVehicle(testUserId, inputCopy);
+      await repository.addVehicle(testUserId, Vehicle.fromMap(testVehicleId, inputCopy));
       expect(inputCopy, originalMap);
     });
 
     test('throws on empty userId', () async {
-      expect(() => repository.addVehicle('', {'name': 'Test Vehicle'}), throwsArgumentError);
+      expect(() => repository.addVehicle('', Vehicle.fromMap(testVehicleId, {'name': 'Test Vehicle'})), throwsArgumentError);
     });
 
-    test('throws on missing or empty name', () async {
-      expect(() => repository.addVehicle(testUserId, {'vin': 'VIN123'}), throwsArgumentError);
-      expect(() => repository.addVehicle(testUserId, {'name': '', 'vin': 'VIN123'}), throwsArgumentError);
+    test('throws on missing or empty deviceName', () async {
+      expect(() => repository.addVehicle(testUserId, Vehicle.fromMap(testVehicleId, {'vin': 'VIN123', 'manufacturerData': 'ABCD'})), throwsArgumentError);
+      expect(() => repository.addVehicle(testUserId, Vehicle.fromMap(testVehicleId, {'deviceName': '', 'vin': 'VIN123', 'manufacturerData': 'ABCD'})), throwsArgumentError);
+    });
+
+    test('throws on missing or empty manufacturerData', () async {
+      expect(() => repository.addVehicle(testUserId, Vehicle.fromMap(testVehicleId, {'vin': 'VIN123', 'deviceName': 'test device'})), throwsArgumentError);
+      expect(() => repository.addVehicle(testUserId, Vehicle.fromMap(testVehicleId, {'manufacturerData': '', 'vin': 'VIN123', 'deviceName': 'test device'})), throwsArgumentError);
     });
 
     test('throws on Firestore failure', () async {
       when(mockCollection.add(any)).thenThrow(Exception('Firestore error'));
-      expect(() => repository.addVehicle(testUserId, {'name': 'Failing Vehicle', 'vin': 'VIN000'}), throwsException);
+      expect(() => repository.addVehicle(testUserId, Vehicle.fromMap(testVehicleId, {'deviceName': 'test device', 'manufacturerData': 'ABCD'})), throwsException);
       verify(mockCollection.add(any)).called(1);
     });
   });

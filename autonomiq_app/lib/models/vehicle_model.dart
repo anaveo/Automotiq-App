@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
 class Vehicle {
   // Vehicle Firestore ID
   final String id;
@@ -12,8 +15,8 @@ class Vehicle {
   final List<Map<String, String>> diagnosticTroubleCodes;
 
   // BLE
-  final String deviceId;
-  final bool isConnected;
+  final String deviceName; // Device name (usually VEEPEAK)
+  final Uint8List manufacturerData; // Unique fingerprint
 
   Vehicle({
     required this.id,
@@ -22,8 +25,8 @@ class Vehicle {
     required this.year,
     required this.odometer,
     required this.diagnosticTroubleCodes,
-    required this.deviceId,
-    required this.isConnected,
+    required this.deviceName,
+    required this.manufacturerData,
   });
 
   // Factory constructor to create Vehicle from Firestore document
@@ -35,8 +38,10 @@ class Vehicle {
       year: int.tryParse(data['year'].toString()) ?? 0,
       odometer: int.tryParse(data['odometer'].toString()) ?? 0,
       diagnosticTroubleCodes: List<Map<String, String>>.from(data['diagnosticTroubleCodes'] ?? []),
-      deviceId: data['deviceId'] ?? 'Unknown',
-      isConnected: data['isConnected'] ?? false,
+      deviceName: data['deviceName'] ?? '',
+      manufacturerData: data['manufacturerData'] != null
+          ? base64.decode(data['manufacturerData'])
+          : Uint8List(0),
     );
   }
 
@@ -47,7 +52,31 @@ class Vehicle {
     'year': year,
     'odometer': odometer,
     'diagnosticTroubleCodes': diagnosticTroubleCodes,
-    'deviceId': deviceId,
-    'isConnected': isConnected,
+    'deviceName': deviceName,
+    'manufacturerData': manufacturerData.isNotEmpty
+        ? base64.encode(manufacturerData)
+        : null,
   };
+
+  Vehicle copyWith({
+    String? id,
+    String? name,
+    String? vin,
+    int? year,
+    int? odometer,
+    List<Map<String, String>>? diagnosticTroubleCodes,
+    String? deviceName,
+    Uint8List? manufacturerData,
+  }) {
+    return Vehicle(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      vin: vin ?? this.vin,
+      year: year ?? this.year,
+      odometer: odometer ?? this.odometer,
+      diagnosticTroubleCodes: diagnosticTroubleCodes ?? this.diagnosticTroubleCodes,
+      deviceName: deviceName ?? this.deviceName,
+      manufacturerData: manufacturerData ?? this.manufacturerData,
+    );
+  }
 }

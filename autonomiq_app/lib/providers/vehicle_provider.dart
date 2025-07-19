@@ -63,7 +63,7 @@ class VehicleProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> addVehicle(Map<String, dynamic> vehicleData) async {
+  Future<void> addVehicle(Vehicle newVehicle) async {
     final user = _firebaseAuth.currentUser;
     if (user == null) {
       AppLogger.logError(
@@ -79,14 +79,12 @@ class VehicleProvider extends ChangeNotifier {
       notifyListeners();
 
       // Add vehicle to Firestore, get document ID
-      final vehicleId = await _vehicleRepository.addVehicle(user.uid, vehicleData);
-      
-      // Create Vehicle model object
-      final newVehicle = Vehicle.fromMap(vehicleId, vehicleData);
+      final vehicleId = await _vehicleRepository.addVehicle(user.uid, newVehicle);
+      final newVehicleWithId = newVehicle.copyWith(id: vehicleId);
 
       // Prioritize new vehicle
-      _vehicles.insert(0, newVehicle);
-      _selected = newVehicle;
+      _vehicles.insert(0, newVehicleWithId);
+      _selected = newVehicleWithId;
     } catch (e, stackTrace) {
       AppLogger.logError(e, stackTrace, 'VehicleProvider.addVehicle');
       rethrow;
