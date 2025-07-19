@@ -3,83 +3,120 @@ import 'package:flutter_reactive_ble/flutter_reactive_ble.dart';
 
 /// Interface to abstract BLE operations for testing and library independence
 abstract class BluetoothAdapter {
+  /// BLE status stream (powered on/off, etc.)
   Stream<BleStatus> get statusStream;
-  Stream<DiscoveredDevice> scanForDevices({List<Uuid> withServices});
 
-  Stream<ConnectionStateUpdate> connectToDevice(String deviceId);
+  /// Scan for BLE devices advertising specific services
+  Stream<DiscoveredDevice> scanForDevices({
+    List<Uuid> withServices,
+    ScanMode scanMode,
+  });
 
+  /// Connect to a BLE device
+  Stream<ConnectionStateUpdate> connectToDevice({
+    required String id,
+    Map<Uuid, List<Uuid>>? servicesWithCharacteristicsToDiscover,
+    Duration? connectionTimeout,
+  });
+
+  /// Read a BLE characteristic
   Future<List<int>> readCharacteristic(QualifiedCharacteristic characteristic);
-  Future<void> writeCharacteristic(QualifiedCharacteristic characteristic, List<int> value, {bool withResponse});
-  Future<void> requestMtu(String deviceId, int mtu);
+
+  /// Write to a BLE characteristic (with response)
+  Future<void> writeCharacteristicWithResponse(
+    QualifiedCharacteristic characteristic, {
+    required List<int> value,
+  });
+
+  /// Write to a BLE characteristic (without response)
+  Future<void> writeCharacteristicWithoutResponse(
+    QualifiedCharacteristic characteristic, {
+    required List<int> value,
+  });
+
+  /// Request a specific MTU size
+  Future<int> requestMtu({
+    required String deviceId,
+    required int mtu,
+  });
+
+  /// Clear GATT cache (Android only)
   Future<void> clearGattCache(String deviceId);
-  Future<void> disconnectDevice(String deviceId);
 }
 
-// TODO: Maybe remove abstract class and use FlutterReactiveBle directly?
 class ReactiveBleAdapter implements BluetoothAdapter {
-  final FlutterReactiveBle _ble = FlutterReactiveBle();
+  final _ble = FlutterReactiveBle();
+
+  ReactiveBleAdapter();
 
   @override
   Stream<BleStatus> get statusStream => _ble.statusStream;
 
   @override
-  Stream<DiscoveredDevice> scanForDevices({List<Uuid> withServices = const [], ScanMode scanMode = ScanMode.balanced}) {
-    return _ble.scanForDevices(withServices: withServices, scanMode: scanMode);
+  Stream<DiscoveredDevice> scanForDevices({
+    List<Uuid> withServices = const [],
+    ScanMode scanMode = ScanMode.balanced,
+  }) {
+    return _ble.scanForDevices(
+      withServices: withServices,
+      scanMode: scanMode,
+    );
   }
 
   @override
-  Stream<ConnectionStateUpdate> connectToDevice(String deviceId) {
-    return _ble.connectToDevice(id: deviceId);
+  Stream<ConnectionStateUpdate> connectToDevice({
+    required String id,
+    Map<Uuid, List<Uuid>>? servicesWithCharacteristicsToDiscover,
+    Duration? connectionTimeout,
+  }) {
+    return _ble.connectToDevice(
+      id: id,
+      servicesWithCharacteristicsToDiscover: servicesWithCharacteristicsToDiscover,
+      connectionTimeout: connectionTimeout,
+    );
   }
 
   @override
   Future<List<int>> readCharacteristic(QualifiedCharacteristic characteristic) {
-      return _ble.readCharacteristic(characteristic);
+    return _ble.readCharacteristic(characteristic);
   }
 
   @override
-  Future<void> writeCharacteristic(QualifiedCharacteristic characteristic, List<int> value, {bool withResponse = true}) async {
-    try {
-      if (withResponse) {
-        await _ble.writeCharacteristicWithResponse(characteristic, value: value);
-      } else {
-        await _ble.writeCharacteristicWithoutResponse(characteristic, value: value);
-      }
-    } catch (e) {
-      rethrow;
-    }
+  Future<void> writeCharacteristicWithResponse(
+    QualifiedCharacteristic characteristic, {
+    required List<int> value,
+  }) {
+    return _ble.writeCharacteristicWithResponse(
+      characteristic,
+      value: value,
+    );
   }
 
   @override
-  Future<void> requestMtu(String deviceId, int mtu) async {
-    try {
-      await _ble.requestMtu(deviceId: deviceId, mtu: mtu);
-    } catch (e) {
-      rethrow;
-    }
+  Future<void> writeCharacteristicWithoutResponse(
+    QualifiedCharacteristic characteristic, {
+    required List<int> value,
+  }) {
+    return _ble.writeCharacteristicWithoutResponse(
+      characteristic,
+      value: value,
+    );
   }
 
   @override
-  Future<void> clearGattCache(String deviceId) async {
-    try {
-      await _ble.clearGattCache(deviceId);
-    } catch (e) {
-      rethrow;
-    }
+  Future<int> requestMtu({
+    required String deviceId,
+    required int mtu,
+  }) {
+    return _ble.requestMtu(deviceId: deviceId, mtu: mtu);
   }
 
   @override
-  Future<void> disconnectDevice(String deviceId) async {
-    try {
-      // flutter_reactive_ble uses connectToDevice stream to signal disconnection
-      await _ble
-          .connectToDevice(id: deviceId, connectionTimeout: const Duration(seconds: 5))
-          .firstWhere(
-            (state) => state.connectionState == DeviceConnectionState.disconnected,
-            orElse: () => throw Exception('Disconnection timeout'),
-          );
-    } catch (e) {
-      rethrow;
-    }
+  Future<void> clearGattCache(String deviceId) {
+    return _ble.clearGattCache(deviceId);
+  }
+
+  void dispose() {
+    // TODO: Add cleanup logic if needed
   }
 }

@@ -2555,6 +2555,14 @@ class MockBleService extends _i1.Mock implements _i21.BleService {
           as _i11.PermissionService);
 
   @override
+  _i7.Stream<_i12.DeviceConnectionState> get connectionStateStream =>
+      (super.noSuchMethod(
+            Invocation.getter(#connectionStateStream),
+            returnValue: _i7.Stream<_i12.DeviceConnectionState>.empty(),
+          )
+          as _i7.Stream<_i12.DeviceConnectionState>);
+
+  @override
   _i7.Future<List<_i12.DiscoveredDevice>> scanForDevices({
     Duration? timeout = const Duration(seconds: 5),
     List<_i12.Uuid>? withServices = const [],
@@ -2571,51 +2579,61 @@ class MockBleService extends _i1.Mock implements _i21.BleService {
           as _i7.Future<List<_i12.DiscoveredDevice>>);
 
   @override
-  _i7.Future<void> connectToDevice(String? deviceId) =>
+  _i7.Future<void> connectToDevice(
+    _i12.DiscoveredDevice? device, {
+    Map<_i12.Uuid, List<_i12.Uuid>>? servicesWithCharacteristicsToDiscover,
+    Duration? connectionTimeout,
+  }) =>
       (super.noSuchMethod(
-            Invocation.method(#connectToDevice, [deviceId]),
-            returnValue: _i7.Future<void>.value(),
-            returnValueForMissingStub: _i7.Future<void>.value(),
-          )
-          as _i7.Future<void>);
-
-  @override
-  _i7.Future<void> disconnectDevice(String? deviceId) =>
-      (super.noSuchMethod(
-            Invocation.method(#disconnectDevice, [deviceId]),
-            returnValue: _i7.Future<void>.value(),
-            returnValueForMissingStub: _i7.Future<void>.value(),
-          )
-          as _i7.Future<void>);
-
-  @override
-  _i7.Future<_i12.DeviceConnectionState> getDeviceState(String? deviceId) =>
-      (super.noSuchMethod(
-            Invocation.method(#getDeviceState, [deviceId]),
-            returnValue: _i7.Future<_i12.DeviceConnectionState>.value(
-              _i12.DeviceConnectionState.connecting,
+            Invocation.method(
+              #connectToDevice,
+              [device],
+              {
+                #servicesWithCharacteristicsToDiscover:
+                    servicesWithCharacteristicsToDiscover,
+                #connectionTimeout: connectionTimeout,
+              },
             ),
+            returnValue: _i7.Future<void>.value(),
+            returnValueForMissingStub: _i7.Future<void>.value(),
           )
-          as _i7.Future<_i12.DeviceConnectionState>);
+          as _i7.Future<void>);
 
   @override
-  _i7.Stream<_i12.DeviceConnectionState> getDeviceStateStream(
-    String? deviceId,
-  ) =>
+  _i7.Future<void> disconnectDevice() =>
       (super.noSuchMethod(
-            Invocation.method(#getDeviceStateStream, [deviceId]),
+            Invocation.method(#disconnectDevice, []),
+            returnValue: _i7.Future<void>.value(),
+            returnValueForMissingStub: _i7.Future<void>.value(),
+          )
+          as _i7.Future<void>);
+
+  @override
+  _i12.DeviceConnectionState getDeviceState() =>
+      (super.noSuchMethod(
+            Invocation.method(#getDeviceState, []),
+            returnValue: _i12.DeviceConnectionState.connecting,
+          )
+          as _i12.DeviceConnectionState);
+
+  @override
+  _i7.Stream<_i12.DeviceConnectionState> getDeviceStateStream() =>
+      (super.noSuchMethod(
+            Invocation.method(#getDeviceStateStream, []),
             returnValue: _i7.Stream<_i12.DeviceConnectionState>.empty(),
           )
           as _i7.Stream<_i12.DeviceConnectionState>);
 
   @override
-  _i7.Future<void> requestMtu(String? deviceId, int? mtu) =>
+  _i7.Future<int> requestMtu({required int? mtu, required String? deviceId}) =>
       (super.noSuchMethod(
-            Invocation.method(#requestMtu, [deviceId, mtu]),
-            returnValue: _i7.Future<void>.value(),
-            returnValueForMissingStub: _i7.Future<void>.value(),
+            Invocation.method(#requestMtu, [], {
+              #mtu: mtu,
+              #deviceId: deviceId,
+            }),
+            returnValue: _i7.Future<int>.value(0),
           )
-          as _i7.Future<void>);
+          as _i7.Future<int>);
 
   @override
   _i7.Future<void> clearGattCache(String? deviceId) =>
@@ -2661,6 +2679,15 @@ class MockBleService extends _i1.Mock implements _i21.BleService {
             returnValueForMissingStub: _i7.Future<void>.value(),
           )
           as _i7.Future<void>);
+
+  @override
+  _i7.Future<void> dispose() =>
+      (super.noSuchMethod(
+            Invocation.method(#dispose, []),
+            returnValue: _i7.Future<void>.value(),
+            returnValueForMissingStub: _i7.Future<void>.value(),
+          )
+          as _i7.Future<void>);
 }
 
 /// A class which mocks [BluetoothAdapter].
@@ -2682,30 +2709,30 @@ class MockBluetoothAdapter extends _i1.Mock implements _i10.BluetoothAdapter {
   @override
   _i7.Stream<_i12.DiscoveredDevice> scanForDevices({
     List<_i12.Uuid>? withServices,
+    _i12.ScanMode? scanMode,
   }) =>
       (super.noSuchMethod(
             Invocation.method(#scanForDevices, [], {
               #withServices: withServices,
+              #scanMode: scanMode,
             }),
             returnValue: _i7.Stream<_i12.DiscoveredDevice>.empty(),
           )
           as _i7.Stream<_i12.DiscoveredDevice>);
 
   @override
-  _i7.Future<void> connectToDevice(String? deviceId) =>
+  _i7.Stream<_i12.ConnectionStateUpdate> connectToDevice({
+    required String? id,
+    Map<_i12.Uuid, List<_i12.Uuid>>? servicesWithCharacteristicsToDiscover,
+    Duration? connectionTimeout,
+  }) =>
       (super.noSuchMethod(
-            Invocation.method(#connectToDevice, [deviceId]),
-            returnValue: _i7.Future<void>.value(),
-            returnValueForMissingStub: _i7.Future<void>.value(),
-          )
-          as _i7.Future<void>);
-
-  @override
-  _i7.Stream<_i12.ConnectionStateUpdate> getConnectionStateStream(
-    String? deviceId,
-  ) =>
-      (super.noSuchMethod(
-            Invocation.method(#getConnectionStateStream, [deviceId]),
+            Invocation.method(#connectToDevice, [], {
+              #id: id,
+              #servicesWithCharacteristicsToDiscover:
+                  servicesWithCharacteristicsToDiscover,
+              #connectionTimeout: connectionTimeout,
+            }),
             returnValue: _i7.Stream<_i12.ConnectionStateUpdate>.empty(),
           )
           as _i7.Stream<_i12.ConnectionStateUpdate>);
@@ -2721,16 +2748,15 @@ class MockBluetoothAdapter extends _i1.Mock implements _i10.BluetoothAdapter {
           as _i7.Future<List<int>>);
 
   @override
-  _i7.Future<void> writeCharacteristic(
-    _i12.QualifiedCharacteristic? characteristic,
-    List<int>? value, {
-    bool? withResponse,
+  _i7.Future<void> writeCharacteristicWithResponse(
+    _i12.QualifiedCharacteristic? characteristic, {
+    required List<int>? value,
   }) =>
       (super.noSuchMethod(
             Invocation.method(
-              #writeCharacteristic,
-              [characteristic, value],
-              {#withResponse: withResponse},
+              #writeCharacteristicWithResponse,
+              [characteristic],
+              {#value: value},
             ),
             returnValue: _i7.Future<void>.value(),
             returnValueForMissingStub: _i7.Future<void>.value(),
@@ -2738,27 +2764,36 @@ class MockBluetoothAdapter extends _i1.Mock implements _i10.BluetoothAdapter {
           as _i7.Future<void>);
 
   @override
-  _i7.Future<void> requestMtu(String? deviceId, int? mtu) =>
+  _i7.Future<void> writeCharacteristicWithoutResponse(
+    _i12.QualifiedCharacteristic? characteristic, {
+    required List<int>? value,
+  }) =>
       (super.noSuchMethod(
-            Invocation.method(#requestMtu, [deviceId, mtu]),
+            Invocation.method(
+              #writeCharacteristicWithoutResponse,
+              [characteristic],
+              {#value: value},
+            ),
             returnValue: _i7.Future<void>.value(),
             returnValueForMissingStub: _i7.Future<void>.value(),
           )
           as _i7.Future<void>);
+
+  @override
+  _i7.Future<int> requestMtu({required String? deviceId, required int? mtu}) =>
+      (super.noSuchMethod(
+            Invocation.method(#requestMtu, [], {
+              #deviceId: deviceId,
+              #mtu: mtu,
+            }),
+            returnValue: _i7.Future<int>.value(0),
+          )
+          as _i7.Future<int>);
 
   @override
   _i7.Future<void> clearGattCache(String? deviceId) =>
       (super.noSuchMethod(
             Invocation.method(#clearGattCache, [deviceId]),
-            returnValue: _i7.Future<void>.value(),
-            returnValueForMissingStub: _i7.Future<void>.value(),
-          )
-          as _i7.Future<void>);
-
-  @override
-  _i7.Future<void> disconnectDevice(String? deviceId) =>
-      (super.noSuchMethod(
-            Invocation.method(#disconnectDevice, [deviceId]),
             returnValue: _i7.Future<void>.value(),
             returnValueForMissingStub: _i7.Future<void>.value(),
           )
