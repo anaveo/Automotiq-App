@@ -1,7 +1,7 @@
 import 'dart:async';
-import 'package:autonomiq_app/repositories/vehicle_repository.dart';
+import 'package:autonomiq_app/models/vehicle_model.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'package:flutter_reactive_ble/flutter_reactive_ble.dart';
 import 'package:provider/provider.dart';
 import '../providers/vehicle_provider.dart';
 import '../services/bluetooth_manager.dart';
@@ -18,7 +18,7 @@ class BleScanScreen extends StatefulWidget {
 }
 
 class _BleScanScreenState extends State<BleScanScreen> {
-  List<BluetoothDevice> _devices = [];
+  List<DiscoveredDevice> _devices = [];
   bool _isScanning = false;
   String? _errorMessage;
 
@@ -49,7 +49,13 @@ class _BleScanScreenState extends State<BleScanScreen> {
     try {
       final devices = await widget.bluetoothManager.scanForElmDevices(timeout: const Duration(seconds: 10));
       setState(() {
-        _devices = devices;
+        final uniqueDevices = <String, DiscoveredDevice>{};
+        for (final d in devices) {
+          if (d.name.isNotEmpty) {
+            uniqueDevices[d.id] = d;
+          }
+        }
+        _devices = uniqueDevices.values.toList();
         _isScanning = false;
       });
     } catch (e, stackTrace) {
@@ -61,27 +67,29 @@ class _BleScanScreenState extends State<BleScanScreen> {
     }
   }
 
-  Future<void> _pairAndSaveDevice(BluetoothDevice device) async {
+  Future<void> _pairAndSaveDevice(DiscoveredDevice device) async {
     try {
       final vehicleProvider = Provider.of<VehicleProvider>(context, listen: false);
-      // Sort out provider TODO
-      // final userId = Provider.of<VehicleProvider>(context, listen: false).userId;
-      // if (userId == null || userId.isEmpty) {
-      //   throw Exception('User ID is null or empty');
-      // }
+      await widget.bluetoothManager.bleService.connectToDevice(device.id);
 
-      await widget.bluetoothManager.bleService.connect(device);
+      // Ensure device has valid name and manufacturer data
+      if (device.id.isEmpty) {
+        throw ArgumentError("Invalid device: missing ID");
+      }
 
-      final newVehicle = {
-        'name': 'Test_${DateTime.now().millisecond}',
-        'vin': '1234567890ABCDEF',
-        'year': 2020 + (DateTime.now().year % 10),
-        'odometer': 10000 + (DateTime.now().millisecondsSinceEpoch % 50000),
-        'isConnected': false,
-        'deviceId': device.remoteId.str,
-      };
+      // Create dummy vehicle (TODO: use actual device data)
+      Vehicle newVehicle = Vehicle(
+        deviceId: device.id,
+        id: 'Unknown', // Placeholder, will be updated by Firestore
+        name: 'Test_${DateTime.now().millisecond}',
+        vin: '1234567890ABCDEF',
+        year: 2020 + (DateTime.now().year % 10),
+        odometer: 10000 + (DateTime.now().millisecondsSinceEpoch % 50000),
+        diagnosticTroubleCodes: [], // TODO: Replace with List<Map>
+      );
 
-      // Add vehicle to firestore
+
+      // Add vehicle to Firestore
       vehicleProvider.addVehicle(newVehicle);
 
       navigateToHome(context);
@@ -90,8 +98,8 @@ class _BleScanScreenState extends State<BleScanScreen> {
       setState(() {
         _errorMessage = 'Failed to pair or save vehicle: $e';
       });
-      if (await widget.bluetoothManager.bleService.getDeviceState(device) == BluetoothConnectionState.connected) {
-        await widget.bluetoothManager.bleService.disconnect(device);
+      if (await widget.bluetoothManager.bleService.getDeviceState(device.id) == DeviceConnectionState.connected) {
+        await widget.bluetoothManager.bleService.disconnectDevice(device.id);
       }
     }
   }
@@ -130,8 +138,8 @@ class _BleScanScreenState extends State<BleScanScreen> {
                         itemBuilder: (context, index) {
                           final device = _devices[index];
                           return ListTile(
-                            title: Text(device.platformName, style: const TextStyle(color: Colors.white)),
-                            subtitle: Text(device.remoteId.str, style: const TextStyle(color: Colors.white70)),
+                            title: Text(device.name, style: const TextStyle(color: Colors.white)),
+                            subtitle: Text(device.id, style: const TextStyle(color: Colors.white70)),
                             onTap: () => _pairAndSaveDevice(device),
                           );
                         },

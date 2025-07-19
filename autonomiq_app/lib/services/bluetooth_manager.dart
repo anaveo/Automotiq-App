@@ -1,116 +1,115 @@
 import 'dart:async';
+import 'dart:typed_data';
+
 import 'package:flutter_reactive_ble/flutter_reactive_ble.dart';
-import 'ble_service.dart';
+
+import '../services/ble_service.dart';
 import '../utils/logger.dart';
 
 class BluetoothManager {
-  final BleService bleService;
+  final BleService _bleService;
+
+  // Look at this dumb naming scheme lol
+  BluetoothManager({
+    BleService? bleService,
+  }) : _bleService = bleService ?? BleService();
+
   DiscoveredDevice? _device;
-  StreamSubscription<DeviceConnectionState>? _subscription;
-  final StreamController<DeviceConnectionState> _stateController =
+  StreamSubscription<DeviceConnectionState>? _connectionSubscription;
+  final StreamController<DeviceConnectionState> _connectionStateController =
       StreamController<DeviceConnectionState>.broadcast();
 
-  BluetoothManager({required this.bleService});
+  // Expose connection state updates
+  Stream<DeviceConnectionState> get connectionStateStream =>
+      _connectionStateController.stream;
 
-  /// Scan for ELM327 or OBD devices
-  Future<List<DiscoveredDevice>> scanForElmDevices({
+  bool _compareManufacturerData(Uint8List a, Uint8List b) {
+    if (a.length != b.length) return false;
+    for (int i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
+  }
+
+  /// Scan for new OBD BLE devices by name (e.g., VEEPEAK, AUTONOMIQ)
+  Future<List<DiscoveredDevice>> scanForNewObdDevices({
     Duration timeout = const Duration(seconds: 5),
   }) async {
     try {
-      final devices = await bleService.scanForDevices(timeout: timeout);
+      final devices = await _bleService.scanForDevices(timeout: timeout);
       return devices.where((device) {
         final name = device.name.toLowerCase();
         return name.contains('veepeak') || name.contains('autonomiq');
       }).toList();
     } catch (e, stackTrace) {
-      AppLogger.logError(e, stackTrace, 'BluetoothManager.scanForElmDevices');
-      throw Exception('Failed to scan for ELM devices: $e');
+      AppLogger.logError(e, stackTrace, 'BluetoothManager.scanForNewObdDevices');
+      throw Exception('Failed to scan for new OBD devices: $e');
     }
   }
 
-  /// Initialize connection for a device by ID
-  Future<void> initializeDevice(String deviceId) async {
+  /// Scan for a specific OBD BLE device using name + manufacturerData fingerprint
+  Future<DiscoveredDevice?> scanForSpecificObdDevice({
+    required String expectedName,
+    required Uint8List expectedManufacturerData,
+    Duration timeout = const Duration(seconds: 5),
+  }) async {
     try {
-      if (_device != null && _device!.id == deviceId) return;
+      final devices = await _bleService.scanForDevices(timeout: timeout);
 
-      await disconnectDevice();
-      await bleService.connectToDevice(deviceId);
-      _device = (await bleService.scanForDevices(timeout: const Duration(seconds: 1)))
-          .firstWhere((d) => d.id == deviceId, orElse: () => throw Exception('Device not found'));
-
-      _subscription?.cancel();
-      _subscription = bleService.getDeviceStateStream(deviceId).listen(
-        (state) {
-          _stateController.add(state);
-          if (state == DeviceConnectionState.disconnected) {
-            _startAutoReconnect(deviceId);
-          }
-        },
-        onError: (e, stackTrace) {
-          AppLogger.logError(e, stackTrace, 'BluetoothManager.connectionState');
-          _stateController.addError(e, stackTrace);
-        },
+      final matchingDevices = devices.where(
+        (device) =>
+            device.name == expectedName &&
+            _compareManufacturerData(device.manufacturerData, expectedManufacturerData),
       );
+
+      return matchingDevices.isNotEmpty ? matchingDevices.first : null;
     } catch (e, stackTrace) {
-      AppLogger.logError(e, stackTrace, 'BluetoothManager.initializeDevice');
-      _stateController.addError(e, stackTrace);
-      rethrow;
+      AppLogger.logError(e, stackTrace, 'BluetoothManager.scanForSpecificObdDevice');
+      throw Exception('Failed to scan for specific OBD device: $e');
     }
   }
 
-  /// Get connection state stream
-  Stream<DeviceConnectionState> getConnectionStateStream() {
-    if (_device == null) {
-      throw Exception('No device initialized');
-    }
-    return _stateController.stream;
+  Future<void> connectToDevice(DiscoveredDevice device) async {
+    // try {
+    //   _device = device;
+
+    //   // Cancel any existing connection
+    //   await _connectionSubscription?.cancel();
+
+    //   // Connect and listen for state changes
+    //   _connectionSubscription = _bleService.connectToDevice(device.id).listen(
+    //     (state) {
+    //       _connectionStateController.add(state);
+    //       AppLogger.logInfo('Connection state: $state', 'BluetoothManager.connectToDevice');
+    //     },
+    //     onError: (error, stackTrace) {
+    //       AppLogger.logError(error, stackTrace, 'BluetoothManager.connectToDevice');
+    //       _connectionStateController.add(DeviceConnectionState.disconnected);
+    //     },
+    //   );
+    // } catch (e, stackTrace) {
+    //   AppLogger.logError(e, stackTrace, 'BluetoothManager.connectToDevice');
+    //   rethrow;
+    // }
   }
 
-  /// Get current device
-  DiscoveredDevice? getCurrentDevice() => _device;
-
-  /// Auto-reconnect with exponential backoff
-  Future<void> _startAutoReconnect(String deviceId) async {
-    int retryCount = 0;
-    const maxRetries = 3;
-    const baseDelay = Duration(seconds: 5);
-
-    while (retryCount < maxRetries) {
-      try {
-        await bleService.connectToDevice(deviceId);
-        _device = (await bleService.scanForDevices(timeout: const Duration(seconds: 1)))
-            .firstWhere((d) => d.id == deviceId, orElse: () => throw Exception('Device not found'));
-        _stateController.add(DeviceConnectionState.connected);
-        return;
-      } catch (e, stackTrace) {
-        retryCount++;
-        AppLogger.logError(e, stackTrace, 'BluetoothManager.autoReconnect');
-        if (retryCount < maxRetries) {
-          await Future.delayed(baseDelay * (1 << retryCount));
-        }
-      }
-    }
-    _stateController.addError(Exception('Failed to reconnect after $maxRetries attempts'));
-  }
-
-  /// Disconnect and clean up
+  /// Disconnect device
   Future<void> disconnectDevice() async {
+    if (_device == null) return;
+
     try {
-      if (_device != null) {
-        await bleService.disconnectDevice(_device!.id);
-        await _subscription?.cancel();
-        _device = null;
-      }
+      await _bleService.disconnectDevice(_device!.id);
+      _device = null;
+      _connectionStateController.add(DeviceConnectionState.disconnected);
     } catch (e, stackTrace) {
       AppLogger.logError(e, stackTrace, 'BluetoothManager.disconnectDevice');
-      _stateController.addError(e, stackTrace);
       rethrow;
     }
   }
 
   /// Clean up
   Future<void> dispose() async {
-    await disconnectDevice();
-    await _stateController.close();
+    await disconnectDevice(); // or disconnectDevice()
+    await _connectionStateController.close();
   }
 }

@@ -59,7 +59,6 @@ class CallerPrinter extends LogPrinter {
     final callerInfo = _extractCaller(callerLine);
 
     final level = event.level.name;
-    final time = DateTime.now().toIso8601String().split('T').last;
 
     return [
       '[$callerInfo] $level: ${event.message}',

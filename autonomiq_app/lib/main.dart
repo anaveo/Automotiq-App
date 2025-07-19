@@ -9,6 +9,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
+import 'utils/bluetooth_adapter.dart';
 import 'utils/firebase_options.dart';
 import 'providers/auth_provider.dart';
 import 'providers/vehicle_provider.dart';
@@ -65,19 +66,8 @@ void main() async {
             return provider;
           },
         ),
-        Provider<SystemPermissionService>(
-          create: (_) => SystemPermissionService(),
-        ),
-        Provider<BleService>(
-          create: (_) => BleService(
-            adapter: FlutterBlueAdapter(),
-            permissionService: SystemPermissionService(),
-          ),
-        ),
         Provider<BluetoothManager>(
-          create: (context) => BluetoothManager(
-            bleService: Provider.of<BleService>(context, listen: false),
-          ),
+          create: (_) => BluetoothManager(),
         ),
       ],
       child: const MyApp(),

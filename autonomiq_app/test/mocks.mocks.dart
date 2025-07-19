@@ -2377,31 +2377,66 @@ class MockVehicle extends _i1.Mock implements _i9.Vehicle {
       (super.noSuchMethod(Invocation.getter(#odometer), returnValue: 0) as int);
 
   @override
-  List<Map<String, String>> get diagnosticTroubleCodes =>
+  List<String> get diagnosticTroubleCodes =>
       (super.noSuchMethod(
             Invocation.getter(#diagnosticTroubleCodes),
-            returnValue: <Map<String, String>>[],
+            returnValue: <String>[],
           )
-          as List<Map<String, String>>);
+          as List<String>);
 
   @override
-  String get deviceName =>
+  String get deviceId =>
       (super.noSuchMethod(
-            Invocation.getter(#deviceName),
+            Invocation.getter(#deviceId),
             returnValue: _i13.dummyValue<String>(
               this,
-              Invocation.getter(#deviceName),
+              Invocation.getter(#deviceId),
             ),
           )
           as String);
 
   @override
-  _i14.Uint8List get manufacturerData =>
-      (super.noSuchMethod(
-            Invocation.getter(#manufacturerData),
-            returnValue: _i14.Uint8List(0),
-          )
-          as _i14.Uint8List);
+  set id(String? _id) => super.noSuchMethod(
+    Invocation.setter(#id, _id),
+    returnValueForMissingStub: null,
+  );
+
+  @override
+  set name(String? _name) => super.noSuchMethod(
+    Invocation.setter(#name, _name),
+    returnValueForMissingStub: null,
+  );
+
+  @override
+  set vin(String? _vin) => super.noSuchMethod(
+    Invocation.setter(#vin, _vin),
+    returnValueForMissingStub: null,
+  );
+
+  @override
+  set year(int? _year) => super.noSuchMethod(
+    Invocation.setter(#year, _year),
+    returnValueForMissingStub: null,
+  );
+
+  @override
+  set odometer(int? _odometer) => super.noSuchMethod(
+    Invocation.setter(#odometer, _odometer),
+    returnValueForMissingStub: null,
+  );
+
+  @override
+  set diagnosticTroubleCodes(List<String>? _diagnosticTroubleCodes) =>
+      super.noSuchMethod(
+        Invocation.setter(#diagnosticTroubleCodes, _diagnosticTroubleCodes),
+        returnValueForMissingStub: null,
+      );
+
+  @override
+  set deviceId(String? _deviceId) => super.noSuchMethod(
+    Invocation.setter(#deviceId, _deviceId),
+    returnValueForMissingStub: null,
+  );
 
   @override
   Map<String, dynamic> toMap() =>
@@ -2412,38 +2447,77 @@ class MockVehicle extends _i1.Mock implements _i9.Vehicle {
           as Map<String, dynamic>);
 
   @override
+  void updateName(String? newName) => super.noSuchMethod(
+    Invocation.method(#updateName, [newName]),
+    returnValueForMissingStub: null,
+  );
+
+  @override
+  void updateVin(String? newVin) => super.noSuchMethod(
+    Invocation.method(#updateVin, [newVin]),
+    returnValueForMissingStub: null,
+  );
+
+  @override
+  void updateYear(int? newYear) => super.noSuchMethod(
+    Invocation.method(#updateYear, [newYear]),
+    returnValueForMissingStub: null,
+  );
+
+  @override
+  void updateOdometer(int? newOdometer) => super.noSuchMethod(
+    Invocation.method(#updateOdometer, [newOdometer]),
+    returnValueForMissingStub: null,
+  );
+
+  @override
+  void addDiagnosticTroubleCode(String? code) => super.noSuchMethod(
+    Invocation.method(#addDiagnosticTroubleCode, [code]),
+    returnValueForMissingStub: null,
+  );
+
+  @override
+  void removeDiagnosticTroubleCode(String? code) => super.noSuchMethod(
+    Invocation.method(#removeDiagnosticTroubleCode, [code]),
+    returnValueForMissingStub: null,
+  );
+
+  @override
+  void clearDiagnosticTroubleCodes() => super.noSuchMethod(
+    Invocation.method(#clearDiagnosticTroubleCodes, []),
+    returnValueForMissingStub: null,
+  );
+
+  @override
   _i9.Vehicle copyWith({
+    String? deviceId,
     String? id,
     String? name,
     String? vin,
     int? year,
     int? odometer,
-    List<Map<String, String>>? diagnosticTroubleCodes,
-    String? deviceName,
-    _i14.Uint8List? manufacturerData,
+    List<String>? diagnosticTroubleCodes,
   }) =>
       (super.noSuchMethod(
             Invocation.method(#copyWith, [], {
+              #deviceId: deviceId,
               #id: id,
               #name: name,
               #vin: vin,
               #year: year,
               #odometer: odometer,
               #diagnosticTroubleCodes: diagnosticTroubleCodes,
-              #deviceName: deviceName,
-              #manufacturerData: manufacturerData,
             }),
             returnValue: _FakeVehicle_22(
               this,
               Invocation.method(#copyWith, [], {
+                #deviceId: deviceId,
                 #id: id,
                 #name: name,
                 #vin: vin,
                 #year: year,
                 #odometer: odometer,
                 #diagnosticTroubleCodes: diagnosticTroubleCodes,
-                #deviceName: deviceName,
-                #manufacturerData: manufacturerData,
               }),
             ),
           )
@@ -2495,15 +2569,6 @@ class MockBleService extends _i1.Mock implements _i21.BleService {
             ),
           )
           as _i7.Future<List<_i12.DiscoveredDevice>>);
-
-  @override
-  _i7.Future<void> reconnectToDevice(String? deviceId) =>
-      (super.noSuchMethod(
-            Invocation.method(#reconnectToDevice, [deviceId]),
-            returnValue: _i7.Future<void>.value(),
-            returnValueForMissingStub: _i7.Future<void>.value(),
-          )
-          as _i7.Future<void>);
 
   @override
   _i7.Future<void> connectToDevice(String? deviceId) =>

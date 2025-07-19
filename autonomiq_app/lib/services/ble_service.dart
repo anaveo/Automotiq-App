@@ -1,18 +1,26 @@
 import 'dart:async';
 import 'package:flutter_reactive_ble/flutter_reactive_ble.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'permission_service.dart';
-import '../utils/bluetooth_adapter.dart';
-import '../utils/logger.dart';
+import 'package:autonomiq_app/services/permission_service.dart';
+import 'package:autonomiq_app/utils/bluetooth_adapter.dart';
+import 'package:autonomiq_app/utils/logger.dart';
 
 class BleService {
   final BluetoothAdapter adapter;
   final PermissionService permissionService;
 
   BleService({
-    required this.adapter,
-    required this.permissionService,
-  });
+    BluetoothAdapter? adapter,
+    PermissionService? permissionService,
+  })  : adapter = adapter ?? ReactiveBleAdapter(),
+        permissionService = permissionService ?? SystemPermissionService();
+
+  StreamSubscription<ConnectionStateUpdate>? _connectionSubscription;
+  final StreamController<DeviceConnectionState> _stateController =
+      StreamController<DeviceConnectionState>.broadcast();
+
+  Stream<DeviceConnectionState> get connectionStateStream =>
+      _stateController.stream;
 
   /// Scan for BLE devices
   Future<List<DiscoveredDevice>> scanForDevices({
@@ -52,43 +60,36 @@ class BleService {
     }
   }
 
-  /// Reconnect to a device by ID
-  Future<void> reconnectToDevice(String deviceId) async {
-    try {
-      await requestPermissions();
-      await adapter.connectToDevice(deviceId);
-      AppLogger.logInfo('Reconnected to device: $deviceId', 'BleService.reconnectToDevice');
-    } catch (e, stackTrace) {
-      AppLogger.logError(e, stackTrace, 'BleService.reconnectToDevice');
-      throw Exception('Failed to reconnect to device: $e');
-    }
-  }
-
   /// Connect to a BLE device
-  Future<void> connectToDevice(String deviceId) async {
+  Future<void> connectToDevice(DiscoveredDevice device) async {
+    // Cancel any existing subscription
+    await _connectionSubscription?.cancel();
+
     try {
-      await adapter.connectToDevice(deviceId).timeout(
-        const Duration(seconds: 5),
-        onTimeout: () => throw TimeoutException('Connection timeout for device: $deviceId'),
+      _connectionSubscription = adapter.connectToDevice(device.id).listen(
+        (update) {
+          _stateController.add(update.connectionState);
+        },
+        onError: (e, stackTrace) {
+          _stateController.add(DeviceConnectionState.disconnected);
+          AppLogger.logError(e, stackTrace, 'BleService.connectToDevice');
+        },
       );
-      AppLogger.logInfo('Connected to device: $deviceId', 'BleService.connectToDevice');
     } catch (e, stackTrace) {
       AppLogger.logError(e, stackTrace, 'BleService.connectToDevice');
-      throw Exception('Failed to connect to device: $e');
+      rethrow;
     }
   }
 
   /// Disconnect from a BLE device
-  Future<void> disconnectDevice(String deviceId) async {
+  Future<void> disconnectDevice() async {
     try {
-      await adapter.disconnectDevice(deviceId).timeout(
-        const Duration(seconds: 5),
-        onTimeout: () => throw TimeoutException('Disconnection timeout for device: $deviceId'),
-      );
-      AppLogger.logInfo('Disconnected from device: $deviceId', 'BleService.disconnectDevice');
+      await _connectionSubscription?.cancel();
+      _stateController.add(DeviceConnectionState.disconnected);
     } catch (e, stackTrace) {
       AppLogger.logError(e, stackTrace, 'BleService.disconnectDevice');
-      throw Exception('Failed to disconnect from device: $e');
+    } finally {
+      _connectionSubscription = null;
     }
   }
 

@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_reactive_ble/flutter_reactive_ble.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import '../providers/auth_provider.dart';
 import '../providers/vehicle_provider.dart';
 import '../services/bluetooth_manager.dart';
@@ -16,7 +16,7 @@ class HomeScreenController {
   final BluetoothManager bluetoothManager;
   String connectionStatus = 'Disconnected';
   String obdData = 'No Data';
-  StreamSubscription<BluetoothConnectionState>? _connectionStateSubscription;
+  StreamSubscription<DeviceConnectionState>? _connectionStateSubscription;
   ObdCommunicationService? _obdService;
 
   HomeScreenController({required this.bluetoothManager});
@@ -31,13 +31,14 @@ class HomeScreenController {
     try {
       connectionStatus = 'Connecting';
       onStateChange();
-      await bluetoothManager.initializeDevice(selectedVehicle.deviceId);
+      // await bluetoothManager.initializeDeviceWithDevice(device);
       _connectionStateSubscription?.cancel();
       _connectionStateSubscription = bluetoothManager.getConnectionStateStream().listen(
         (state) {
-          connectionStatus = state == BluetoothConnectionState.connected ? 'Connected' : 'Disconnected';
-          if (state == BluetoothConnectionState.connected) {
-            _initializeObdCommunication(onStateChange);
+          connectionStatus = state == DeviceConnectionState.connected ? 'Connected' : 'Disconnected';
+          if (state == DeviceConnectionState.connected) {
+            AppLogger.logInfo('Connected to device: ${selectedVehicle.deviceId}');
+            // _initializeObdCommunication(onStateChange);
           } else {
             obdData = 'No Data';
             _obdService?.dispose();
@@ -60,10 +61,10 @@ class HomeScreenController {
 
   Future<void> _initializeObdCommunication(VoidCallback onStateChange) async {
     try {
-      final device = bluetoothManager.getCurrentDevice();
-      if (device == null) throw Exception('No device connected');
+      final deviceId = bluetoothManager.getCurrentDevice()?.id;
+      if (deviceId == null) throw Exception('No device connected');
       _obdService?.dispose();
-      _obdService = ObdCommunicationService(device: device);
+      _obdService = ObdCommunicationService(bleService: bluetoothManager.bleService, deviceId: deviceId);
       await _obdService!.initialize();
       await Future.delayed(const Duration(seconds: 2)); // Allow time for initialization
       await _obdService!.sendCommand('ATZ\r'); // Reset OBD2
@@ -167,7 +168,7 @@ class _HomeScreenState extends State<HomeScreen> {
         mainAxisSize: MainAxisSize.min,
         children: [
           SizedBox(
-            width: 120,
+            width: 50,
             child: VehicleDropdown(
               onChanged: (vehicle) {
                 vehicleProvider.selectVehicle(vehicle);
@@ -184,7 +185,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   : _controller.connectionStatus.startsWith('Error')
                       ? Colors.redAccent
                       : Colors.white70,
-              fontSize: 14,
+              fontSize: 10,
             ),
           ),
         ],
@@ -211,12 +212,12 @@ class _HomeScreenState extends State<HomeScreen> {
         if (authProvider.user?.isAnonymous == true)
           IconButton(
             icon: const Icon(Icons.account_circle, color: Colors.white70),
-            onPressed: () => navigateToObdSetup(context), // TODO
+            onPressed: () => navigateToObdSetup(context),
             tooltip: 'Create Account',
           ),
         IconButton(
           icon: const Icon(Icons.bluetooth, color: Colors.white70),
-          onPressed: () => navigateToObdSetup(context), // TODO
+          onPressed: () => navigateToObdSetup(context),
           tooltip: 'OBD2 Setup',
         ),
       ],

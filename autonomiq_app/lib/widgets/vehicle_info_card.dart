@@ -147,7 +147,6 @@ class VehicleDetailsCard extends StatelessWidget {
             Text("VIN: ${vehicle.vin ?? 'Unknown'}"),
             Text("Year: ${vehicle.year ?? 'Unknown'}"),
             Text("Odometer: ${vehicle.odometer != null ? '${vehicle.odometer} km' : 'Unknown'}"),
-            Text("Connected: ${vehicle.isConnected ? 'Yes' : 'No'}"),
           ],
         ),
       ),

@@ -3,7 +3,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:autonomiq_app/providers/auth_provider.dart';
-import 'package:autonomiq_app/services/auth_service.dart';
 import '../mocks.mocks.dart';
 
 void main() {

@@ -5,8 +5,9 @@ import 'package:flutter_reactive_ble/flutter_reactive_ble.dart';
 abstract class BluetoothAdapter {
   Stream<BleStatus> get statusStream;
   Stream<DiscoveredDevice> scanForDevices({List<Uuid> withServices});
-  Future<void> connectToDevice(String deviceId);
-  Stream<ConnectionStateUpdate> getConnectionStateStream(String deviceId);
+
+  Stream<ConnectionStateUpdate> connectToDevice(String deviceId);
+
   Future<List<int>> readCharacteristic(QualifiedCharacteristic characteristic);
   Future<void> writeCharacteristic(QualifiedCharacteristic characteristic, List<int> value, {bool withResponse});
   Future<void> requestMtu(String deviceId, int mtu);
@@ -14,6 +15,7 @@ abstract class BluetoothAdapter {
   Future<void> disconnectDevice(String deviceId);
 }
 
+// TODO: Maybe remove abstract class and use FlutterReactiveBle directly?
 class ReactiveBleAdapter implements BluetoothAdapter {
   final FlutterReactiveBle _ble = FlutterReactiveBle();
 
@@ -21,36 +23,18 @@ class ReactiveBleAdapter implements BluetoothAdapter {
   Stream<BleStatus> get statusStream => _ble.statusStream;
 
   @override
-  Stream<DiscoveredDevice> scanForDevices({List<Uuid> withServices = const []}) {
-    return _ble.scanForDevices(withServices: withServices);
+  Stream<DiscoveredDevice> scanForDevices({List<Uuid> withServices = const [], ScanMode scanMode = ScanMode.balanced}) {
+    return _ble.scanForDevices(withServices: withServices, scanMode: scanMode);
   }
 
   @override
-  Future<void> connectToDevice(String deviceId) async {
-    try {
-      await _ble
-          .connectToDevice(id: deviceId, connectionTimeout: const Duration(seconds: 10))
-          .firstWhere(
-            (state) => state.connectionState == DeviceConnectionState.connected,
-            orElse: () => throw Exception('Connection timeout'),
-          );
-    } catch (e) {
-      rethrow;
-    }
-  }
-
-  @override
-  Stream<ConnectionStateUpdate> getConnectionStateStream(String deviceId) {
+  Stream<ConnectionStateUpdate> connectToDevice(String deviceId) {
     return _ble.connectToDevice(id: deviceId);
   }
 
   @override
-  Future<List<int>> readCharacteristic(QualifiedCharacteristic characteristic) async {
-    try {
-      return await _ble.readCharacteristic(characteristic);
-    } catch (e) {
-      rethrow;
-    }
+  Future<List<int>> readCharacteristic(QualifiedCharacteristic characteristic) {
+      return _ble.readCharacteristic(characteristic);
   }
 
   @override
