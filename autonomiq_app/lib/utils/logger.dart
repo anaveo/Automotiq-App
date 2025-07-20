@@ -30,7 +30,6 @@ class AppLogger {
     printer: CallerPrinter(),
     output: MultiOutput([
       ConsoleOutput(),
-      // TODO: Uncomment when ready to use file logging
       // CustomFileOutput()..init(),
     ]),
     filter: ProductionFilter(), // Log all levels in debug, filter in production
@@ -41,8 +40,14 @@ class AppLogger {
       '${context != null ? '[$context] ' : ''}Info: $message',
     );
   }
+
+  static void logWarning(String message, [String? context]) {
+    _logger.w(
+      '${context != null ? '[$context] ' : ''}Warning: $message',
+    );
+  }
   
-  static void logError(dynamic error, StackTrace stackTrace, [String? context]) {
+  static void logError(dynamic error, StackTrace? stackTrace, [String? context]) {
     _logger.e(
       '${context != null ? '[$context] ' : ''}Error: $error',
       error: error,
@@ -52,21 +57,46 @@ class AppLogger {
 }
 
 class CallerPrinter extends LogPrinter {
+  // ANSI color codes: 31=red, 33=yellow, 34=blue, 36=cyan, 32=green
+  final AnsiColor _errorColor   = AnsiColor.fg(1);
+  final AnsiColor _warningColor = AnsiColor.fg(3);
+  final AnsiColor _infoColor    = AnsiColor.fg(4);
+  final AnsiColor _debugColor   = AnsiColor.fg(7);
+  final AnsiColor _verboseColor = AnsiColor.fg(7);
+
   @override
   List<String> log(LogEvent event) {
     final trace = StackTrace.current.toString().split('\n');
     final callerLine = trace.length > 4 ? trace[4] : trace[0];
     final callerInfo = _extractCaller(callerLine);
 
-    final level = event.level.name;
+    var output = '[$callerInfo] ${event.level.name}: ${event.message}';
 
-    return [
-      '[$callerInfo] $level: ${event.message}',
-    ];
+    switch (event.level) {
+      case Level.error:
+        output = _errorColor(output);
+        break;
+      case Level.warning:
+        output = _warningColor(output);
+        break;
+      case Level.info:
+        output = _infoColor(output);
+        break;
+      case Level.debug:
+        output = _debugColor(output);
+        break;
+      case Level.verbose:
+        output = _verboseColor(output);
+        break;
+      default:
+        break;
+    }
+
+    return [output];
   }
 
   String _extractCaller(String line) {
     final match = RegExp(r'#\d+\s+(.+?) \(').firstMatch(line);
-    return match != null ? match.group(1) ?? 'unknown' : 'unknown';
+    return match != null ? match.group(1)! : 'unknown';
   }
 }

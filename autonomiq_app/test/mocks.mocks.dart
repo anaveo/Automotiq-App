@@ -2043,9 +2043,9 @@ class MockUserRepository extends _i1.Mock implements _i15.UserRepository {
           as _i6.FirebaseFirestore);
 
   @override
-  _i7.Future<void> createUserIfNotExists(String? uid) =>
+  _i7.Future<void> createUserDocIfNotExists(String? uid, _i8.UserModel? newUser) =>
       (super.noSuchMethod(
-            Invocation.method(#createUserIfNotExists, [uid]),
+            Invocation.method(#createUserIfNotExists, [uid, newUser]),
             returnValue: _i7.Future<void>.value(),
             returnValueForMissingStub: _i7.Future<void>.value(),
           )
