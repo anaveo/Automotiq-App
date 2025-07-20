@@ -73,7 +73,7 @@ class BleService {
 
   /// Connect to a BLE device
   Future<void> connectToDevice(
-    DiscoveredDevice device, {
+    String deviceId, {
     Map<Uuid, List<Uuid>>? servicesWithCharacteristicsToDiscover,
     Duration? connectionTimeout,
   }) async {
@@ -84,7 +84,7 @@ class BleService {
       _updateConnectionState(DeviceConnectionState.connecting);
       _connectionSubscription = adapter
           .connectToDevice(
-            id: device.id,
+            id: deviceId,
             servicesWithCharacteristicsToDiscover: servicesWithCharacteristicsToDiscover,
             connectionTimeout: connectionTimeout,
           )

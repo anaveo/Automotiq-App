@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:autonomiq_app/services/bluetooth_manager.dart';
 import 'ble_scan_screen.dart';
 
 class ObdSetupScreen extends StatelessWidget {
@@ -8,7 +6,6 @@ class ObdSetupScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bluetoothManager = Provider.of<BluetoothManager>(context, listen: false);
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -31,9 +28,7 @@ class ObdSetupScreen extends StatelessWidget {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => BleScanScreen(
-                      bluetoothManager: bluetoothManager,
-                    ),
+                    builder: (context) => BleScanScreen(),
                   ),
                 );
               },

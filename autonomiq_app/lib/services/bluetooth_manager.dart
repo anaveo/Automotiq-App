@@ -8,7 +8,7 @@ import '../utils/logger.dart';
 
 class BluetoothManager {
   final BleService _bleService;
-  DiscoveredDevice? _device;
+  String? _deviceId;
   StreamSubscription<DeviceConnectionState>? _bleServiceSubscription;
   final StreamController<DeviceConnectionState> _connectionStateController =
       StreamController<DeviceConnectionState>.broadcast();
@@ -24,8 +24,8 @@ class BluetoothManager {
   Stream<DeviceConnectionState> get connectionStateStream =>
       _connectionStateController.stream;
 
-  /// Get the currently connected device, if any
-  DiscoveredDevice? get currentDevice => _device;
+  /// Get the currently connected device ID, if any
+  String? get currentDeviceId => _deviceId;
 
   /// Compare manufacturer data for device identification
   bool _compareManufacturerData(Uint8List a, Uint8List b) {
@@ -83,20 +83,20 @@ class BluetoothManager {
       throw Exception('Failed to scan for specific OBD device: $e');
     }
   }
-
+  
   /// Connect to a BLE device
-  Future<void> connectToDevice(DiscoveredDevice device, {bool autoReconnect = false}) async {
+  Future<void> connectToDevice(String deviceId, {bool autoReconnect = false}) async {
     try {
-      if (_device?.id == device.id && _bleService.getDeviceState() == DeviceConnectionState.connected) {
+      if (_deviceId == deviceId && _bleService.getDeviceState() == DeviceConnectionState.connected) {
         AppLogger.logInfo(
-          'Already connected to device: ${device.name}',
+          'Already connected to device: $deviceId',
           'BluetoothManager.connectToDevice',
         );
         _connectionStateController.add(DeviceConnectionState.connected);
         return;
       }
 
-      _device = device;
+      _deviceId = deviceId;
 
       // Cancel any existing subscription
       await _bleServiceSubscription?.cancel();
@@ -106,15 +106,15 @@ class BluetoothManager {
         (state) async {
           _connectionStateController.add(state);
           AppLogger.logInfo(
-            'Connection state for ${device.name}: $state',
+            'Connection state for ${deviceId}: $state',
             'BluetoothManager.connectToDevice',
           );
           if (state == DeviceConnectionState.disconnected) {
-            _device = null;
-            if (autoReconnect && device != null) {
-              AppLogger.logInfo('Attempting to reconnect to ${device.name}', 'BluetoothManager.connectToDevice');
+            _deviceId = null;
+            if (autoReconnect) {
+              AppLogger.logInfo('Attempting to reconnect to $deviceId', 'BluetoothManager.connectToDevice');
               try {
-                await _bleService.connectToDevice(device);
+                await _bleService.connectToDevice(deviceId);
               } catch (e, stackTrace) {
                 AppLogger.logError(e, stackTrace, 'BluetoothManager.reconnect');
                 _connectionStateController.add(DeviceConnectionState.disconnected);
@@ -125,23 +125,23 @@ class BluetoothManager {
         onError: (e, stackTrace) {
           AppLogger.logError(e, stackTrace, 'BluetoothManager.connectToDevice');
           _connectionStateController.add(DeviceConnectionState.disconnected);
-          _device = null;
+          _deviceId = null;
         },
       );
 
       // Initiate connection
-      await _bleService.connectToDevice(device);
+      await _bleService.connectToDevice(deviceId);
     } catch (e, stackTrace) {
       AppLogger.logError(e, stackTrace, 'BluetoothManager.connectToDevice');
       _connectionStateController.add(DeviceConnectionState.disconnected);
-      _device = null;
+      _deviceId = null;
       throw Exception('Failed to connect to device: $e');
     }
   }
 
   /// Disconnect from the current device
   Future<void> disconnectDevice() async {
-    if (_device == null) {
+    if (_deviceId == null) {
       AppLogger.logInfo('No device to disconnect', 'BluetoothManager.disconnectDevice');
       _connectionStateController.add(DeviceConnectionState.disconnected);
       return;
@@ -149,11 +149,11 @@ class BluetoothManager {
 
     try {
       await _bleService.disconnectDevice();
-      _device = null;
+      _deviceId = null;
       _connectionStateController.add(DeviceConnectionState.disconnected);
     } catch (e, stackTrace) {
       AppLogger.logError(e, stackTrace, 'BluetoothManager.disconnectDevice');
-      _device = null;
+      _deviceId = null;
       _connectionStateController.add(DeviceConnectionState.disconnected);
       throw Exception('Failed to disconnect device: $e');
     }

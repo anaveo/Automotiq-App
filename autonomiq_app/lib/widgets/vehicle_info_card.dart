@@ -1,6 +1,11 @@
+import 'package:autonomiq_app/services/bluetooth_manager.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_reactive_ble/flutter_reactive_ble.dart';
+import 'package:provider/provider.dart';
 import '../models/vehicle_model.dart';
-import 'current_status_widget.dart';
+import '../providers/providers.dart';
+import '../utils/logger.dart';
+import '../widgets/current_status_widget.dart';
 
 class VehicleInfoCard extends StatefulWidget {
   final Vehicle vehicle;
@@ -22,7 +27,7 @@ class _VehicleInfoCardState extends State<VehicleInfoCard> {
       final appBarHeight = MediaQuery.of(context).size.height * 0.3;
       final offset = _scrollController.offset.clamp(0.0, appBarHeight);
       setState(() {
-        _fadeOpacity = offset > 0 ? (offset / appBarHeight) * 0.5 : 0.0; // Fade only when overlapping
+        _fadeOpacity = offset > 0 ? (offset / appBarHeight) * 0.5 : 0.0;
       });
     });
   }
@@ -40,36 +45,32 @@ class _VehicleInfoCardState extends State<VehicleInfoCard> {
 
     return Stack(
       children: [
-        // Base layer: solid black to prevent bleed-through
         Container(color: Colors.black),
-        // Background image area that fades out
         VehicleImagePlaceholder(
           height: imageHeight,
-          fadeOpacity: 1.0 - _fadeOpacity, // invert fade
+          fadeOpacity: 1.0 - _fadeOpacity,
         ),
-
-        // Scrollable content overlapping image
-        NotificationListener<ScrollNotification>(
-          onNotification: (scrollNotification) {
-            final offset = _scrollController.offset.clamp(0.0, imageHeight);
-            setState(() {
-              _fadeOpacity = (offset / imageHeight).clamp(0.0, 1.0);
-            });
-            return false;
-          },
-          child: CustomScrollView(
-            controller: _scrollController,
-            slivers: [
-              // Transparent space for image placeholder
-              SliverToBoxAdapter(
-                child: SizedBox(height: imageHeight),
-              ),
-              SliverList(
-                delegate: SliverChildListDelegate([
-                  VehicleDetailsCard(vehicle: widget.vehicle),
-                ]),
-              ),
-            ],
+        SizedBox(
+          height: screenHeight,
+          child: NotificationListener<ScrollNotification>(
+            onNotification: (scrollNotification) {
+              final offset = _scrollController.offset.clamp(0.0, imageHeight);
+              setState(() {
+                _fadeOpacity = (offset / imageHeight).clamp(0.0, 1.0);
+              });
+              return false;
+            },
+            child: CustomScrollView(
+              controller: _scrollController,
+              slivers: [
+                SliverToBoxAdapter(
+                  child: SizedBox(height: imageHeight),
+                ),
+                SliverToBoxAdapter(
+                  child: VehicleDetailsCard(vehicle: widget.vehicle),
+                ),
+              ],
+            ),
           ),
         ),
       ],
@@ -106,8 +107,8 @@ class VehicleImagePlaceholder extends StatelessWidget {
         color: Colors.black,
         alignment: Alignment.center,
         child: const Text(
-          "Vehicle Image Placeholder",
-          style: TextStyle(fontSize: 18, color: Colors.white),
+          'Vehicle Image Placeholder',
+          style: TextStyle(fontSize: 18, color: Colors.white70),
         ),
       ),
     );
@@ -116,39 +117,65 @@ class VehicleImagePlaceholder extends StatelessWidget {
 
 class VehicleDetailsCard extends StatelessWidget {
   final Vehicle vehicle;
-
-  const VehicleDetailsCard({super.key, required this.vehicle});
+  const VehicleDetailsCard({
+    super.key,
+    required this.vehicle,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final dummyCodes = [
-      {"code": "P0301", "description": "Cylinder 1 Misfire Detected"},
-      {"code": "P0420", "description": "Catalyst System Efficiency Below Threshold"},
-      {"code": "P0171", "description": "System Too Lean (Bank 1)"},
-            {"code": "P0301", "description": "Cylinder 1 Misfire Detected"},
-      {"code": "P0420", "description": "Catalyst System Efficiency Below Threshold"},
-      {"code": "P0171", "description": "System Too Lean (Bank 1)"},
-            {"code": "P0301", "description": "Cylinder 1 Misfire Detected"},
-      {"code": "P0420", "description": "Catalyst System Efficiency Below Threshold"},
-      {"code": "P0171", "description": "System Too Lean (Bank 1)"},
-    ];
+    final bluetoothManager = Provider.of<BluetoothManager?>(context, listen: false);
 
     return Card(
       elevation: 3,
       margin: const EdgeInsets.all(16),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            CurrentStatusWidget(dtcs: dummyCodes),
-            const SizedBox(height: 24),
-            Text("VIN: ${vehicle.vin ?? 'Unknown'}"),
-            Text("Year: ${vehicle.year ?? 'Unknown'}"),
-            Text("Odometer: ${vehicle.odometer != null ? '${vehicle.odometer} km' : 'Unknown'}"),
-          ],
-        ),
+      color: Colors.black87,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          StreamBuilder<DeviceConnectionState>(
+            stream: bluetoothManager != null && vehicle.deviceId.isNotEmpty
+                ? bluetoothManager.connectionStateStream
+                : Stream.value(DeviceConnectionState.disconnected),
+            initialData: DeviceConnectionState.disconnected,
+            builder: (context, snapshot) {
+              final state = snapshot.data ?? DeviceConnectionState.disconnected;
+              return Text(
+                'Vehicle Status: ${state.toString().split('.').last}',
+                style: TextStyle(
+                  color: state == DeviceConnectionState.connected
+                      ? Colors.greenAccent
+                      : Colors.redAccent,
+                  fontSize: 16,
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 16),
+
+          const SizedBox(height: 16),
+//           CurrentStatusWidget(dtcs: [
+//   {"code": "P0301", "description": "Cylinder 1 Misfire Detected"},
+//   {"code": "P0420", "description": "Catalyst System Efficiency Below Threshold"},
+//   {"code": "P0171", "description": "System Too Lean (Bank 1)"},
+//         {"code": "P0301", "description": "Cylinder 1 Misfire Detected"},
+//   {"code": "P0420", "description": "Catalyst System Efficiency Below Threshold"},
+//   {"code": "P0171", "description": "System Too Lean (Bank 1)"},
+//         {"code": "P0301", "description": "Cylinder 1 Misfire Detected"},
+//   {"code": "P0420", "description": "Catalyst System Efficiency Below Threshold"},
+//   {"code": "P0171", "description": "System Too Lean (Bank 1)"},
+// ]), // Placeholder for DTCs
+          Text(
+            'VIN: ${vehicle.vin.isEmpty ? "N/A" : vehicle.vin}',
+            style: const TextStyle(color: Colors.white70, fontSize: 16),
+          ),
+          Text(
+            'Odometer: ${vehicle.odometer == 0 ? "N/A" : "${vehicle.odometer} km"}',
+            style: const TextStyle(color: Colors.white70, fontSize: 16),
+          ),
+        ],
       ),
     );
   }

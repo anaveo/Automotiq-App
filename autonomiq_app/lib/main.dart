@@ -8,7 +8,7 @@ import 'package:autonomiq_app/providers/providers.dart';
 import 'package:autonomiq_app/screens/home_screen.dart';
 import 'package:autonomiq_app/screens/splash_screen.dart';
 import 'package:autonomiq_app/screens/login_screen.dart';
-import 'package:autonomiq_app/screens/obd_setup_screen.dart';
+import 'package:autonomiq_app/screens/new_device_setup_screen.dart';
 
 class RootScreen extends StatefulWidget {
   const RootScreen({super.key});
