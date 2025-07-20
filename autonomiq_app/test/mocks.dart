@@ -9,6 +9,7 @@ import 'package:autonomiq_app/services/auth_service.dart';
 import 'package:autonomiq_app/services/ble_service.dart';
 import 'package:autonomiq_app/services/permission_service.dart';
 import 'package:autonomiq_app/utils/bluetooth_adapter.dart';
+import 'package:autonomiq_app/utils/logger.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_reactive_ble/flutter_reactive_ble.dart';

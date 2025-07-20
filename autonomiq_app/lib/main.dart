@@ -1,33 +1,67 @@
-import 'package:autonomiq_app/repositories/user_repository.dart';
-import 'package:autonomiq_app/services/ble_service.dart';
-import 'package:autonomiq_app/services/bluetooth_manager.dart';
-import 'package:autonomiq_app/services/permission_service.dart';
-import 'package:autonomiq_app/utils/bluetooth_adapter.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
-import 'utils/bluetooth_adapter.dart';
-import 'utils/firebase_options.dart';
-import 'providers/auth_provider.dart';
-import 'providers/vehicle_provider.dart';
-import 'repositories/vehicle_repository.dart';
-import 'app.dart';
-import 'utils/logger.dart';
+import 'package:autonomiq_app/utils/firebase_options.dart';
+import 'package:autonomiq_app/utils/logger.dart';
+import 'package:autonomiq_app/providers/providers.dart';
+
+// Screens
+import 'package:autonomiq_app/screens/home_screen.dart';
+import 'package:autonomiq_app/screens/splash_screen.dart';
+import 'package:autonomiq_app/screens/login_screen.dart';
+import 'package:autonomiq_app/screens/obd_setup_screen.dart';
+
+
+class RootScreen extends StatelessWidget {
+  const RootScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final authProvider = Provider.of<AppAuthProvider>(context);
+    if (authProvider.isLoading) {
+      return const SplashScreen();
+    }
+    final user = authProvider.user;
+    return user != null ? const HomeScreen() : const LoginScreen();
+  }
+}
+
+class ErrorApp extends StatelessWidget {
+  const ErrorApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      theme: ThemeData(
+        brightness: Brightness.dark,
+        primaryColor: Colors.redAccent,
+        scaffoldBackgroundColor: Colors.black,
+        textTheme: const TextTheme(
+          bodyMedium: TextStyle(
+            fontSize: 16,
+            color: Colors.white70,
+          ),
+        ),
+      ),
+      home: const Scaffold(
+        body: Center(
+          child: Text('Failed to initialize app. Please try again.'),
+        ),
+      ),
+    );
+  }
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   try {
-    // Initialize Firebase with error handling
     AppLogger.logInfo('Initializing Firebase...', 'main');
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
+    AppLogger.logInfo('Firebase initialized successfully', 'main');
   } catch (e, stackTrace) {
     AppLogger.logError(e, stackTrace, 'main');
-    // Fallback: Show error screen or retry logic
     runApp(const ErrorApp());
     return;
   }
@@ -35,58 +69,57 @@ void main() async {
   runApp(
     MultiProvider(
       providers: [
-        Provider<UserRepository>(
-          create: (_) => UserRepository(firestoreInstance: FirebaseFirestore.instance),
-        ),
-        ChangeNotifierProvider<AppAuthProvider>(
-          create: (_) => AppAuthProvider(firebaseAuth: FirebaseAuth.instance),
-        ),
-        ChangeNotifierProxyProvider<AppAuthProvider, VehicleProvider>(
-          create: (_) => VehicleProvider(
-            vehicleRepository: VehicleRepository(firestoreInstance: FirebaseFirestore.instance),
-            firebaseAuth: FirebaseAuth.instance,
-          ),
-          update: (_, authProvider, previous) {
-            final provider = previous ??
-                VehicleProvider(
-                  vehicleRepository: VehicleRepository(firestoreInstance: FirebaseFirestore.instance),
-                  firebaseAuth: authProvider.firebaseAuth,
-                );
-
-            provider.updateAuth(authProvider.firebaseAuth);
-
-            final user = authProvider.user;
-            final notAlreadyLoading = provider.isLoading == false;
-            final isEmpty = provider.vehicles.isEmpty;
-
-            if (user != null && notAlreadyLoading && isEmpty) {
-              provider.loadVehicles();
-            }
-
-            return provider;
-          },
-        ),
-        Provider<BluetoothManager>(
-          create: (_) => BluetoothManager(),
-        ),
+        userRepositoryProvider,
+        appAuthProvider,
+        vehicleProvider,
+        bluetoothManagerProvider,
       ],
       child: const MyApp(),
     ),
   );
 }
 
-// Fallback app for Firebase initialization failure
-class ErrorApp extends StatelessWidget {
-  const ErrorApp({super.key});
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      home: Scaffold(
-        body: Center(
-          child: Text(
-            'Failed to initialize app. Please try again later.',
-            style: TextStyle(color: Colors.red, fontSize: 18),
+      title: 'Autonomiq',
+      // TODO: move to a separate theme file
+      theme: ThemeData(
+        brightness: Brightness.dark,
+        primaryColor: Colors.redAccent,
+        scaffoldBackgroundColor: Colors.black,
+        textTheme: const TextTheme(
+          headlineMedium: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+          bodyMedium: TextStyle(
+            fontSize: 16,
+            color: Colors.white70,
+          ),
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.redAccent,
+            foregroundColor: Colors.white,
+            textStyle: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+        ),
+      ),
+      initialRoute: '/',
+      routes: {
+        '/': (context) => const RootScreen(),
+        '/home': (context) => const HomeScreen(),
+        '/obdSetup': (context) => const ObdSetupScreen(),
+      },
+      onUnknownRoute: (settings) => MaterialPageRoute(
+        builder: (context) => Scaffold(
+          body: Center(
+            child: Text('Route not found: ${settings.name}'),
           ),
         ),
       ),
