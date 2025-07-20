@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../utils/logger.dart';
-import '../repositories/user_repository.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -11,52 +10,14 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
+// TODO: migrate the email linking away from the login screen
 class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   String? _errorMessage;
-  bool _showEmailForm = false;
+  bool _showEmailForm = true; // Always show email form by default
   bool _isLinkingAccount = false;
-
-  @override
-  void initState() {
-    super.initState();
-    // Check for existing user; trigger anonymous login if none
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final authProvider = Provider.of<AppAuthProvider>(context, listen: false);
-      if (authProvider.user == null) {
-        _signInAnonymously();
-      }
-    });
-  }
-
-  Future<void> _signInAnonymously() async {
-    final authProvider = Provider.of<AppAuthProvider>(context, listen: false);
-    final userRepository = Provider.of<UserRepository>(context, listen: false);
-
-    setState(() {
-      _errorMessage = null;
-    });
-
-    try {
-      // Step 1: Sign in
-      await authProvider.signInAnonymously();
-
-      final userId = authProvider.user?.uid;
-      if (userId == null || userId.isEmpty) {
-        throw Exception('Anonymous login succeeded, but UID is missing.');
-      }
-
-      // Step 2: Ensure user document exists
-      await userRepository.createUserIfNotExists(userId);
-    } catch (e, stackTrace) {
-      AppLogger.logError(e, stackTrace, 'LoginScreen._signInAnonymously');
-      setState(() {
-        _errorMessage = 'Unable to sign in: ${e.toString()}';
-      });
-    }
-  }
 
   Future<void> _signInWithEmail() async {
     if (!_formKey.currentState!.validate()) return;
@@ -132,46 +93,6 @@ class _LoginScreenState extends State<LoginScreen> {
                             style: const TextStyle(color: Colors.redAccent),
                           ),
                         ),
-                      // Anonymous Login Status
-                      if (!_showEmailForm && authProvider.user?.isAnonymous == true)
-                        Column(
-                          children: [
-                            const Text(
-                              'Signed in as Guest',
-                              style: TextStyle(color: Colors.white70, fontSize: 18),
-                            ),
-                            const SizedBox(height: 16),
-                            ElevatedButton(
-                              onPressed: () => setState(() {
-                                _showEmailForm = true;
-                                _isLinkingAccount = true;
-                              }),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.redAccent,
-                                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-                              ),
-                              child: const Text(
-                                'Create Account',
-                                style: TextStyle(fontWeight: FontWeight.bold),
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            ElevatedButton(
-                              onPressed: () => setState(() {
-                                _showEmailForm = true;
-                                _isLinkingAccount = false;
-                              }),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.grey[800],
-                                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-                              ),
-                              child: const Text(
-                                'Sign In with Email',
-                                style: TextStyle(fontWeight: FontWeight.bold),
-                              ),
-                            ),
-                          ],
-                        ),
                       // Email/Password Form
                       if (_showEmailForm)
                         Form(
@@ -244,10 +165,11 @@ class _LoginScreenState extends State<LoginScreen> {
                                 onPressed: () => setState(() {
                                   _showEmailForm = false;
                                   _errorMessage = null;
+                                  _isLinkingAccount = !_isLinkingAccount;
                                 }),
-                                child: const Text(
-                                  'Back',
-                                  style: TextStyle(color: Colors.white70),
+                                child: Text(
+                                  _isLinkingAccount ? 'Sign In' : 'Create Account',
+                                  style: const TextStyle(color: Colors.white70),
                                 ),
                               ),
                             ],

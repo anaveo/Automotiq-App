@@ -8,15 +8,16 @@ class AppAuthProvider extends ChangeNotifier {
   final FirebaseAuth _firebaseAuth;
   User? _user;
   bool _isLoading = false;
+  String? _authError;
 
   User? get user => _user;
   bool get isLoading => _isLoading;
+  String? get authError => _authError;
   FirebaseAuth get firebaseAuth => _firebaseAuth;
 
   AppAuthProvider({AuthService? authService, required FirebaseAuth firebaseAuth})
       : _authService = authService ?? AuthService(firebaseAuth: firebaseAuth),
         _firebaseAuth = firebaseAuth {
-    // Listen to auth state changes for real-time updates
     _firebaseAuth.authStateChanges().listen((User? user) {
       _user = user;
       _isLoading = false;
@@ -24,19 +25,20 @@ class AppAuthProvider extends ChangeNotifier {
     });
   }
 
-  // Explicit anonymous login
   Future<void> signInAnonymously() async {
     if (_user != null) {
-      return; // User already signed in, no action needed
+      return; // User already signed in
     }
     try {
       _isLoading = true;
+      _authError = null;
       notifyListeners();
       final userCredential = await _authService.signInAnonymously();
       _user = userCredential.user;
       AppLogger.logInfo('User signed in anonymously: ${_user?.uid}', 'AppAuthProvider.signInAnonymously');
     } catch (e, stackTrace) {
       AppLogger.logError(e, stackTrace, 'AppAuthProvider.signInAnonymously');
+      _authError = e.toString();
       rethrow;
     } finally {
       _isLoading = false;
@@ -44,7 +46,6 @@ class AppAuthProvider extends ChangeNotifier {
     }
   }
 
-  // Placeholder for email/password login
   Future<void> signInWithEmail(String email, String password) async {
     if (email.isEmpty) {
       throw ArgumentError('Email cannot be empty');
@@ -54,12 +55,14 @@ class AppAuthProvider extends ChangeNotifier {
     }
     try {
       _isLoading = true;
+      _authError = null;
       notifyListeners();
       final userCredential = await _authService.signInWithEmailAndPassword(email, password);
       _user = userCredential.user;
       AppLogger.logInfo('User signed in with email: ${_user?.uid}', 'AppAuthProvider.signInWithEmail');
     } catch (e, stackTrace) {
       AppLogger.logError(e, stackTrace, 'AppAuthProvider.signInWithEmail');
+      _authError = e.toString();
       rethrow;
     } finally {
       _isLoading = false;
@@ -67,7 +70,6 @@ class AppAuthProvider extends ChangeNotifier {
     }
   }
 
-  // Convert anonymous to email/password account
   Future<void> linkAnonymousToEmail(String email, String password) async {
     if (email.isEmpty) {
       throw ArgumentError('Email cannot be empty');
@@ -80,17 +82,19 @@ class AppAuthProvider extends ChangeNotifier {
     }
     try {
       _isLoading = true;
+      _authError = null;
       notifyListeners();
       if (_user!.isAnonymous) {
         final credential = EmailAuthProvider.credential(email: email, password: password);
         final userCredential = await _user!.linkWithCredential(credential);
-        _user = userCredential.user; // Update user after linking
+        _user = userCredential.user;
         AppLogger.logInfo('User linked to email: ${_user?.uid}', 'AppAuthProvider.linkAnonymousToEmail');
       } else {
         throw StateError('Current user is not anonymous');
       }
     } catch (e, stackTrace) {
       AppLogger.logError(e, stackTrace, 'AppAuthProvider.linkAnonymousToEmail');
+      _authError = e.toString();
       rethrow;
     } finally {
       _isLoading = false;
