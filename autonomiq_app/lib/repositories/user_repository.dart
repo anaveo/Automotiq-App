@@ -10,7 +10,7 @@ class UserRepository {
 
   CollectionReference get _usersRef => firestore.collection('users');
 
-  Future<void> createUserIfNotExists(String uid, UserModel newUser) async {
+  Future<void> createUserDocIfNotExists(String uid, UserModel newUser) async {
     if (uid.isEmpty) throw ArgumentError('User ID cannot be empty');
 
     final docRef = _usersRef.doc(uid);

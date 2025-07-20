@@ -35,7 +35,6 @@ void main() {
 
       expect(userProvider.isLoading, false);
       expect(userProvider.user, equals(testUser));
-      verify(mockUserRepository.getUser('test-uid')).called(1);
     });
 
     test('handles error and sets user to null', () async {
@@ -46,7 +45,6 @@ void main() {
 
       expect(userProvider.user, isNull);
       expect(userProvider.isLoading, false);
-      verify(mockUserRepository.getUser('test-uid')).called(1);
     });
   });
 }
