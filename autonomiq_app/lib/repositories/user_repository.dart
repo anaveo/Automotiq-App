@@ -8,42 +8,39 @@ class UserRepository {
   UserRepository({FirebaseFirestore? firestoreInstance})
       : firestore = firestoreInstance ?? FirebaseFirestore.instance;
 
-  Future<void> createUserIfNotExists(String uid) async {
-    if (uid.isEmpty) {
-      throw ArgumentError('User ID cannot be empty');
-    }
+  CollectionReference get _usersRef => firestore.collection('users');
 
-    final docRef = firestore.collection('users').doc(uid);
+  Future<void> createUserIfNotExists(String uid, UserModel newUser) async {
+    if (uid.isEmpty) throw ArgumentError('User ID cannot be empty');
+
+    final docRef = _usersRef.doc(uid);
 
     try {
       final snapshot = await docRef.get();
 
       if (!snapshot.exists) {
-        await docRef.set({
-          'createdAt': FieldValue.serverTimestamp(),
-          // Add default fields here in the future if needed
-        });
+        final userMap = newUser.toMap();
+        userMap['createdAt'] = FieldValue.serverTimestamp();
+
+        await docRef.set(userMap);
       }
     } catch (e, stackTrace) {
-      // Optional: Use AppLogger if you're logging elsewhere
       AppLogger.logError(e, stackTrace, 'UserRepository.createUserIfNotExists');
       throw Exception('Failed to create user: $e');
     }
   }
 
   Future<UserModel> getUser(String uid) async {
-    if (uid.isEmpty) {
-      throw ArgumentError('User ID cannot be empty');
-    }
+    if (uid.isEmpty) throw ArgumentError('User ID cannot be empty');
 
     try {
-      final doc = await firestore.collection('users').doc(uid).get();
+      final doc = await _usersRef.doc(uid).get();
 
       if (!doc.exists || doc.data() == null) {
         throw Exception('User document not found or empty for UID: $uid');
       }
 
-      return UserModel.fromMap(doc.id, doc.data()!);
+      return UserModel.fromMap(doc.id, doc.data()! as Map<String, dynamic>);
     } catch (e, stackTrace) {
       AppLogger.logError(e, stackTrace, 'UserRepository.getUser');
       throw Exception('Failed to fetch user profile: $e');
@@ -51,17 +48,13 @@ class UserRepository {
   }
 
   Future<void> updateField(String uid, String field, dynamic value) async {
-    if (uid.isEmpty) {
-      throw ArgumentError('User ID cannot be empty');
-    }
-    if (field.isEmpty) {
-      throw ArgumentError('Field name cannot be empty');
-    }
+    if (uid.isEmpty) throw ArgumentError('User ID cannot be empty');
+    if (field.isEmpty) throw ArgumentError('Field name cannot be empty');
 
     try {
-      final docRef = firestore.collection('users').doc(uid);
-      final snapshot = await docRef.get();
+      final docRef = _usersRef.doc(uid);
 
+      final snapshot = await docRef.get();
       if (!snapshot.exists) {
         throw Exception('Cannot update field. User $uid does not exist.');
       }

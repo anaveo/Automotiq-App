@@ -1,3 +1,4 @@
+import 'package:autonomiq_app/models/user_model.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:autonomiq_app/repositories/user_repository.dart';
@@ -30,7 +31,7 @@ void main() {
       when(mockUserSnapshot.exists).thenReturn(false);
       when(mockUserDoc.set(any)).thenAnswer((_) async => {});
 
-      await repository.createUserIfNotExists(testUserId);
+      await repository.createUserIfNotExists(testUserId, UserModel(uid: testUserId));
 
       verify(mockUserDoc.get()).called(1);
       verify(mockUserDoc.set(argThat(contains('createdAt')))).called(1);
@@ -40,21 +41,21 @@ void main() {
       when(mockUserDoc.get()).thenAnswer((_) async => mockUserSnapshot);
       when(mockUserSnapshot.exists).thenReturn(true);
 
-      await repository.createUserIfNotExists(testUserId);
+      await repository.createUserIfNotExists(testUserId, UserModel(uid: testUserId));
 
       verify(mockUserDoc.get()).called(1);
       verifyNever(mockUserDoc.set(any));
     });
 
     test('throws if userId is empty', () async {
-      expect(() => repository.createUserIfNotExists(''), throwsArgumentError);
+      expect(() => repository.createUserIfNotExists('', UserModel(uid: '')), throwsArgumentError);
       verifyNever(mockUserDoc.get());
     });
 
     test('throws on Firestore error', () async {
       when(mockUserDoc.get()).thenThrow(Exception('Firestore read error'));
 
-      expect(() => repository.createUserIfNotExists(testUserId), throwsException);
+      expect(() => repository.createUserIfNotExists(testUserId, UserModel(uid: testUserId)), throwsException);
 
       verify(mockUserDoc.get()).called(1);
     });
