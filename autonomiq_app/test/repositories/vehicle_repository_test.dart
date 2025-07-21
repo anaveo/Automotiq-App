@@ -72,7 +72,7 @@ group('getVehicles', () {
         'odometer': 10000,
       };
 
-      final vehicle = Vehicle.fromMap(testVehicleId, vehicleData);
+      final vehicle = VehicleModel.fromMap(testVehicleId, vehicleData);
       final result = await repository.addVehicle(testUserId, vehicle);
       expect(result, 'newVehicleId');
 
@@ -88,22 +88,22 @@ group('getVehicles', () {
       when(mockCollection.add(any)).thenAnswer((_) async => mockDocument);
       when(mockDocument.id).thenReturn('vehicleId');
 
-      await repository.addVehicle(testUserId, Vehicle.fromMap(testVehicleId, inputCopy));
+      await repository.addVehicle(testUserId, VehicleModel.fromMap(testVehicleId, inputCopy));
       expect(inputCopy, originalMap);
     });
 
     test('throws on empty userId', () async {
-      expect(() => repository.addVehicle('', Vehicle.fromMap(testVehicleId, {'name': 'Test Vehicle'})), throwsArgumentError);
+      expect(() => repository.addVehicle('', VehicleModel.fromMap(testVehicleId, {'name': 'Test Vehicle'})), throwsArgumentError);
     });
 
     test('throws on missing or empty deviceId', () async {
-      expect(() => repository.addVehicle(testUserId, Vehicle.fromMap(testVehicleId, {'vin': 'VIN123'})), throwsArgumentError);
-      expect(() => repository.addVehicle(testUserId, Vehicle.fromMap(testVehicleId, {'deviceId': '', 'vin': 'VIN123'})), throwsArgumentError);
+      expect(() => repository.addVehicle(testUserId, VehicleModel.fromMap(testVehicleId, {'vin': 'VIN123'})), throwsArgumentError);
+      expect(() => repository.addVehicle(testUserId, VehicleModel.fromMap(testVehicleId, {'deviceId': '', 'vin': 'VIN123'})), throwsArgumentError);
     });
 
     test('throws on Firestore failure', () async {
       when(mockCollection.add(any)).thenThrow(Exception('Firestore error'));
-      expect(() => repository.addVehicle(testUserId, Vehicle.fromMap(testVehicleId, {'deviceId': 'test device'})), throwsException);
+      expect(() => repository.addVehicle(testUserId, VehicleModel.fromMap(testVehicleId, {'deviceId': 'test device'})), throwsException);
       verify(mockCollection.add(any)).called(1);
     });
   });

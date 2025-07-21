@@ -34,7 +34,7 @@ import 'package:mockito/annotations.dart';
   AppAuthProvider,
   AuthService,
   VehicleProvider,
-  Vehicle,
+  VehicleModel,
 
   // BLE
   BleService,

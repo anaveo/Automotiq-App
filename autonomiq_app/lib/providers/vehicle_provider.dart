@@ -7,12 +7,12 @@ import '../utils/logger.dart';
 class VehicleProvider extends ChangeNotifier {
   final VehicleRepository _vehicleRepository;
   late FirebaseAuth _firebaseAuth;
-  List<Vehicle> _vehicles = [];
-  Vehicle? _selected;
+  List<VehicleModel> _vehicles = [];
+  VehicleModel? _selected;
   bool _isLoading = false;
 
-  List<Vehicle> get vehicles => _vehicles;
-  Vehicle? get selectedVehicle => _selected;
+  List<VehicleModel> get vehicles => _vehicles;
+  VehicleModel? get selectedVehicle => _selected;
   bool get isLoading => _isLoading;
 
   VehicleProvider({required VehicleRepository vehicleRepository, required FirebaseAuth firebaseAuth})
@@ -50,7 +50,7 @@ class VehicleProvider extends ChangeNotifier {
     }
   }
 
-  void selectVehicle(Vehicle vehicle) {
+  void selectVehicle(VehicleModel vehicle) {
     if (_vehicles.contains(vehicle)) {
       _selected = vehicle;
       notifyListeners();
@@ -63,7 +63,7 @@ class VehicleProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> addVehicle(Vehicle newVehicle) async {
+  Future<void> addVehicle(VehicleModel newVehicle) async {
     final user = _firebaseAuth.currentUser;
     if (user == null) {
       AppLogger.logError(

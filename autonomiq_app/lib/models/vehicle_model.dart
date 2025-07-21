@@ -1,4 +1,4 @@
-class Vehicle {
+class VehicleModel {
   // Firestore document ID
   String id;
 
@@ -14,7 +14,7 @@ class Vehicle {
   // BLE
   String deviceId;
 
-  Vehicle({
+  VehicleModel({
     required this.deviceId,
     this.id = '',
     this.name = 'Unknown',
@@ -25,8 +25,8 @@ class Vehicle {
   }) : diagnosticTroubleCodes = diagnosticTroubleCodes ?? [];
 
   // Factory constructor to create Vehicle from Firestore document
-  factory Vehicle.fromMap(String id, Map<String, dynamic> data) {
-    return Vehicle(
+  factory VehicleModel.fromMap(String id, Map<String, dynamic> data) {
+    return VehicleModel(
       deviceId: data['deviceId'] ?? '',
       id: id,
       name: data['name'] ?? 'Unknown',
@@ -66,7 +66,7 @@ class Vehicle {
   }
 
   // Copy method
-  Vehicle copyWith({
+  VehicleModel copyWith({
     String? deviceId,
     String? id,
     String? name,
@@ -75,7 +75,7 @@ class Vehicle {
     int? odometer,
     List<String>? diagnosticTroubleCodes,
   }) {
-    return Vehicle(
+    return VehicleModel(
       deviceId: deviceId ?? this.deviceId,
       id: id ?? this.id,
       name: name ?? this.name,

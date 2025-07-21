@@ -8,7 +8,7 @@ class VehicleRepository {
   VehicleRepository({FirebaseFirestore? firestoreInstance})
       : firestore = firestoreInstance ?? FirebaseFirestore.instance;
 
-  Future<List<Vehicle>> getVehicles(String uid) async {
+  Future<List<VehicleModel>> getVehicles(String uid) async {
     if (uid.isEmpty) throw ArgumentError('UID cannot be empty');
     try {
       final snapshot = await firestore
@@ -18,7 +18,7 @@ class VehicleRepository {
           .get();
 
       return snapshot.docs
-          .map((doc) => Vehicle.fromMap(doc.id, doc.data()))
+          .map((doc) => VehicleModel.fromMap(doc.id, doc.data()))
           .toList();
     } catch (e, stackTrace) {
       AppLogger.logError(e, stackTrace, 'VehicleRepository.getVehicles');
@@ -26,7 +26,7 @@ class VehicleRepository {
     }
   }
 
-  Future<String> addVehicle(String uid, Vehicle newVehicle) async {
+  Future<String> addVehicle(String uid, VehicleModel newVehicle) async {
     if (uid.isEmpty) throw ArgumentError('User ID cannot be empty');
     if (newVehicle.deviceId.isEmpty) throw ArgumentError('Device ID is required');
 

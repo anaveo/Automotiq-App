@@ -12,7 +12,7 @@ void main() {
   late MockVehicleRepository mockVehicleRepository;
   late VehicleProvider vehicleProvider;
   late StreamController<User?> authStateController;
-  late Vehicle mockVehicle;
+  late VehicleModel mockVehicle;
 
   setUpAll(() {
     authStateController = StreamController<User?>.broadcast();
@@ -166,7 +166,7 @@ void main() {
         'odometer': 15000,
       };
 
-      final Vehicle vehicle = Vehicle.fromMap('newVehicleId', vehicleData);
+      final VehicleModel vehicle = VehicleModel.fromMap('newVehicleId', vehicleData);
       when(mockVehicleRepository.addVehicle('testUserId', vehicle)).thenAnswer((_) async => 'newVehicleId');
 
       await vehicleProvider.addVehicle(vehicle);
@@ -180,7 +180,7 @@ void main() {
     });
 
     test('handles default values for missing fields', () async {
-      final Vehicle vehicle = Vehicle.fromMap('minimalId', {'deviceId': 'test device'});
+      final VehicleModel vehicle = VehicleModel.fromMap('minimalId', {'deviceId': 'test device'});
       when(mockVehicleRepository.addVehicle('testUserId', vehicle)).thenAnswer((_) async => 'minimalId');
 
       await vehicleProvider.addVehicle(vehicle);
@@ -200,7 +200,7 @@ void main() {
     test('logs error and returns when no user signed in', () async {
       when(mockAuth.currentUser).thenReturn(null);
       final vehicleData = {'deviceId': 'test device'};
-      final Vehicle vehicle = Vehicle.fromMap('minimalId', vehicleData);
+      final VehicleModel vehicle = VehicleModel.fromMap('minimalId', vehicleData);
 
       await vehicleProvider.addVehicle(vehicle);
 
@@ -210,7 +210,7 @@ void main() {
     });
 
     test('throws and logs error on Firestore failure', () async {
-      final Vehicle vehicle = Vehicle.fromMap('minimalId', {'deviceId': 'test device'});
+      final VehicleModel vehicle = VehicleModel.fromMap('minimalId', {'deviceId': 'test device'});
       when(mockVehicleRepository.addVehicle('testUserId', vehicle)).thenThrow(Exception('Firestore error'));
 
       expect(() => vehicleProvider.addVehicle(vehicle), throwsException);
@@ -236,7 +236,7 @@ void main() {
       when(mockUser.uid).thenReturn('testUserId');
 
       // Pre-populate vehicles using addVehicle mock
-      Vehicle initialVehicle = Vehicle.fromMap(testVehicleId, {'deviceId': 'test device'});
+      VehicleModel initialVehicle = VehicleModel.fromMap(testVehicleId, {'deviceId': 'test device'});
       when(mockVehicleRepository.addVehicle('testUserId', initialVehicle)).thenAnswer((_) async => testVehicleId);
       vehicleProvider.addVehicle(initialVehicle); // Sets initial state
     });
@@ -254,7 +254,7 @@ void main() {
 
     test('updates selected to first vehicle if multiple exist', () async {
       // Add second vehicle to test selection update
-      Vehicle secondVehicle = Vehicle.fromMap(testVehicleId, {'name': 'Second Car', 'deviceId': 'test device'});
+      VehicleModel secondVehicle = VehicleModel.fromMap(testVehicleId, {'name': 'Second Car', 'deviceId': 'test device'});
       when(mockVehicleRepository.addVehicle('testUserId', secondVehicle)).thenAnswer((_) async => 'id2');
       await vehicleProvider.addVehicle(secondVehicle);
       expect(vehicleProvider.vehicles.length, 2);
