@@ -24,16 +24,9 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final vehicleProvider = context.read<VehicleProvider>();
-      final bluetoothManager = Provider.of<BluetoothManager?>(context, listen: false);
-      final selectedVehicle = vehicleProvider.vehicles[0];
-
       try {
         await vehicleProvider.loadVehicles();
         AppLogger.logInfo('Vehicles loaded successfully', 'HomeScreen.initState');
-        if (selectedVehicle != null && bluetoothManager != null && selectedVehicle.deviceId.isNotEmpty) {
-          AppLogger.logInfo('Attempting to connect to selected vehicle: ${selectedVehicle.deviceId}', 'HomeScreen.initState');
-          _attemptConnection(bluetoothManager, selectedVehicle);
-        }
         setState(() => _errorMessage = null);
       } catch (e, stackTrace) {
         AppLogger.logError(e, stackTrace, 'HomeScreen.initState');
@@ -55,17 +48,32 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _attemptConnection(BluetoothManager bluetoothManager, Vehicle vehicle) async {
     try {
-      final state = await bluetoothManager.connectionStateStream.first;
-      if (state != DeviceConnectionState.connected) {
+      final state = bluetoothManager.getDeviceState();
+      if (state == DeviceConnectionState.connected) {
+        AppLogger.logInfo('Device ${vehicle.deviceId} already connected', 'HomeScreen');
+      } else {
         AppLogger.logInfo('Attempting to connect to device: ${vehicle.deviceId}', 'HomeScreen');
         await bluetoothManager.connectToDevice(vehicle.deviceId);
-      } else {
-        AppLogger.logInfo('Device ${vehicle.deviceId} already connected', 'HomeScreen');
       }
     } catch (e, stackTrace) {
       AppLogger.logError(e, stackTrace, 'HomeScreen.connectToDevice');
     }
   }
+
+  // @override
+  // void didUpdateWidget(HomeScreen oldWidget) {
+  //   super.didUpdateWidget(oldWidget);
+  //   final vehicleProvider = context.read<VehicleProvider>();
+  //   final bluetoothManager = Provider.of<BluetoothManager?>(context, listen: false);
+  //   final selectedVehicle = vehicleProvider.selectedVehicle;
+  //   AppLogger.logInfo(
+  //     'HomeScreen didUpdateWidget: selectedVehicle: ${selectedVehicle?.name ?? 'None'}',
+  //     'HomeScreen.didUpdateWidget',
+  //   );
+  //   if (selectedVehicle != null && bluetoothManager != null && selectedVehicle.deviceId.isNotEmpty) {
+  //     _attemptConnection(bluetoothManager, selectedVehicle);
+  //   }
+  // }
 
   @override
   void dispose() {
@@ -97,8 +105,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   PreferredSizeWidget emptyAppBar() {
     return AppBar(
-      backgroundColor: Colors.purple,
-      surfaceTintColor: Colors.black,
+      backgroundColor: Colors.black,
+      surfaceTintColor: Colors.transparent,
       foregroundColor: Colors.white,
       shadowColor: Colors.transparent,
       elevation: 0,
@@ -107,8 +115,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   PreferredSizeWidget authAppBar(AppAuthProvider authProvider) {
     return AppBar(
-      backgroundColor: Colors.purple,
-      surfaceTintColor: Colors.black,
+      backgroundColor: Colors.transparent,
+      surfaceTintColor: Colors.transparent,
       foregroundColor: Colors.white,
       shadowColor: Colors.transparent,
       elevation: 0,
@@ -131,6 +139,8 @@ class _HomeScreenState extends State<HomeScreen> {
     AppAuthProvider authProvider,
     VehicleProvider vehicleProvider,
   ) {
+    final bluetoothManager = Provider.of<BluetoothManager?>(context, listen: false);
+
     if (authProvider.isLoading || vehicleProvider.isLoading) {
       return const _LoadingView();
     }
@@ -146,9 +156,21 @@ class _HomeScreenState extends State<HomeScreen> {
       return const _EmptyView();
     }
 
-    return _ContentView(
-      selectedVehicle: vehicleProvider.selectedVehicle,
-      obdData: 'No Data',
+    // Use Consumer to react to selectedVehicle changes
+    return Consumer<VehicleProvider>(
+      builder: (context, vehicleProvider, child) {
+        final selectedVehicle = vehicleProvider.selectedVehicle;
+        // Trigger connection attempt when selectedVehicle changes
+        if (selectedVehicle != null && bluetoothManager != null && selectedVehicle.deviceId.isNotEmpty) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _attemptConnection(bluetoothManager, selectedVehicle);
+          });
+        }
+        return _ContentView(
+          selectedVehicle: selectedVehicle,
+          obdData: 'No Data',
+        );
+      },
     );
   }
 }
@@ -221,19 +243,16 @@ class _ContentView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(5),
-      child: Column(
-        children: [
-          if (selectedVehicle != null)
-            VehicleInfoCard(vehicle: selectedVehicle!),
-          if (selectedVehicle == null)
-            const Text(
-              'Please select a vehicle',
-              style: TextStyle(color: Colors.white70, fontSize: 16),
-            ),
-        ],
-      ),
-    );
+    if (selectedVehicle == null) {
+      return const Center(
+        child: Text(
+          'Please select a vehicle',
+          style: TextStyle(color: Colors.white70, fontSize: 16),
+        ),
+      );
+    }
+
+    // This becomes the entire scrollable content
+    return VehicleInfoCard(vehicle: selectedVehicle!);
   }
 }

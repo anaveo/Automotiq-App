@@ -1,10 +1,7 @@
-import 'package:autonomiq_app/services/bluetooth_manager.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_reactive_ble/flutter_reactive_ble.dart';
 import 'package:provider/provider.dart';
 import '../models/vehicle_model.dart';
 import '../providers/vehicle_provider.dart';
-import '../providers/providers.dart';
 import '../utils/navigation.dart';
 import '../utils/logger.dart';
 
@@ -14,7 +11,6 @@ class VehicleDropdown extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final vehicleProvider = Provider.of<VehicleProvider>(context);
-    final bluetoothManager = Provider.of<BluetoothManager?>(context, listen: false);
     final vehicles = vehicleProvider.vehicles;
     final selected = vehicleProvider.selectedVehicle;
 
@@ -88,35 +84,11 @@ class VehicleDropdown extends StatelessWidget {
         ),
         onChanged: (value) async {
           if (value == addVehicleValue) {
-            // TODO: Remove
             AppLogger.logInfo('Navigating to OBD setup from VehicleDropdown', 'VehicleDropdown');
-            if (bluetoothManager != null) {
-              AppLogger.logInfo('Attempting to connect to device: ${vehicleProvider.vehicles[0].deviceId}', 'VehicleDropdown');
-              bluetoothManager.connectToDevice(vehicleProvider.vehicles[0].deviceId);
-            }
-            else  {
-              AppLogger.logWarning('BluetoothManager is null, cannot connect to device', 'VehicleDropdown');
-            }
-            // navigateToObdSetup(context);
+            navigateToObdSetup(context);
           } else if (value is Vehicle && value != selected) {
             AppLogger.logInfo('Selected vehicle: ${value.name} (ID: ${value.id})', 'VehicleDropdown');
             vehicleProvider.selectVehicle(value);
-            if (bluetoothManager != null && value.deviceId.isNotEmpty) {
-              try {
-                // Check current connection state
-                final state = await bluetoothManager.connectionStateStream.first;
-                if (state != DeviceConnectionState.connected) {
-                  AppLogger.logInfo('Attempting to connect to device: ${value.deviceId}', 'VehicleDropdown');
-                  await bluetoothManager.connectToDevice(value.deviceId);
-                } else {
-                  AppLogger.logInfo('Device ${value.deviceId} already connected', 'VehicleDropdown');
-                }
-              } catch (e, stackTrace) {
-                AppLogger.logError(e, stackTrace, 'VehicleDropdown.connectToDevice');
-              }
-            } else {
-              AppLogger.logWarning('No BluetoothManager or invalid deviceId for vehicle: ${value.name}', 'VehicleDropdown');
-            }
           }
         },
         items: items,
