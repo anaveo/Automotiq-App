@@ -3,8 +3,8 @@ import 'package:flutter_reactive_ble/flutter_reactive_ble.dart';
 
 /// Interface to abstract BLE operations for testing and library independence
 abstract class BluetoothAdapter {
-  /// BLE status stream (powered on/off, etc.)
-  Stream<BleStatus> get statusStream;
+  /// BLE connection state stream for connected devices
+  Stream<ConnectionStateUpdate> get connectedDeviceStream;
 
   /// Scan for BLE devices advertising specific services
   Stream<DiscoveredDevice> scanForDevices({
@@ -63,7 +63,7 @@ class ReactiveBleAdapter implements BluetoothAdapter {
   ReactiveBleAdapter();
 
   @override
-  Stream<BleStatus> get statusStream => _ble.statusStream;
+  Stream<ConnectionStateUpdate> get connectedDeviceStream => _ble.connectedDeviceStream;
 
   @override
   Stream<DiscoveredDevice> scanForDevices({

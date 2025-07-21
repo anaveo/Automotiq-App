@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter_reactive_ble/flutter_reactive_ble.dart';
+import 'package:rxdart/rxdart.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:autonomiq_app/services/permission_service.dart';
 import 'package:autonomiq_app/utils/bluetooth_adapter.dart';
@@ -12,24 +13,35 @@ class BleService {
   /// Current connection state of the device
   DeviceConnectionState _currentState = DeviceConnectionState.disconnected;
   StreamSubscription<ConnectionStateUpdate>? _connectionSubscription;
-  final StreamController<DeviceConnectionState> _stateController =
-      StreamController<DeviceConnectionState>.broadcast();
+  final BehaviorSubject<DeviceConnectionState> _stateSubject =
+      BehaviorSubject<DeviceConnectionState>.seeded(DeviceConnectionState.disconnected);
 
   BleService({
     BluetoothAdapter? adapter,
     PermissionService? permissionService,
-  })  : adapter = adapter ?? ReactiveBleAdapter(),
-        permissionService = permissionService ?? SystemPermissionService() {
-    // Emit initial disconnected state
-    _stateController.add(DeviceConnectionState.disconnected);
+  }) : adapter = adapter ?? ReactiveBleAdapter(),
+       permissionService = permissionService ?? SystemPermissionService() {
+    // Initialize connection state subscription
+    _connectionSubscription = adapter?.connectedDeviceStream.listen(
+      (update) {
+        _updateConnectionState(update.connectionState);
+      },
+      onError: (e, stackTrace) {
+        AppLogger.logError(e, stackTrace, 'BleService.connectionStateStream');
+        _updateConnectionState(DeviceConnectionState.disconnected);
+      },
+      onDone: () {
+        _updateConnectionState(DeviceConnectionState.disconnected);
+      },
+    );
   }
 
   /// Expose connection state stream for UI
   Stream<DeviceConnectionState> get connectionStateStream {
-    if (_stateController.isClosed) {
+    if (_stateSubject.isClosed) {
       throw StateError('Connection state stream is closed.');
     }
-    return _stateController.stream;
+    return _stateSubject.stream;
   }
 
   void _updateConnectionState(DeviceConnectionState newState) {
@@ -39,7 +51,60 @@ class BleService {
       'BleService._updateConnectionState',
     );
     _currentState = newState;
-    _stateController.add(_currentState);
+    _stateSubject.add(_currentState);
+  }
+
+  /// Connect to a BLE device
+  Future<void> connectToDevice(
+    String deviceId, {
+    Map<Uuid, List<Uuid>>? servicesWithCharacteristicsToDiscover,
+    Duration? connectionTimeout,
+  }) async {
+    try {
+      await requestPermissions();
+      _updateConnectionState(DeviceConnectionState.connecting);
+      await _connectionSubscription?.cancel();
+
+      // Create a completer to wait for the connected state
+      final completer = Completer<void>();
+      _connectionSubscription = adapter
+          .connectToDevice(
+            id: deviceId,
+            servicesWithCharacteristicsToDiscover: servicesWithCharacteristicsToDiscover,
+            connectionTimeout: connectionTimeout ?? const Duration(seconds: 10),
+          )
+          .listen(
+            (update) {
+              _updateConnectionState(update.connectionState);
+              if (update.connectionState == DeviceConnectionState.connected) {
+                if (!completer.isCompleted) {
+                  completer.complete();
+                }
+              }
+            },
+            onError: (e, stackTrace) {
+              AppLogger.logError(e, stackTrace, 'BleService.connectToDevice');
+              _updateConnectionState(DeviceConnectionState.disconnected);
+              if (!completer.isCompleted) {
+                completer.completeError(e, stackTrace);
+              }
+            },
+            onDone: () {
+              _updateConnectionState(DeviceConnectionState.disconnected);
+              if (!completer.isCompleted) {
+                completer.completeError(Exception('Connection stream closed unexpectedly'));
+              }
+            },
+          );
+
+      // Wait for the connected state or timeout
+      await completer.future;
+      AppLogger.logInfo('Successfully connected to device: $deviceId', 'BleService.connectToDevice');
+    } catch (e, stackTrace) {
+      _updateConnectionState(DeviceConnectionState.disconnected);
+      AppLogger.logError(e, stackTrace, 'BleService.connectToDevice');
+      throw Exception('Failed to connect to device: $e');
+    }
   }
 
   /// Scan for BLE devices
@@ -74,40 +139,6 @@ class BleService {
     }
   }
 
-  // TODO: Add proper timeout exception handling
-  /// Connect to a BLE device
-  Future<void> connectToDevice(
-    String deviceId, {
-    Map<Uuid, List<Uuid>>? servicesWithCharacteristicsToDiscover,
-    Duration? connectionTimeout,
-  }) async {
-    try {
-      await requestPermissions();
-      _updateConnectionState(DeviceConnectionState.connecting);
-      await _connectionSubscription?.cancel();
-      _connectionSubscription = adapter
-          .connectToDevice(
-            id: deviceId,
-            servicesWithCharacteristicsToDiscover: servicesWithCharacteristicsToDiscover,
-            connectionTimeout: connectionTimeout,
-          )
-          .listen(
-            (update) => _updateConnectionState(update.connectionState),
-            onError: (e, stackTrace) {
-              AppLogger.logError(e, stackTrace, 'BleService.connectToDevice');
-              _updateConnectionState(DeviceConnectionState.disconnected);
-            },
-            onDone: () {
-              _updateConnectionState(DeviceConnectionState.disconnected);
-            },
-          );
-    } catch (e, stackTrace) {
-      _updateConnectionState(DeviceConnectionState.disconnected);
-      AppLogger.logError(e, stackTrace, 'BleService.connectToDevice');
-      rethrow;
-    }
-  }
-
   /// Disconnect from a BLE device
   Future<void> disconnectDevice() async {
     try {
@@ -138,16 +169,6 @@ class BleService {
     } catch (e, stackTrace) {
       AppLogger.logError(e, stackTrace, 'BleService.requestMtu');
       throw Exception('Failed to request MTU: $e');
-    }
-  }
-
-  /// Clear GATT cache for a device
-  Future<void> clearGattCache(String deviceId) async {
-    try {
-      await adapter.clearGattCache(deviceId);
-    } catch (e, stackTrace) {
-      AppLogger.logError(e, stackTrace, 'BleService.clearGattCache');
-      throw Exception('Failed to clear GATT cache: $e');
     }
   }
 
@@ -208,7 +229,9 @@ class BleService {
   Future<void> dispose() async {
     try {
       await disconnectDevice();
-      await _stateController.close();
+      await _stateSubject.close();
+      await _connectionSubscription?.cancel();
+      _connectionSubscription = null;
       AppLogger.logInfo('BleService disposed', 'BleService.dispose');
     } catch (e, stackTrace) {
       AppLogger.logError(e, stackTrace, 'BleService.dispose');

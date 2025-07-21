@@ -199,7 +199,7 @@ class ConnectionStatusWidget extends StatelessWidget {
 
     return StreamBuilder<DeviceConnectionState>(
       stream: bluetoothManager!.connectionStateStream,
-      initialData: DeviceConnectionState.disconnected,
+      initialData: bluetoothManager!.getDeviceState(),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
           AppLogger.logError(snapshot.error, null, 'ConnectionStatusWidget');
