@@ -43,7 +43,7 @@ class _BleScanScreenState extends State<BleScanScreen> {
 
     try {
       AppLogger.logInfo('Starting BLE scan', 'BleScanScreen.startScan');
-      final devices = await bluetoothManager.scanForNewObdDevices(timeout: const Duration(seconds: 10));
+      final devices = await bluetoothManager.scanForNewDevices(timeout: const Duration(seconds: 10));
       setState(() {
         final uniqueDevices = <String, DiscoveredDevice>{};
         for (final device in devices) {

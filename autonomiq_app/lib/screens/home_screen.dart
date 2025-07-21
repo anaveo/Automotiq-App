@@ -126,7 +126,6 @@ class _HomeScreenState extends State<HomeScreen> {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             _attemptConnection(bluetoothManager, selectedVehicle);
             AppLogger.logInfo('Done!');
-            // bluetoothManager.getBleDeviceInfo();
           });
         }
         return _ContentView(

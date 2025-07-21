@@ -19,11 +19,157 @@ class BluetoothManager {
   static final _writeCharacteristicUuid = Uuid.parse('0000fff2-0000-1000-8000-00805f9b34fb');
   static final _notifyCharacteristicUuid = Uuid.parse('0000fff1-0000-1000-8000-00805f9b34fb');
 
+  // OBD intialization state
+  bool _obdInitialized = false;
+
   BluetoothManager({
     BleService? bleService,
   }) : _bleService = bleService ?? BleService();
 
-  Future<void> initializeObdConnection() async {
+  /// Get the current connection state of the device
+  DeviceConnectionState getDeviceState() => _bleService.getDeviceState();
+
+  /// Expose connection state stream for UI
+  Stream<DeviceConnectionState> get connectionStateStream => _bleService.connectionStateStream;
+
+  /// Check if the device is ready for OBD operations
+  bool get _deviceReady => _deviceId != null && getDeviceState() == DeviceConnectionState.connected && _obdInitialized;
+
+  /// Scan for new BLE devices by name (e.g., VEEPEAK, AUTONOMIQ)
+  Future<List<DiscoveredDevice>> scanForNewDevices({
+    Duration timeout = const Duration(seconds: 5),
+  }) async {
+    const method = 'BluetoothManager.scanForNewDevices';
+
+    try {
+      final devices = await _bleService.scanForDevices(timeout: timeout);
+
+      final obdDevices = devices.where((device) {
+        final name = device.name.toLowerCase();
+        return name.contains('veepeak') || name.contains('autonomiq');
+      }).toList();
+
+      AppLogger.logInfo(
+        'Found ${obdDevices.length} OBD devices: ${obdDevices.map((d) => d.name).toList()}',
+        method,
+      );
+
+      return obdDevices;
+    } catch (e, stackTrace) {
+      AppLogger.logError(e, stackTrace, method);
+      rethrow;
+    }
+  }
+
+  Future<void> connectToDevice(String deviceId, {bool autoReconnect = false}) async {
+    try {
+      if (_deviceId == deviceId && _bleService.getDeviceState() == DeviceConnectionState.connected) {
+        AppLogger.logInfo('Already connected to device: $deviceId', 'BluetoothManager.connectToDevice');
+        return;
+      }
+
+      // Clean up any existing connection
+      await _cleanup();
+
+      _deviceId = deviceId;
+      await _bleService.connectToDevice(deviceId, connectionTimeout: const Duration(seconds: 10));
+      AppLogger.logInfo('Connected to device: $deviceId', 'BluetoothManager.connectToDevice');
+
+      // Initialize OBD connection after successful BLE connection
+      await _initializeObdConnection();
+
+      if (autoReconnect) {
+        _connectionStateSubscription?.cancel();
+        _connectionStateSubscription = _bleService.connectionStateStream.listen(
+          (state) async {
+            if (state == DeviceConnectionState.disconnected && _deviceId != null) {
+              AppLogger.logInfo('Device disconnected, attempting reconnect to $_deviceId', 'BluetoothManager.connectToDevice');
+              await _attemptReconnect(deviceId);
+            }
+          },
+          onError: (e, stackTrace) async {
+            AppLogger.logError(e, stackTrace, 'BluetoothManager.connectToDevice');
+            await _cleanup();
+          },
+        );
+      }
+    } catch (e, stackTrace) {
+      AppLogger.logError(e, stackTrace, 'BluetoothManager.connectToDevice');
+      await _cleanup();
+      throw Exception('Failed to connect to device: $e');
+    }
+  }
+
+  Future<void> _attemptReconnect(String deviceId) async {
+    const maxAttempts = 5;
+    var attempt = 0;
+    var delay = const Duration(seconds: 1);
+
+    while (attempt < maxAttempts && _deviceId != null) {
+      try {
+        AppLogger.logInfo('Reconnect attempt ${attempt + 1}/$maxAttempts to $deviceId', 'BluetoothManager._attemptReconnect');
+        await _bleService.connectToDevice(deviceId, connectionTimeout: const Duration(seconds: 10));
+        AppLogger.logInfo('Reconnected to device: $deviceId', 'BluetoothManager._attemptReconnect');
+
+        // Reinitialize OBD connection after successful reconnect
+        // await initializeObdConnection();
+        return;
+      } catch (e) {
+        attempt++;
+        AppLogger.logWarning('Reconnect attempt $attempt/$maxAttempts failed: $e', 'BluetoothManager._attemptReconnect');
+        if (attempt < maxAttempts) {
+          await Future.delayed(delay);
+          delay = Duration(seconds: delay.inSeconds * 2); // Exponential backoff
+        }
+      }
+    }
+
+    if (attempt >= maxAttempts) {
+      AppLogger.logError('Failed to reconnect to $deviceId after $maxAttempts attempts', null, 'BluetoothManager._attemptReconnect');
+      await _cleanup();
+    }
+  }
+
+  Future<void> _cleanup() async {
+    _deviceId = null;
+    _obdCharacteristic = null;
+    _notifyCharacteristic = null;
+    _notificationSub?.cancel();
+    _notificationSub = null;
+    _notificationBuffer.clear();
+    if (_notificationCompleter != null && !_notificationCompleter!.isCompleted) {
+      _notificationCompleter!.completeError(Exception('Connection cleanup'));
+    }
+    _notificationCompleter = null;
+  }
+
+  Future<void> disconnectDevice() async {
+    try {
+      await _bleService.disconnectDevice();
+      await _cleanup();
+      AppLogger.logInfo('Disconnected device', 'BluetoothManager.disconnectDevice');
+    } catch (e, stackTrace) {
+      AppLogger.logError(e, stackTrace, 'BluetoothManager.disconnectDevice');
+      await _cleanup();
+      throw Exception('Failed to disconnect device: $e');
+    }
+  }
+
+  Future<void> dispose() async {
+    try {
+      await disconnectDevice();
+      _connectionStateSubscription?.cancel();
+      AppLogger.logInfo('BluetoothManager disposed', 'BluetoothManager.dispose');
+    } catch (e, stackTrace) {
+      AppLogger.logError(e, stackTrace, 'BluetoothManager.dispose');
+      throw Exception('Failed to dispose BluetoothManager: $e');
+    }
+  }
+
+  ///  ------- OBD METHODS -------
+
+  /// Initialize OBD connection
+  Future<void> _initializeObdConnection() async {
     if (_deviceId == null) {
       throw Exception('No device connected. Call connectToDevice first.');
     }
@@ -86,14 +232,14 @@ class BluetoothManager {
               _notificationBuffer.clear();
             },
           );
-          await Future.delayed(const Duration(milliseconds: 1000)); // Wait for subscription to stabilize
+          await Future.delayed(const Duration(milliseconds: 250)); // Wait for subscription to stabilize
           break; // Success, exit retry loop
         } catch (e){
           AppLogger.logWarning('Attempt $attempt/$maxSubRetries to subscribe to notifications failed: $e', 'BluetoothManager.initializeObdConnection');
           if (attempt == maxSubRetries) {
             throw Exception('Failed to subscribe to notifications after $maxSubRetries attempts: $e');
           }
-          await Future.delayed(const Duration(milliseconds: 1000));
+          await Future.delayed(const Duration(milliseconds: 250));
         }
       }
 
@@ -112,7 +258,7 @@ class BluetoothManager {
       ];
 
       const maxRetries = 3;
-      const commandDelay = Duration(milliseconds: 1000);
+      const commandDelay = Duration(milliseconds: 100);
       const nominalVoltageRange = {'min': 12.0, 'max': 15.0};
 
       for (final command in commands) {
@@ -159,7 +305,10 @@ class BluetoothManager {
                 throw Exception('Invalid PID response for $command: $response');
               }
             }
-            break; // Success, exit retry loop
+
+             // OBD initialization successful
+            _obdInitialized = true;
+            break;
           } catch (e) {
             AppLogger.logWarning('Attempt $attempt/$maxRetries for $command failed: $e', 'BluetoothManager.initializeObdConnection');
             if (attempt == maxRetries) {
@@ -172,250 +321,214 @@ class BluetoothManager {
       }
 
       AppLogger.logInfo('OBD2 connection initialized successfully for device: $_deviceId', 'BluetoothManager.initializeObdConnection');
-    } catch (e, stackTrace) {
-      AppLogger.logError(e, stackTrace, 'BluetoothManager.initializeObdConnection');
+    } catch (e) {
+      _obdInitialized = false;
       await _cleanup();
       throw Exception('Failed to initialize OBD2 connection: $e');
     }
   }
 
+  /// Send an OBD command and wait for the response
   Future<String> _sendObdCommand(String command, {required Duration timeout}) async {
     if (_obdCharacteristic == null || _notifyCharacteristic == null) {
-      throw Exception('OBD characteristics not initialized');
+      throw StateError('OBD characteristics not initialized');
     }
 
-    // Initialize a new completer for each command
     _notificationCompleter = Completer<String>();
     _notificationBuffer.clear();
 
-    try {
-      AppLogger.logInfo('Sending command: $command', 'BluetoothManager._sendObdCommand');
-      await _bleService.writeCharacteristic(_obdCharacteristic!, Uint8List.fromList(command.codeUnits));
-      final response = await _notificationCompleter!.future.timeout(timeout, onTimeout: () {
-        throw TimeoutException('No response for $command after ${timeout.inSeconds}s');
-      });
-      if (response.isEmpty || response == '?' || response == 'NO DATA') {
-        throw Exception('Invalid response for $command: $response');
-      }
-      return response;
-    } catch (e, stackTrace) {
-      AppLogger.logError(e, stackTrace, 'BluetoothManager._sendObdCommand');
-      if (!_notificationCompleter!.isCompleted) {
-        _notificationCompleter!.completeError(e, stackTrace);
-      }
-      throw Exception('Failed to send command $command: $e');
+    AppLogger.logInfo('Sending command: $command', 'BluetoothManager._sendObdCommand');
+
+    await _bleService.writeCharacteristic(
+      _obdCharacteristic!,
+      Uint8List.fromList(command.codeUnits),
+    );
+
+    final response = await _notificationCompleter!.future.timeout(
+      timeout,
+      onTimeout: () => throw TimeoutException('No response for $command after ${timeout.inSeconds}s'),
+    );
+
+    if (response.isEmpty || response == '?' || response == 'NO DATA') {
+      throw FormatException('Invalid response: $response');
     }
+
+    return response;
   }
 
-  /// Get the current connection state of the device
-  DeviceConnectionState getDeviceState() => _bleService.getDeviceState();
+  ///  ------- VEHICLE DATA RETRIEVAL METHODS -------
 
-  /// Expose connection state stream for UI
-  Stream<DeviceConnectionState> get connectionStateStream => _bleService.connectionStateStream;
-
-  /// Get the currently connected device ID, if any
-  String? get currentDeviceId => _deviceId;
-
-  /// Compare manufacturer data for device identification
-  bool _compareManufacturerData(Uint8List a, Uint8List b) {
-    if (a.length != b.length) return false;
-    for (int i = 0; i < a.length; i++) {
-      if (a[i] != b[i]) return false;
-    }
-    return true;
-  }
-
-  /// Retrieve BLE-related data (services, characteristics, UUIDs) for the connected device
-  Future<Map<String, dynamic>> getBleDeviceInfo() async {
-    if (_deviceId == null) {
-      throw Exception('No device connected');
-    }
-
-    try {
-      await _bleService.adapter.discoverAllServices(deviceId: _deviceId!);
-      final services = await _bleService.adapter.getDiscoveredServices(deviceId: _deviceId!);
-      final serviceData = services.map((service) {
-        return {
-          'serviceUuid': service.id.toString(),
-          'characteristics': service.characteristics.map((c) => {
-                'uuid': c.id.toString(),
-                'isReadable': c.isReadable,
-                'isWritableWithResponse': c.isWritableWithResponse,
-                'isWritableWithoutResponse': c.isWritableWithoutResponse,
-                'isNotifiable': c.isNotifiable,
-              }).toList(),
-        };
-      }).toList();
-
-      final bleInfo = {
-        'deviceId': _deviceId,
-        'services': serviceData,
-        'mtu': await _bleService.requestMtu(deviceId: _deviceId!, mtu: 512).catchError((e) => -1),
-      };
-
-      AppLogger.logInfo('BLE Device ID: ${_deviceId}', 'BluetoothManager.getBleDeviceInfo');
-      for (var i = 0; i < serviceData.length; i++) {
-        AppLogger.logInfo('Service ${i + 1}: ${serviceData[i]}', 'BluetoothManager.getBleDeviceInfo');
-      }
-      AppLogger.logInfo('MTU: ${bleInfo['mtu']}', 'BluetoothManager.getBleDeviceInfo');
-
-      return bleInfo;
-    } catch (e, stackTrace) {
-      AppLogger.logError(e, stackTrace, 'BluetoothManager.getBleDeviceInfo');
-      throw Exception('Failed to retrieve BLE device info: $e');
-    }
-  }
-
-  /// Scan for new OBD BLE devices by name (e.g., VEEPEAK, AUTONOMIQ)
-  Future<List<DiscoveredDevice>> scanForNewObdDevices({
-    Duration timeout = const Duration(seconds: 5),
-  }) async {
-    try {
-      final devices = await _bleService.scanForDevices(timeout: timeout);
-      final obdDevices = devices.where((device) {
-        final name = device.name.toLowerCase();
-        return name.contains('veepeak') || name.contains('autonomiq');
-      }).toList();
-      AppLogger.logInfo(
-        'Found ${obdDevices.length} OBD devices: ${obdDevices.map((d) => d.name).toList()}',
-        'BluetoothManager.scanForNewObdDevices',
-      );
-      return obdDevices;
-    } catch (e, stackTrace) {
-      AppLogger.logError(e, stackTrace, 'BluetoothManager.scanForNewObdDevices');
-      throw Exception('Failed to scan for new OBD devices: $e');
-    }
-  }
-
-  /// Scan for a specific OBD BLE device using name + manufacturerData fingerprint
-  Future<DiscoveredDevice?> scanForSpecificObdDevice({
-    required String expectedName,
-    required Uint8List expectedManufacturerData,
-    Duration timeout = const Duration(seconds: 5),
-  }) async {
-    try {
-      final devices = await _bleService.scanForDevices(timeout: timeout);
-      final matchingDevices = devices.where(
-        (device) =>
-            device.name == expectedName &&
-            _compareManufacturerData(device.manufacturerData, expectedManufacturerData),
-      );
-      final device = matchingDevices.isNotEmpty ? matchingDevices.first : null;
-      AppLogger.logInfo(
-        device != null
-            ? 'Found specific OBD device: ${device.name}'
-            : 'No matching OBD device found for name: $expectedName',
-        'BluetoothManager.scanForSpecificObdDevice',
-      );
-      return device;
-    } catch (e, stackTrace) {
-      AppLogger.logError(e, stackTrace, 'BluetoothManager.scanForSpecificObdDevice');
-      throw Exception('Failed to scan for specific OBD device: $e');
-    }
-  }
+  /// Get vehicle Diagnostic Trouble Codes (DTCs)
+  Future<List<String>> getVehicleDTCs({bool coolOff = true}) async {
+    const command = '03\r';
+    const commandDelay = Duration(milliseconds: 250);
+    const method = 'BluetoothManager.getVehicleDTCs';
   
-  Future<void> connectToDevice(String deviceId, {bool autoReconnect = false}) async {
     try {
-      if (_deviceId == deviceId && _bleService.getDeviceState() == DeviceConnectionState.connected) {
-        AppLogger.logInfo('Already connected to device: $deviceId', 'BluetoothManager.connectToDevice');
-        return;
+      // Ensure OBD connection is initialized
+      if (!_deviceReady) throw StateError('Device not ready for OBD operations');
+
+      final response = await _sendObdCommand(command, timeout: const Duration(seconds: 15));
+      AppLogger.logInfo('DTC response: $response', 'BluetoothManager.getVehicleDTCs');
+
+      // Handle NO DATA case (no DTCs or no vehicle connection)
+      if (response == 'NO DATA' || response == '?') {
+        AppLogger.logInfo('No DTCs found or no vehicle connected', 'BluetoothManager.getVehicleDTCs');
+        return [];
       }
 
-      // Clean up any existing connection
-      await _cleanup();
-
-      _deviceId = deviceId;
-      await _bleService.connectToDevice(deviceId, connectionTimeout: const Duration(seconds: 10));
-      AppLogger.logInfo('Connected to device: $deviceId', 'BluetoothManager.connectToDevice');
-
-      // Initialize OBD connection after successful BLE connection
-      await initializeObdConnection();
-
-      if (autoReconnect) {
-        _connectionStateSubscription?.cancel();
-        _connectionStateSubscription = _bleService.connectionStateStream.listen(
-          (state) async {
-            if (state == DeviceConnectionState.disconnected && _deviceId != null) {
-              AppLogger.logInfo('Device disconnected, attempting reconnect to $_deviceId', 'BluetoothManager.connectToDevice');
-              await _attemptReconnect(deviceId);
-            }
-          },
-          onError: (e, stackTrace) async {
-            AppLogger.logError(e, stackTrace, 'BluetoothManager.connectToDevice');
-            await _cleanup();
-          },
-        );
+      // Expect response like "43 XX YY ..." where XX YY are DTC hex pairs
+      if (!response.startsWith('43')) {
+        throw FormatException('Invalid DTC response: $response');
       }
-    } catch (e, stackTrace) {
-      AppLogger.logError(e, stackTrace, 'BluetoothManager.connectToDevice');
-      await _cleanup();
-      throw Exception('Failed to connect to device: $e');
-    }
-  }
 
-  Future<void> _attemptReconnect(String deviceId) async {
-    const maxAttempts = 5;
-    var attempt = 0;
-    var delay = const Duration(seconds: 1);
+      // Extract hex data after "43" and remove whitespace
+      final hexData = response.substring(2).replaceAll(RegExp(r'\s+'), '');
+      if (hexData.length % 4 != 0 || hexData.isEmpty) {
+        throw FormatException('Invalid DTC hex format: $hexData');
+      }
 
-    while (attempt < maxAttempts && _deviceId != null) {
-      try {
-        AppLogger.logInfo('Reconnect attempt ${attempt + 1}/$maxAttempts to $deviceId', 'BluetoothManager._attemptReconnect');
-        await _bleService.connectToDevice(deviceId, connectionTimeout: const Duration(seconds: 10));
-        AppLogger.logInfo('Reconnected to device: $deviceId', 'BluetoothManager._attemptReconnect');
-
-        // Reinitialize OBD connection after successful reconnect
-        await initializeObdConnection();
-        return;
-      } catch (e) {
-        attempt++;
-        AppLogger.logWarning('Reconnect attempt $attempt/$maxAttempts failed: $e', 'BluetoothManager._attemptReconnect');
-        if (attempt < maxAttempts) {
-          await Future.delayed(delay);
-          delay = Duration(seconds: delay.inSeconds * 2); // Exponential backoff
+      // Decode DTCs (each DTC is 4 hex digits)
+      final dtcs = <String>[];
+      for (var i = 0; i < hexData.length; i += 4) {
+        final dtcHex = hexData.substring(i, i + 4);
+        if (!RegExp(r'^[0-9A-F]{4}$').hasMatch(dtcHex)) {
+          throw FormatException('Invalid DTC hex: $dtcHex');
         }
+
+        // Decode first two bits of first byte for DTC type
+        final firstByte = int.parse(dtcHex.substring(0, 2), radix: 16);
+        final dtcType = switch (firstByte >> 6) {
+          0 => 'P', // Powertrain
+          1 => 'C', // Chassis
+          2 => 'B', // Body
+          3 => 'U', // Network
+          _ => 'Unknown',
+        };
+        if (dtcType == 'Unknown') {
+          throw FormatException('Invalid DTC type: $dtcHex');
+        }
+
+        // Extract remaining digits
+        final code = dtcHex.substring(0, 2).substring(2 - (firstByte >> 6)) + dtcHex.substring(2);
+        final dtc = '$dtcType${int.parse(code, radix: 16).toString().padLeft(4, '0')}';
+        dtcs.add(dtc);
       }
-    }
 
-    if (attempt >= maxAttempts) {
-      AppLogger.logError('Failed to reconnect to $deviceId after $maxAttempts attempts', null, 'BluetoothManager._attemptReconnect');
-      await _cleanup();
-    }
-  }
-
-  Future<void> _cleanup() async {
-    _deviceId = null;
-    _obdCharacteristic = null;
-    _notifyCharacteristic = null;
-    _notificationSub?.cancel();
-    _notificationSub = null;
-    _notificationBuffer.clear();
-    if (_notificationCompleter != null && !_notificationCompleter!.isCompleted) {
-      _notificationCompleter!.completeError(Exception('Connection cleanup'));
-    }
-    _notificationCompleter = null;
-  }
-
-  Future<void> disconnectDevice() async {
-    try {
-      await _bleService.disconnectDevice();
-      await _cleanup();
-      AppLogger.logInfo('Disconnected device', 'BluetoothManager.disconnectDevice');
+      AppLogger.logInfo('Retrieved DTCs: $dtcs', 'BluetoothManager.getVehicleDTCs');
+      return dtcs;
     } catch (e, stackTrace) {
-      AppLogger.logError(e, stackTrace, 'BluetoothManager.disconnectDevice');
-      await _cleanup();
-      throw Exception('Failed to disconnect device: $e');
+      AppLogger.logError(e, stackTrace, method);
+      rethrow;
+    } finally {
+      if (coolOff) await Future.delayed(commandDelay);
     }
   }
 
-  Future<void> dispose() async {
+  /// Get the system battery voltage 
+  Future<double> getSystemBatteryVoltage({bool coolOff = true}) async {
+    const command = 'ATRV\r';
+    const commandDelay = Duration(milliseconds: 250);
+    const nominalMin = 12.0;
+    const nominalMax = 15.0;
+    const method = 'BluetoothManager.getSystemBatteryVoltage';
+
     try {
-      await disconnectDevice();
-      _connectionStateSubscription?.cancel();
-      AppLogger.logInfo('BluetoothManager disposed', 'BluetoothManager.dispose');
+      // Ensure OBD connection is initialized
+      if (!_deviceReady) throw StateError('Device not ready for OBD operations');
+      
+      final response = await _sendObdCommand(command, timeout: const Duration(seconds: 15));
+      final match = RegExp(r'^(\d+\.\d)V$').firstMatch(response);
+
+      if (match == null) throw FormatException('Unexpected format: $response');
+
+      final voltage = double.parse(match.group(1)!);
+
+      if (voltage < nominalMin || voltage > nominalMax) {
+        AppLogger.logWarning('Voltage $voltage V out of range ($nominalMin–$nominalMax V)', method);
+      } else {
+        AppLogger.logInfo('Battery voltage: $voltage V', method);
+      }
+
+      return voltage;
     } catch (e, stackTrace) {
-      AppLogger.logError(e, stackTrace, 'BluetoothManager.dispose');
-      throw Exception('Failed to dispose BluetoothManager: $e');
+      AppLogger.logError(e, stackTrace, method);
+      rethrow;
+    } finally {
+      if (coolOff) await Future.delayed(commandDelay);
+    }
+  }
+
+  /// Get the Vehicle Identification Number (VIN)
+  Future<String> getVin({bool coolOff = true}) async {
+    const command = '0902\r';
+    const commandDelay = Duration(milliseconds: 250);
+    const method = 'BluetoothManager.getVin';
+
+    try {
+      // Ensure OBD connection is initialized
+      if (!_deviceReady) throw StateError('Device not ready for OBD operations');
+
+      final response = await _sendObdCommand(command, timeout: const Duration(seconds: 15));
+
+      if (!response.startsWith('4902')) {
+        throw FormatException('Unexpected response format: $response');
+      }
+
+      final hexVin = response.substring(4).replaceAll(RegExp(r'\s+'), '');
+
+      if (hexVin.length < 34) { // 17 characters * 2 (hex)
+        throw FormatException('VIN too short: $hexVin');
+      }
+
+      final vin = String.fromCharCodes(
+        List.generate(
+          hexVin.length ~/ 2,
+          (i) => int.parse(hexVin.substring(i * 2, i * 2 + 2), radix: 16),
+        ),
+      );
+
+      AppLogger.logInfo('VIN: $vin', method);
+      return vin;
+    } catch (e, stack) {
+      AppLogger.logError(e, stack, method);
+      rethrow;
+    } finally {
+      if (coolOff) await Future.delayed(commandDelay);
+    }
+  }
+
+  /// Get the actual battery voltage
+  Future<double> getActualBatteryVoltage({bool coolOff = true}) async {
+    const command = '010B\r';
+    const commandDelay = Duration(milliseconds: 250);
+    const method = 'BluetoothManager.getActualBatteryVoltage';
+
+    try {
+      // Ensure OBD connection is initialized
+      if (!_deviceReady) throw StateError('Device not ready for OBD operations');
+
+      final response = await _sendObdCommand(command, timeout: const Duration(seconds: 15));
+
+      if (!response.startsWith('410B')) {
+        throw FormatException('Unexpected response format: $response');
+      }
+
+      final hexVoltage = response.substring(4).trim();
+
+      if (!RegExp(r'^[0-9A-Fa-f]{2}$').hasMatch(hexVoltage)) {
+        throw FormatException('Invalid hex format: $hexVoltage');
+      }
+
+      final voltage = int.parse(hexVoltage, radix: 16).toDouble();
+
+      AppLogger.logInfo('Actual battery voltage: $voltage V', method);
+      return voltage;
+    } catch (e, stack) {
+      AppLogger.logError(e, stack, method);
+      rethrow;
+    } finally {
+      if (coolOff) await Future.delayed(commandDelay);
     }
   }
 }

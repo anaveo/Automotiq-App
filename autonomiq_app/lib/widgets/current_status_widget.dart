@@ -3,7 +3,7 @@ import '../widgets/summary_status_box.dart';
 import '../widgets/code_card.dart';
 
 class CurrentStatusWidget extends StatelessWidget {
-  final List<Map<String, String>> dtcs;
+  final List<String> dtcs;
 
   const CurrentStatusWidget({super.key, required this.dtcs});
 
@@ -17,8 +17,8 @@ class CurrentStatusWidget extends StatelessWidget {
         SummaryStatusBox(hasIssues: hasIssues),
         const SizedBox(height: 12),
         ...dtcs.map((code) => CodeCard(
-              code: code['code'] ?? 'Unknown',
-              description: code['description'] ?? 'No description',
+              code: code,
+              description: 'Temporary',
             )),
       ],
     );

@@ -112,6 +112,8 @@ class BleService {
     Duration timeout = const Duration(seconds: 5),
     List<Uuid> withServices = const [],
   }) async {
+    const method = 'BleService.scanForDevices';
+
     await requestPermissions();
     final devices = <DiscoveredDevice>[];
     StreamSubscription<DiscoveredDevice>? scanSubscription;
@@ -123,21 +125,18 @@ class BleService {
             devices.add(device);
           }
         },
-        onError: (e, stackTrace) {
-          AppLogger.logError(e, stackTrace, 'BleService.scanForDevices');
-          throw Exception('Scan error: $e');
-        },
       );
 
       await Future.delayed(timeout);
       return devices;
     } catch (e, stackTrace) {
-      AppLogger.logError(e, stackTrace, 'BleService.scanForDevices');
-      throw Exception('Failed to scan for devices: $e');
+      AppLogger.logError(e, stackTrace, method);
+      rethrow;
     } finally {
       await scanSubscription?.cancel();
     }
   }
+
 
   /// Disconnect from a BLE device
   Future<void> disconnectDevice() async {
@@ -185,22 +184,22 @@ class BleService {
   }
 
   /// Write to a characteristic
-  Future<void> writeCharacteristic(QualifiedCharacteristic characteristic, List<int> value, {bool withResponse = true}) async {
-    try {
-      if (withResponse) {
-        await adapter.writeCharacteristicWithResponse(characteristic, value: value);
-      } else {
-        await adapter.writeCharacteristicWithoutResponse(characteristic, value: value);
-      }
-      AppLogger.logInfo('Wrote to characteristic ${characteristic.characteristicId}: $value', 'BleService.writeCharacteristic');
-    } catch (e, stackTrace) {
-      AppLogger.logError(e, stackTrace, 'BleService.writeCharacteristic');
-      throw Exception('Failed to write characteristic: $e');
+  Future<void> writeCharacteristic(
+    QualifiedCharacteristic characteristic,
+    List<int> value, {
+    bool withResponse = true,
+  }) async {
+    if (withResponse) {
+      await adapter.writeCharacteristicWithResponse(characteristic, value: value);
+    } else {
+      await adapter.writeCharacteristicWithoutResponse(characteristic, value: value);
     }
   }
 
   /// Request required permissions for BLE operations
   Future<void> requestPermissions() async {
+    const method = 'BleService.requestPermissions';
+
     try {
       final scan = await permissionService.bluetoothScanStatus;
       if (!scan.isGranted) {
@@ -220,7 +219,7 @@ class BleService {
         if (!result.isGranted) throw Exception('Location permission denied');
       }
     } catch (e, stackTrace) {
-      AppLogger.logError(e, stackTrace, 'BleService.requestPermissions');
+      AppLogger.logError(e, stackTrace, method);
       rethrow;
     }
   }

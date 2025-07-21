@@ -65,7 +65,7 @@ void main() {
       when(mockBleService.scanForDevices(timeout: anyNamed('timeout')))
           .thenAnswer((_) async => [mockDevice, other]);
 
-      final devices = await bluetoothManager.scanForNewObdDevices(
+      final devices = await bluetoothManager.scanForNewDevices(
         timeout: Duration(seconds: 1),
       );
       expect(devices, hasLength(1));
@@ -80,7 +80,7 @@ void main() {
       when(mockBleService.scanForDevices(timeout: anyNamed('timeout')))
           .thenAnswer((_) async => [other]);
 
-      final devices = await bluetoothManager.scanForNewObdDevices(
+      final devices = await bluetoothManager.scanForNewDevices(
         timeout: Duration(seconds: 1),
       );
       expect(devices, isEmpty);
@@ -91,7 +91,7 @@ void main() {
           .thenThrow(Exception('Scan failed'));
 
       expect(
-        () => bluetoothManager.scanForNewObdDevices(timeout: Duration(seconds: 1)),
+        () => bluetoothManager.scanForNewDevices(timeout: Duration(seconds: 1)),
         throwsA(isA<Exception>().having(
           (e) => e.toString(),
           'message',

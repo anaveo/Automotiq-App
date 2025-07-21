@@ -148,11 +148,7 @@ class VehicleDetailsCard extends StatelessWidget {
                     vehicle: vehicle,
                     stateMapper: _mapConnectionStateToString,
                   ),
-                            CurrentStatusWidget(dtcs: [
-        {"code": "P0301", "description": "Cylinder 1 Misfire Detected"},
-        {"code": "P0420", "description": "Catalyst System Efficiency Below Threshold"},
-        {"code": "P0171", "description": "System Too Lean (Bank 1)"},
-      ]), // Placeholder for DTCs
+                  CurrentStatusWidget(dtcs: vehicle.diagnosticTroubleCodes),
                   const SizedBox(height: 16),
                   Text(
                     'VIN: ${vehicle.vin.isEmpty ? "N/A" : vehicle.vin}',
