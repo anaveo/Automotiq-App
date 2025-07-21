@@ -11,17 +11,20 @@ class BleService {
 
   /// Current connection state of the device
   DeviceConnectionState _currentState = DeviceConnectionState.disconnected;
+  StreamSubscription<ConnectionStateUpdate>? _connectionSubscription;
+  final StreamController<DeviceConnectionState> _stateController =
+      StreamController<DeviceConnectionState>.broadcast();
 
   BleService({
     BluetoothAdapter? adapter,
     PermissionService? permissionService,
   })  : adapter = adapter ?? ReactiveBleAdapter(),
-        permissionService = permissionService ?? SystemPermissionService();
+        permissionService = permissionService ?? SystemPermissionService() {
+    // Emit initial disconnected state
+    _stateController.add(DeviceConnectionState.disconnected);
+  }
 
-  StreamSubscription<ConnectionStateUpdate>? _connectionSubscription;
-  final StreamController<DeviceConnectionState> _stateController =
-      StreamController<DeviceConnectionState>.broadcast();
-
+  /// Expose connection state stream for UI
   Stream<DeviceConnectionState> get connectionStateStream {
     if (_stateController.isClosed) {
       throw StateError('Connection state stream is closed.');
@@ -71,17 +74,17 @@ class BleService {
     }
   }
 
+  // TODO: Add proper timeout exception handling
   /// Connect to a BLE device
   Future<void> connectToDevice(
     String deviceId, {
     Map<Uuid, List<Uuid>>? servicesWithCharacteristicsToDiscover,
     Duration? connectionTimeout,
   }) async {
-    // Cancel any existing connection stream
-    await _connectionSubscription?.cancel();
-
     try {
+      await requestPermissions();
       _updateConnectionState(DeviceConnectionState.connecting);
+      await _connectionSubscription?.cancel();
       _connectionSubscription = adapter
           .connectToDevice(
             id: deviceId,
@@ -92,13 +95,16 @@ class BleService {
             (update) => _updateConnectionState(update.connectionState),
             onError: (e, stackTrace) {
               AppLogger.logError(e, stackTrace, 'BleService.connectToDevice');
-              throw Exception('Connection error: $e');
+              _updateConnectionState(DeviceConnectionState.disconnected);
+            },
+            onDone: () {
+              _updateConnectionState(DeviceConnectionState.disconnected);
             },
           );
     } catch (e, stackTrace) {
       _updateConnectionState(DeviceConnectionState.disconnected);
       AppLogger.logError(e, stackTrace, 'BleService.connectToDevice');
-      throw Exception('Failed to connect to device: $e');
+      rethrow;
     }
   }
 
@@ -111,6 +117,7 @@ class BleService {
       _updateConnectionState(DeviceConnectionState.disconnected);
     } catch (e, stackTrace) {
       AppLogger.logError(e, stackTrace, 'BleService.disconnectDevice');
+      _updateConnectionState(DeviceConnectionState.disconnected);
       throw Exception('Failed to disconnect device: $e');
     }
   }
@@ -118,11 +125,6 @@ class BleService {
   /// Get current connection state of a device
   DeviceConnectionState getDeviceState() {
     return _currentState;
-  }
-
-  /// Stream connection state of a device
-  Stream<DeviceConnectionState> getDeviceStateStream() {
-    return _stateController.stream;
   }
 
   /// Request MTU for a device
@@ -148,7 +150,6 @@ class BleService {
       throw Exception('Failed to clear GATT cache: $e');
     }
   }
-
 
   /// Read from a characteristic
   Future<List<int>> readCharacteristic(QualifiedCharacteristic characteristic) async {
@@ -203,8 +204,15 @@ class BleService {
     }
   }
 
+  /// Clean up resources
   Future<void> dispose() async {
-    await disconnectDevice(); // Ensure device is properly disconnected
-    await _stateController.close();
+    try {
+      await disconnectDevice();
+      await _stateController.close();
+      AppLogger.logInfo('BleService disposed', 'BleService.dispose');
+    } catch (e, stackTrace) {
+      AppLogger.logError(e, stackTrace, 'BleService.dispose');
+      throw Exception('Failed to dispose BleService: $e');
+    }
   }
 }
