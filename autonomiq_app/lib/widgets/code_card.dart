@@ -12,8 +12,9 @@ class CodeCard extends StatelessWidget {
       margin: const EdgeInsets.symmetric(vertical: 6),
       child: ListTile(
         leading: Text(code,
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-        title: Text(description),
+            style: Theme.of(context).textTheme.titleMedium),
+        title: Text(description,
+          style: Theme.of(context).textTheme.bodyMedium),
         onTap: () {
           // no action yet
         },

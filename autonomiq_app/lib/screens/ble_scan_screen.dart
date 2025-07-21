@@ -1,4 +1,5 @@
 import 'package:autonomiq_app/services/bluetooth_manager.dart';
+import 'package:autonomiq_app/theme/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_reactive_ble/flutter_reactive_ble.dart';
 import 'package:provider/provider.dart';
@@ -128,31 +129,25 @@ class _BleScanScreenState extends State<BleScanScreen> {
                 children: [
                   Text(
                     _errorMessage!,
-                    style: const TextStyle(color: Colors.redAccent, fontSize: 16),
+                    style: Theme.of(context).textTheme.labelMedium,
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 16),
                   ElevatedButton(
                     onPressed: _startScan,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.redAccent,
-                      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-                    ),
-                    child: const Text(
-                      'Retry',
-                      style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
-                    ),
+                    style: Theme.of(context).elevatedButtonTheme.style,
+                    child: const Text('Retry'),
                   ),
                 ],
               )
             : _isPairing
-                ? const CircularProgressIndicator(color: Colors.redAccent)
+                ? const CircularProgressIndicator(color: Colors.deepPurple)
                 : _isScanning
-                    ? const CircularProgressIndicator(color: Colors.redAccent)
+                    ? const CircularProgressIndicator(color: Colors.deepPurple)
                     : _devices.isEmpty
-                        ? const Text(
+                        ? Text(
                             'No devices found',
-                            style: TextStyle(color: Colors.white70, fontSize: 18),
+                            style: Theme.of(context).textTheme.bodyMedium,
                           )
                         : ListView.builder(
                             padding: const EdgeInsets.all(16),
@@ -162,11 +157,11 @@ class _BleScanScreenState extends State<BleScanScreen> {
                               return ListTile(
                                 title: Text(
                                   device.name.isNotEmpty ? device.name : 'Unknown Device',
-                                  style: const TextStyle(color: Colors.white, fontSize: 16),
+                                  style: Theme.of(context).textTheme.bodyMedium,
                                 ),
                                 subtitle: Text(
                                   device.id,
-                                  style: const TextStyle(color: Colors.white70, fontSize: 14),
+                                  style: Theme.of(context).textTheme.bodySmall,
                                 ),
                                 onTap: () => _pairAndSaveDevice(device),
                               );

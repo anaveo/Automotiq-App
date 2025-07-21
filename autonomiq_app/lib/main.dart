@@ -1,4 +1,5 @@
 import 'package:autonomiq_app/providers/user_provider.dart';
+import 'package:autonomiq_app/theme/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
@@ -77,17 +78,7 @@ class ErrorApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      theme: ThemeData(
-        brightness: Brightness.dark,
-        primaryColor: Colors.redAccent,
-        scaffoldBackgroundColor: Colors.black,
-        textTheme: const TextTheme(
-          bodyMedium: TextStyle(
-            fontSize: 16,
-            color: Colors.white70,
-          ),
-        ),
-      ),
+      theme: AppTheme.darkTheme,
       home: Scaffold(
         body: Center(
           child: Column(
@@ -95,7 +86,7 @@ class ErrorApp extends StatelessWidget {
             children: [
               Text(
                 errorMessage,
-                style: const TextStyle(color: Colors.redAccent, fontSize: 16),
+                style: Theme.of(context).textTheme.labelMedium,
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 16),
@@ -104,13 +95,9 @@ class ErrorApp extends StatelessWidget {
                   AppLogger.logInfo('Retrying app initialization', 'ErrorApp');
                   Navigator.pushReplacementNamed(context, '/');
                 },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.redAccent,
-                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-                ),
+                style: Theme.of(context).elevatedButtonTheme.style,
                 child: const Text(
                   'Retry',
-                  style: TextStyle(fontWeight: FontWeight.bold),
                 ),
               ),
             ],
@@ -159,29 +146,7 @@ class MyApp extends StatelessWidget {
     AppLogger.logInfo('Building MyApp', 'main');
     return MaterialApp(
       title: 'Autonomiq',
-      theme: ThemeData(
-        brightness: Brightness.dark,
-        primaryColor: Colors.redAccent,
-        scaffoldBackgroundColor: Colors.black,
-        textTheme: const TextTheme(
-          headlineMedium: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
-          bodyMedium: TextStyle(
-            fontSize: 16,
-            color: Colors.white70,
-          ),
-        ),
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.redAccent,
-            foregroundColor: Colors.white,
-            textStyle: const TextStyle(fontWeight: FontWeight.bold),
-          ),
-        ),
-      ),
+      theme: AppTheme.darkTheme,
       initialRoute: '/',
       routes: {
         '/': (context) => const RootScreen(),

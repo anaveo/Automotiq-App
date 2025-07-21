@@ -11,6 +11,7 @@ class LoginScreen extends StatefulWidget {
 }
 
 // TODO: migrate the email linking away from the login screen
+// TODO: Refactor to use central theme and styles
 class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -68,7 +69,7 @@ class _LoginScreenState extends State<LoginScreen> {
       body: SafeArea(
         child: Center(
           child: authProvider.isLoading
-              ? const CircularProgressIndicator(color: Colors.redAccent)
+              ? const CircularProgressIndicator(color: Colors.deepPurple)
               : SingleChildScrollView(
                   padding: const EdgeInsets.all(24.0),
                   child: Column(

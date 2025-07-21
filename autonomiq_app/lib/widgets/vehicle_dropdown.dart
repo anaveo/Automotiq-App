@@ -31,11 +31,6 @@ class VehicleDropdown extends StatelessWidget {
                 Icon(Icons.add, size: 18, color: Colors.white),
                 SizedBox(width: 8),
                 Text("Add Vehicle", 
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 20,
-                    color: Colors.white,
-                  ),
                 ),
               ],
             ),
@@ -52,11 +47,7 @@ class VehicleDropdown extends StatelessWidget {
         value: selected,
         icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white),
         dropdownColor: const Color.fromARGB(255, 20, 20, 20),
-        style: const TextStyle(
-          fontWeight: FontWeight.bold,
-          fontSize: 20,
-          color: Colors.white,
-        ),
+        style: Theme.of(context).textTheme.titleLarge,
         items: [
           ...vehicles.map((vehicle) {
             final name = vehicle.name.length > 16
@@ -80,6 +71,10 @@ class VehicleDropdown extends StatelessWidget {
           ),
         ],
         onChanged: (value) {
+          AppLogger.logInfo(
+            'Vehicle selected: ${value?.name ?? "None"}',
+            'VehicleDropdown.onChanged',
+          );
           if (value != null) {
             vehicleProvider.selectVehicle(value);
           }

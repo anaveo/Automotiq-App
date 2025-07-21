@@ -60,21 +60,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // @override
-  // void didUpdateWidget(HomeScreen oldWidget) {
-  //   super.didUpdateWidget(oldWidget);
-  //   final vehicleProvider = context.read<VehicleProvider>();
-  //   final bluetoothManager = Provider.of<BluetoothManager?>(context, listen: false);
-  //   final selectedVehicle = vehicleProvider.selectedVehicle;
-  //   AppLogger.logInfo(
-  //     'HomeScreen didUpdateWidget: selectedVehicle: ${selectedVehicle?.name ?? 'None'}',
-  //     'HomeScreen.didUpdateWidget',
-  //   );
-  //   if (selectedVehicle != null && bluetoothManager != null && selectedVehicle.deviceId.isNotEmpty) {
-  //     _attemptConnection(bluetoothManager, selectedVehicle);
-  //   }
-  // }
-
   @override
   void dispose() {
     super.dispose();
@@ -98,28 +83,9 @@ class _HomeScreenState extends State<HomeScreen> {
     VehicleProvider vehicleProvider,
   ) {
     if (authProvider.isLoading || vehicleProvider.isLoading) {
-      return emptyAppBar();
+      return AppBar();
     }
-    return authAppBar(authProvider);
-  }
-
-  PreferredSizeWidget emptyAppBar() {
     return AppBar(
-      backgroundColor: Colors.black,
-      surfaceTintColor: Colors.transparent,
-      foregroundColor: Colors.white,
-      shadowColor: Colors.transparent,
-      elevation: 0,
-    );
-  }
-
-  PreferredSizeWidget authAppBar(AppAuthProvider authProvider) {
-    return AppBar(
-      backgroundColor: Colors.transparent,
-      surfaceTintColor: Colors.transparent,
-      foregroundColor: Colors.white,
-      shadowColor: Colors.transparent,
-      elevation: 0,
       title: VehicleDropdown(),
       actions: [
         // VehicleDropdown(),
@@ -181,7 +147,7 @@ class _LoadingView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const Center(
-      child: CircularProgressIndicator(color: Colors.redAccent),
+      child: CircularProgressIndicator(color: Colors.deepPurple),
     );
   }
 }
@@ -200,22 +166,16 @@ class _ErrorView extends StatelessWidget {
         children: [
           Text(
             errorMessage,
-            style: const TextStyle(color: Colors.redAccent),
+            style: Theme.of(context).textTheme.labelMedium,
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 16),
           ElevatedButton(
             onPressed: onRetry,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.redAccent,
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-            ),
-            child: const Text(
-              'Retry',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-          ),
-        ],
+            style: Theme.of(context).elevatedButtonTheme.style,
+          child: const Text('Retry'),
+        ),
+      ],
       ),
     );
   }
@@ -226,10 +186,10 @@ class _EmptyView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
+    return Center(
       child: Text(
         'No Vehicles',
-        style: TextStyle(color: Colors.white70, fontSize: 18),
+        style: Theme.of(context).textTheme.bodyMedium,
       ),
     );
   }
@@ -244,10 +204,10 @@ class _ContentView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (selectedVehicle == null) {
-      return const Center(
+      return Center(
         child: Text(
           'Please select a vehicle',
-          style: TextStyle(color: Colors.white70, fontSize: 16),
+          style: Theme.of(context).textTheme.bodyMedium,
         ),
       );
     }

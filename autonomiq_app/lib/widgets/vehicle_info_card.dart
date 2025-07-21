@@ -120,39 +120,52 @@ class VehicleDetailsCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final bluetoothManager = Provider.of<BluetoothManager?>(context, listen: false);
 
-    return Card(
-      elevation: 3,
-      margin: const EdgeInsets.all(16),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      color: const Color.fromARGB(255, 20, 20, 20),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ConnectionStatusWidget(
-              bluetoothManager: bluetoothManager,
-              vehicle: vehicle,
-              stateMapper: _mapConnectionStateToString,
+    return Container(
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            spacing: 30,
+            children: [
+              IconButton(onPressed: () {AppLogger.logInfo("Refresh button pressed");/* TODO: Implement ai camera functionality*/}, icon: Icon(Icons.refresh_rounded)),
+              IconButton(onPressed: () {AppLogger.logInfo("Diagnose button pressed");/* TODO: Implement ai camera functionality*/}, icon: Icon(Icons.build_circle_outlined)),
+              IconButton(onPressed: () {AppLogger.logInfo("C button pressed");/* TODO: Implement ai camera functionality*/}, icon: Icon(Icons.chat_outlined))
+            ],
+          ),
+          Card(
+            elevation: 3,
+            margin: const EdgeInsets.all(16),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            color: const Color.fromARGB(255, 20, 20, 20),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ConnectionStatusWidget(
+                    bluetoothManager: bluetoothManager,
+                    vehicle: vehicle,
+                    stateMapper: _mapConnectionStateToString,
+                  ),
+                            CurrentStatusWidget(dtcs: [
+        {"code": "P0301", "description": "Cylinder 1 Misfire Detected"},
+        {"code": "P0420", "description": "Catalyst System Efficiency Below Threshold"},
+        {"code": "P0171", "description": "System Too Lean (Bank 1)"},
+      ]), // Placeholder for DTCs
+                  const SizedBox(height: 16),
+                  Text(
+                    'VIN: ${vehicle.vin.isEmpty ? "N/A" : vehicle.vin}',
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Odometer: ${vehicle.odometer == 0 ? "N/A" : "${vehicle.odometer} km"}',
+                  ),
+                ],
+              ),
             ),
-                      CurrentStatusWidget(dtcs: [
-  {"code": "P0301", "description": "Cylinder 1 Misfire Detected"},
-  {"code": "P0420", "description": "Catalyst System Efficiency Below Threshold"},
-  {"code": "P0171", "description": "System Too Lean (Bank 1)"},
-]), // Placeholder for DTCs
-            const SizedBox(height: 16),
-            Text(
-              'VIN: ${vehicle.vin.isEmpty ? "N/A" : vehicle.vin}',
-              style: const TextStyle(color: Colors.white70, fontSize: 16),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Odometer: ${vehicle.odometer == 0 ? "N/A" : "${vehicle.odometer} km"}',
-              style: const TextStyle(color: Colors.white70, fontSize: 16),
-            ),
-          ],
-        ),
+          )
+        ]
       ),
     );
   }
@@ -173,12 +186,12 @@ class ConnectionStatusWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (bluetoothManager == null || vehicle.deviceId.isEmpty) {
-      return const Center(
+      return Center(
         child: Padding(
           padding: EdgeInsets.all(18.0),
           child: Text(
-            'Vehicle Status: Not Associated',
-            style: TextStyle(color: Colors.grey, fontSize: 16),
+            'Not linked to OBD2 device',
+            style: Theme.of(context).textTheme.labelSmall,
           ),
         ),
       );
@@ -190,12 +203,12 @@ class ConnectionStatusWidget extends StatelessWidget {
       builder: (context, snapshot) {
         if (snapshot.hasError) {
           AppLogger.logError(snapshot.error, null, 'ConnectionStatusWidget');
-          return const Center(
+          return Center(
             child: Padding(
               padding: EdgeInsets.all(18.0),
               child: Text(
                 'Vehicle Status: Error',
-                style: TextStyle(color: Colors.redAccent, fontSize: 16),
+                style: Theme.of(context).textTheme.labelSmall,
               ),
             ),
           );
@@ -223,13 +236,12 @@ class ConnectionStatusWidget extends StatelessWidget {
                 if (isLoading) const SizedBox(width: 8),
                 Text(
                   stateMapper(state),
-                  style: TextStyle(
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
                     color: state == DeviceConnectionState.connected
                         ? Colors.greenAccent
                         : isLoading
                             ? Colors.white70
                             : Colors.redAccent,
-                    fontSize: 16,
                   ),
                   textAlign: TextAlign.center,
                 ),

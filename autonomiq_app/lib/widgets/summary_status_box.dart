@@ -20,7 +20,7 @@ class SummaryStatusBox extends StatelessWidget {
       ),
       child: Text(
         message,
-        style: TextStyle(fontSize: 16, color: borderColor),
+        style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: borderColor),
       ),
     );
   }
