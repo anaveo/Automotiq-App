@@ -7,7 +7,7 @@ import '../services/bluetooth_manager.dart';
 import '../utils/logger.dart';
 
 class VehicleInfoCard extends StatefulWidget {
-  final Vehicle vehicle;
+  final VehicleModel vehicle;
 
   const VehicleInfoCard({super.key, required this.vehicle});
 
@@ -97,7 +97,7 @@ class VehicleImagePlaceholder extends StatelessWidget {
 }
 
 class VehicleDetailsCard extends StatelessWidget {
-  final Vehicle vehicle;
+  final VehicleModel vehicle;
   const VehicleDetailsCard({
     super.key,
     required this.vehicle,
@@ -160,7 +160,7 @@ class VehicleDetailsCard extends StatelessWidget {
 
 class ConnectionStatusWidget extends StatelessWidget {
   final BluetoothManager? bluetoothManager;
-  final Vehicle vehicle;
+  final VehicleModel vehicle;
   final String Function(DeviceConnectionState) stateMapper;
 
   const ConnectionStatusWidget({

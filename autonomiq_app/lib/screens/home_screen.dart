@@ -46,7 +46,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Future<void> _attemptConnection(BluetoothManager bluetoothManager, Vehicle vehicle) async {
+  Future<void> _attemptConnection(BluetoothManager bluetoothManager, VehicleModel vehicle) async {
     try {
       final state = bluetoothManager.getDeviceState();
       if (state == DeviceConnectionState.connected) {
@@ -236,7 +236,7 @@ class _EmptyView extends StatelessWidget {
 }
 
 class _ContentView extends StatelessWidget {
-  final Vehicle? selectedVehicle;
+  final VehicleModel? selectedVehicle;
   final String obdData;
 
   const _ContentView({this.selectedVehicle, required this.obdData});

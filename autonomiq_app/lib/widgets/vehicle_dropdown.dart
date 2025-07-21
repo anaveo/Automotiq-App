@@ -14,93 +14,76 @@ class VehicleDropdown extends StatelessWidget {
     final vehicles = vehicleProvider.vehicles;
     final selected = vehicleProvider.selectedVehicle;
 
-    if (vehicles.isEmpty) {
-      return ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 150),
-        child: TextButton(
-          onPressed: () {
-            AppLogger.logInfo('Navigating to OBD setup from VehicleDropdown (empty)', 'VehicleDropdown');
-            navigateToObdSetup(context);
-          },
-          style: TextButton.styleFrom(
-            foregroundColor: Colors.white70,
-            backgroundColor: Colors.black,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-              side: const BorderSide(color: Colors.white54),
-            ),
-            alignment: Alignment.centerLeft,
-          ),
+    void navigateToAddVehicle(BuildContext context) {
+      AppLogger.logInfo('Navigating to OBD setup from VehicleDropdown', 'VehicleDropdown');
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        navigateToObdSetup(context);
+      });
+    }
+
+    Widget buildMenuItem(String text, {VoidCallback? onTap}) {
+      return InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           child: Row(
-            children: const [
-              Icon(Icons.add, size: 18, color: Colors.white70),
-              SizedBox(width: 6),
-              Text(
-                'Add Vehicle',
-                style: TextStyle(color: Colors.white70, fontSize: 16),
-              ),
-            ],
-          ),
+              children: const [
+                Icon(Icons.add, size: 18, color: Colors.white),
+                SizedBox(width: 8),
+                Text("Add Vehicle", 
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 20,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
+            ),
         ),
       );
     }
 
-    const addVehicleValue = null;
+    if (vehicles.isEmpty) {
+      return buildMenuItem("Add Vehicle", onTap: () => navigateToAddVehicle(context));
+    }
 
-    final items = [
-      ...vehicles.map((vehicle) => DropdownMenuItem<Vehicle?>(
-            value: vehicle,
-            child: Text(
-              vehicle.name,
-              style: const TextStyle(color: Colors.white70, fontSize: 16),
-            ),
-          )),
-      DropdownMenuItem<Vehicle?>(
-        value: addVehicleValue,
-        child: Row(
-          children: const [
-            Icon(Icons.add, size: 18, color: Colors.white70),
-            SizedBox(width: 6),
-            Text(
-              'Add Vehicle',
-              style: TextStyle(color: Colors.white70, fontSize: 16),
-            ),
-          ],
-        ),
-      ),
-    ];
-
-    return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 150),
-      child: DropdownButton<Vehicle?>(
+    return DropdownButtonHideUnderline(
+      child: DropdownButton<VehicleModel>(
         value: selected,
-        isExpanded: true,
-        icon: const Icon(Icons.arrow_drop_down, color: Colors.white70),
-        dropdownColor: Colors.black,
-        underline: Container(
-          height: 1,
-          color: Colors.white54,
+        icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white),
+        dropdownColor: const Color.fromARGB(255, 20, 20, 20),
+        style: const TextStyle(
+          fontWeight: FontWeight.bold,
+          fontSize: 20,
+          color: Colors.white,
         ),
-        onChanged: (value) async {
-          if (value == addVehicleValue) {
-            AppLogger.logInfo('Navigating to OBD setup from VehicleDropdown', 'VehicleDropdown');
-            navigateToObdSetup(context);
-          } else if (value is Vehicle && value != selected) {
-            AppLogger.logInfo('Selected vehicle: ${value.name} (ID: ${value.id})', 'VehicleDropdown');
+        items: [
+          ...vehicles.map((vehicle) {
+            final name = vehicle.name.length > 16
+                ? '${vehicle.name.substring(0, 16)}…'
+                : vehicle.name;
+            return DropdownMenuItem<VehicleModel>(
+              value: vehicle,
+              child: Text(name),
+            );
+          }),
+          DropdownMenuItem<VehicleModel>(
+            value: null,
+            onTap: () => navigateToAddVehicle(context),
+            child: Row(
+              children: const [
+                Icon(Icons.add, size: 18, color: Colors.white),
+                SizedBox(width: 8),
+                Text("Add Vehicle"),
+              ],
+            ),
+          ),
+        ],
+        onChanged: (value) {
+          if (value != null) {
             vehicleProvider.selectVehicle(value);
           }
         },
-        items: items,
-        style: const TextStyle(color: Colors.white70, fontSize: 16),
-        selectedItemBuilder: (context) => items.map((item) {
-          return Align(
-            alignment: Alignment.centerLeft,
-            child: item.child,
-          );
-        }).toList(),
-        menuMaxHeight: 300,
-        borderRadius: BorderRadius.circular(8),
       ),
     );
   }
