@@ -51,12 +51,48 @@ class _HomeScreenState extends State<HomeScreen> {
       final state = bluetoothManager.getDeviceState();
       if (state == DeviceConnectionState.connected) {
         AppLogger.logInfo('Device ${vehicle.deviceId} already connected', 'HomeScreen');
-      } else {
-        AppLogger.logInfo('Attempting to connect to device: ${vehicle.deviceId}', 'HomeScreen');
-        await bluetoothManager.connectToDevice(vehicle.deviceId);
+        await _initializeAndFetchObdData(bluetoothManager, vehicle.deviceId);
+        return;
+      }
+
+      AppLogger.logInfo('Attempting to connect to device: ${vehicle.deviceId}', 'HomeScreen');
+      // Start connection process
+      await bluetoothManager.connectToDevice(vehicle.deviceId);
+
+      // Wait for connected state from stream
+      await for (final connectionState in bluetoothManager.connectionStateStream) {
+        if (connectionState == DeviceConnectionState.connected) {
+          AppLogger.logInfo('Device ${vehicle.deviceId} connected', 'HomeScreen');
+          await _initializeAndFetchObdData(bluetoothManager, vehicle.deviceId);
+          break;
+        } else if (connectionState == DeviceConnectionState.disconnected) {
+          throw Exception('Device ${vehicle.deviceId} failed to connect');
+        }
       }
     } catch (e, stackTrace) {
-      AppLogger.logError(e, stackTrace, 'HomeScreen.connectToDevice');
+      AppLogger.logError(e, stackTrace, 'HomeScreen.attemptConnection');
+      setState(() => _errorMessage = 'Failed to connect or retrieve OBD2 data: $e');
+    }
+  }
+
+  /// Helper method to initialize OBD2 connection and fetch data
+  Future<void> _initializeAndFetchObdData(BluetoothManager bluetoothManager, String deviceId) async {
+    try {
+      await Future.delayed(Duration(milliseconds: 500));
+      AppLogger.logInfo('Initializing OBD2 connection for device: $deviceId', 'HomeScreen');
+      await bluetoothManager.initializeObdConnection();
+      final voltage = await bluetoothManager.getBatteryVoltage();
+      AppLogger.logInfo('Battery voltage: $voltage', 'HomeScreen');
+      // final vin = await bluetoothManager.getVehicleVin();
+      // final rpm = await bluetoothManager.getEngineRpm();
+      // AppLogger.logInfo('Retrieved OBD2 data - VIN: $vin, RPM: $rpm', 'HomeScreen');
+      // setState(() {
+      //   _errorMessage = null;
+      //   _obdData = 'VIN: $vin\nRPM: ${rpm.toStringAsFixed(0)}';
+      // });
+    } catch (e, stackTrace) {
+      AppLogger.logError(e, stackTrace, 'HomeScreen.initializeAndFetchObdData');
+      rethrow;
     }
   }
 
@@ -130,6 +166,8 @@ class _HomeScreenState extends State<HomeScreen> {
         if (selectedVehicle != null && bluetoothManager != null && selectedVehicle.deviceId.isNotEmpty) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             _attemptConnection(bluetoothManager, selectedVehicle);
+            AppLogger.logInfo('Done!');
+            // bluetoothManager.getBleDeviceInfo();
           });
         }
         return _ContentView(

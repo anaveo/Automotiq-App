@@ -22,6 +22,9 @@ abstract class BluetoothAdapter {
   /// Read a BLE characteristic
   Future<List<int>> readCharacteristic(QualifiedCharacteristic characteristic);
 
+  /// Subscribe to a BLE characteristic for notifications
+  Stream<List<int>> subscribeToCharacteristic(QualifiedCharacteristic characteristic);
+
   /// Write to a BLE characteristic (with response)
   Future<void> writeCharacteristicWithResponse(
     QualifiedCharacteristic characteristic, {
@@ -32,6 +35,16 @@ abstract class BluetoothAdapter {
   Future<void> writeCharacteristicWithoutResponse(
     QualifiedCharacteristic characteristic, {
     required List<int> value,
+  });
+
+  /// Start service discovery for a connected device
+  Future<void> discoverAllServices({
+    required String deviceId,
+  });
+
+  /// Get all discovered services for a connected device
+  Future<List<Service>> getDiscoveredServices({
+    required String deviceId,
   });
 
   /// Request a specific MTU size
@@ -82,6 +95,11 @@ class ReactiveBleAdapter implements BluetoothAdapter {
   }
 
   @override
+  Stream<List<int>> subscribeToCharacteristic(QualifiedCharacteristic characteristic) {
+    return _ble.subscribeToCharacteristic(characteristic);
+  }
+
+  @override
   Future<void> writeCharacteristicWithResponse(
     QualifiedCharacteristic characteristic, {
     required List<int> value,
@@ -101,6 +119,20 @@ class ReactiveBleAdapter implements BluetoothAdapter {
       characteristic,
       value: value,
     );
+  }
+
+  @override
+  Future<void> discoverAllServices({
+    required String deviceId,
+  }) {
+    return _ble.discoverAllServices(deviceId);
+  }
+
+  @override
+  Future<List<Service>> getDiscoveredServices({
+    required String deviceId,
+  }) {
+    return _ble.getDiscoveredServices(deviceId);
   }
 
   @override
