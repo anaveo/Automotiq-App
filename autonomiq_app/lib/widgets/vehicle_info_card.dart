@@ -1,3 +1,4 @@
+import 'package:autonomiq_app/providers/providers.dart';
 import 'package:autonomiq_app/widgets/current_status_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_reactive_ble/flutter_reactive_ble.dart';
@@ -172,7 +173,7 @@ class VehicleDetailsCard extends StatelessWidget {
                     vehicle: vehicle,
                     stateMapper: _mapConnectionStateToString,
                   ),
-                  CurrentStatusWidget(dtcs: ['P0420', 'P0420', 'P0300']),
+                  CurrentStatusWidget(dtcs: vehicle.diagnosticTroubleCodes ?? []),
                   const SizedBox(height: 16),
                   Text(
                     'VIN: ${vehicle.vin.isEmpty ? "N/A" : vehicle.vin}',
@@ -208,7 +209,7 @@ class ConnectionStatusWidget extends StatelessWidget {
     if (bluetoothManager == null || vehicle.deviceId.isEmpty) {
       return Center(
         child: Padding(
-          padding: EdgeInsets.all(18.0),
+          padding: const EdgeInsets.fromLTRB(0, 0, 0, 18.0),
           child: Text(
             'Not linked to OBD2 device',
             style: Theme.of(context).textTheme.labelSmall,
