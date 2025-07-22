@@ -1,0 +1,10 @@
+{
+  "P0420": {
+    "description": "Catalyst System Efficiency Below Threshold (Bank 1)",
+    "cause": "Faulty catalytic converter or oxygen sensor."
+  },
+  "P0300": {
+    "description": "Random/Multiple Cylinder Misfire Detected",
+    "cause": "Ignition system, fuel injection, or vacuum leak."
+  }
+}
