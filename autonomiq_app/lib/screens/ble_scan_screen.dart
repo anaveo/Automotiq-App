@@ -119,7 +119,7 @@ class _BleScanScreenState extends State<BleScanScreen> {
         foregroundColor: Colors.white,
         shadowColor: Colors.transparent,
         elevation: 0,
-        title: const Text('Scan for OBD2'),
+        title: const Text('Available Devices'),
       ),
       body: Center(
         child: _errorMessage != null

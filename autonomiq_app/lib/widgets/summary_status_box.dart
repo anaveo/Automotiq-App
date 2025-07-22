@@ -13,6 +13,7 @@ class SummaryStatusBox extends StatelessWidget {
         : "No problems detected";
 
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         border: Border.all(color: borderColor, width: 2),

@@ -46,7 +46,7 @@ class AppTheme {
         ),
         titleLarge: TextStyle(
           color: Colors.white,
-          fontSize: 22,
+          fontSize: 20,
           fontWeight: FontWeight.bold,
         ),
         labelMedium: TextStyle(
@@ -58,15 +58,6 @@ class AppTheme {
           color: Colors.redAccent,
           fontSize: 14,
           fontWeight: FontWeight.bold,
-        ),
-      ),
-      iconButtonTheme: IconButtonThemeData(
-        style: IconButton.styleFrom(
-          foregroundColor: Colors.white,
-          iconSize: 30,
-          shape: CircleBorder(
-            side: BorderSide(color: Colors.white, width: 2),
-          ),
         ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(

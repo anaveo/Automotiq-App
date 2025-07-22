@@ -127,9 +127,33 @@ class VehicleDetailsCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             spacing: 30,
             children: [
-              IconButton(onPressed: () {AppLogger.logInfo("Refresh button pressed");/* TODO: Implement ai camera functionality*/}, icon: Icon(Icons.refresh_rounded)),
-              IconButton(onPressed: () {AppLogger.logInfo("Diagnose button pressed");/* TODO: Implement ai camera functionality*/}, icon: Icon(Icons.build_circle_outlined)),
-              IconButton(onPressed: () {AppLogger.logInfo("C button pressed");/* TODO: Implement ai camera functionality*/}, icon: Icon(Icons.chat_outlined))
+              IconButton(onPressed: () {AppLogger.logInfo("Refresh button pressed");/* TODO: Implement ai camera functionality*/}, icon: Icon(Icons.refresh_rounded),
+                style: IconButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  iconSize: 30,
+                  shape: CircleBorder(
+                    side: BorderSide(color: Colors.white, width: 2),
+                  ),
+                ),
+              ),
+              IconButton(onPressed: () {AppLogger.logInfo("Diagnose button pressed");/* TODO: Implement ai camera functionality*/}, icon: Icon(Icons.build_circle_outlined),
+                style: IconButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  iconSize: 30,
+                  shape: CircleBorder(
+                    side: BorderSide(color: Colors.white, width: 2),
+                  ),
+                ),
+              ),
+              IconButton(onPressed: () {AppLogger.logInfo("C button pressed");/* TODO: Implement ai camera functionality*/}, icon: Icon(Icons.chat_outlined),
+                style: IconButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  iconSize: 30,
+                  shape: CircleBorder(
+                    side: BorderSide(color: Colors.white, width: 2),
+                  ),
+                ),
+              )  
             ],
           ),
           Card(
@@ -148,7 +172,7 @@ class VehicleDetailsCard extends StatelessWidget {
                     vehicle: vehicle,
                     stateMapper: _mapConnectionStateToString,
                   ),
-                  CurrentStatusWidget(dtcs: vehicle.diagnosticTroubleCodes),
+                  CurrentStatusWidget(dtcs: ['P0420', 'P0420', 'P0300']),
                   const SizedBox(height: 16),
                   Text(
                     'VIN: ${vehicle.vin.isEmpty ? "N/A" : vehicle.vin}',

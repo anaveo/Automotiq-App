@@ -252,9 +252,9 @@ class BluetoothManager {
         'ATS0\r', // Spaces off
         'ATH1\r', // Headers on
         'ATSP0\r', // Auto protocol
-        // 'ATDPN\r', // Describe protocol number
+        // 'ATDPN\r', // Describe protocol number TODO: add back
         'ATRV\r', // Read battery voltage
-        '0100\r', // Supported PIDs 00-1F
+        // '0100\r', // Supported PIDs 00-1F TODO: add back
       ];
 
       const maxRetries = 3;
