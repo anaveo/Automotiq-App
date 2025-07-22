@@ -1,3 +1,4 @@
+import 'package:autonomiq_app/screens/dtc_detail_screen.dart';
 import 'package:autonomiq_app/widgets/summary_status_box.dart';
 import 'package:flutter/material.dart';
 import '../services/dtc_database_service.dart';
@@ -48,6 +49,8 @@ class _CurrentStatusWidgetState extends State<CurrentStatusWidget> {
       return const Center(child: CircularProgressIndicator());
     }
 
+
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children:[
@@ -57,8 +60,20 @@ class _CurrentStatusWidgetState extends State<CurrentStatusWidget> {
           children: widget.dtcs.map((code) {
             final detail = dtcDetails[code];
             return CodeCard(
-                code: code,
-                description: detail?['description'] ?? '',
+              code: code,
+              description: detail?['description'] ?? '',
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => DtcDetailScreen(
+                      code: code,
+                      description: detail?['description'] ?? '',
+                      cause: detail?['cause'] ?? '',
+                    ),
+                  ),
+                );
+              },
             );
           }).toList(),
           )
