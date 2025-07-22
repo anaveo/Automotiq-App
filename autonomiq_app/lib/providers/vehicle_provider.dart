@@ -9,6 +9,18 @@ class VehicleProvider extends ChangeNotifier {
   late FirebaseAuth _firebaseAuth;
   List<VehicleModel> _vehicles = [];
   VehicleModel? _selected;
+
+  // Demo vehicle for testing purposes
+  final VehicleModel? demoVehicle = VehicleModel(
+    id: 'demo',
+    name: 'Demo Vehicle',
+    deviceId: '',
+    vin: '4S3OMBAO2A4050702',
+    year: 2002,
+    odometer: 9282,
+    diagnosticTroubleCodes: ['P0420', 'P0301', 'P0301', 'P0301'], 
+  );
+
   bool _isLoading = false;
 
   List<VehicleModel> get vehicles => _vehicles;
@@ -51,7 +63,7 @@ class VehicleProvider extends ChangeNotifier {
   }
 
   void selectVehicle(VehicleModel vehicle) {
-    if (_vehicles.contains(vehicle)) {
+    if (_vehicles.contains(vehicle) || vehicle == demoVehicle) {
       _selected = vehicle;
       notifyListeners();
     } else {

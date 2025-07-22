@@ -1,3 +1,4 @@
+import 'package:autonomiq_app/providers/user_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/vehicle_model.dart';
@@ -11,7 +12,12 @@ class VehicleDropdown extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final vehicleProvider = Provider.of<VehicleProvider>(context);
-    final vehicles = vehicleProvider.vehicles;
+    final userProvider = Provider.of<UserProvider?>(context);
+
+    final isDemo = userProvider?.user?.demoMode ?? false;
+    final demoVehicle = isDemo ? [vehicleProvider.demoVehicle] : [];
+
+    final allVehicles = [...demoVehicle, ...vehicleProvider.vehicles];
     final selected = vehicleProvider.selectedVehicle;
 
     void navigateToAddVehicle(BuildContext context) {
@@ -21,25 +27,17 @@ class VehicleDropdown extends StatelessWidget {
       });
     }
 
-    Widget buildMenuItem(String text, {VoidCallback? onTap}) {
+    if (allVehicles.isEmpty) {
       return InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Row(
-              children: const [
-                Icon(Icons.add, size: 18, color: Colors.white),
-                SizedBox(width: 8),
-                Text("Add Vehicle", 
-                ),
-              ],
-            ),
+        onTap: () => navigateToAddVehicle(context),
+        child: const Row(
+          children: [
+            Icon(Icons.add, size: 18, color: Colors.white),
+            SizedBox(width: 8),
+            Text("Add Vehicle"),
+          ],
         ),
       );
-    }
-
-    if (vehicles.isEmpty) {
-      return buildMenuItem("Add Vehicle", onTap: () => navigateToAddVehicle(context));
     }
 
     return DropdownButtonHideUnderline(
@@ -49,10 +47,8 @@ class VehicleDropdown extends StatelessWidget {
         dropdownColor: const Color.fromARGB(255, 20, 20, 20),
         style: Theme.of(context).textTheme.titleLarge,
         items: [
-          ...vehicles.map((vehicle) {
-            final name = vehicle.name.length > 16
-                ? '${vehicle.name.substring(0, 16)}…'
-                : vehicle.name;
+          ...allVehicles.map((vehicle) {
+            final name = vehicle.name.length > 16 ? '${vehicle.name.substring(0, 16)}…' : vehicle.name;
             return DropdownMenuItem<VehicleModel>(
               value: vehicle,
               child: Text(name),
@@ -61,8 +57,8 @@ class VehicleDropdown extends StatelessWidget {
           DropdownMenuItem<VehicleModel>(
             value: null,
             onTap: () => navigateToAddVehicle(context),
-            child: Row(
-              children: const [
+            child: const Row(
+              children: [
                 Icon(Icons.add, size: 18, color: Colors.white),
                 SizedBox(width: 8),
                 Text("Add Vehicle"),
