@@ -1,3 +1,4 @@
+import 'package:autonomiq_app/screens/account_settings_screen.dart';
 import 'package:autonomiq_app/services/bluetooth_manager.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -88,7 +89,9 @@ class _HomeScreenState extends State<HomeScreen> {
           icon: const Icon(Icons.account_circle_rounded),
           onPressed: () {
             AppLogger.logInfo('Account settings button clicked', 'HomeScreen');
-            // TODO: Implement settings/logout functionality
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const AccountSettingsScreen()),
+            );
           },
         ),
       ],

@@ -2,44 +2,45 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 class UserModel {
   final String uid;
-  final String? name;
-  final String? email;
   final DateTime? createdAt;
 
+  String? email;
+  bool? demoMode;
+  
   UserModel({
     required this.uid,
-    this.name,
     this.email,
     this.createdAt,
+    this.demoMode,
   });
 
   factory UserModel.fromMap(String uid, Map<String, dynamic> map) {
     return UserModel(
       uid: uid,
-      name: map['name'] as String?,
       email: map['email'] as String?,
       createdAt: (map['createdAt'] as Timestamp?)?.toDate(),
+      demoMode: map['demoMode'] as bool?,
     );
   }
 
   Map<String, dynamic> toMap() {
     return {
-      'name': name,
       'email': email,
+      'demoMode': demoMode,
       'createdAt': createdAt,
     };
   }
 
   UserModel copyWith({
-    String? name,
     String? email,
     DateTime? createdAt,
+    bool? demoMode,
   }) {
     return UserModel(
       uid: uid,
-      name: name ?? this.name,
       email: email ?? this.email,
       createdAt: createdAt ?? this.createdAt,
+      demoMode: demoMode ?? this.demoMode,
     );
   }
 }

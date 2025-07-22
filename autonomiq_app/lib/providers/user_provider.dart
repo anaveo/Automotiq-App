@@ -32,7 +32,7 @@ class UserProvider with ChangeNotifier {
       // Create user document if it doesn't exist
       await repository.createUserDocIfNotExists(
         uid!,
-        UserModel(uid: uid!, createdAt: DateTime.now()),
+        UserModel(uid: uid!, createdAt: DateTime.now(), demoMode: true),
       );
       AppLogger.logInfo('User document created or verified for UID: $uid', 'UserProvider.initializeUser');
 
@@ -62,6 +62,26 @@ class UserProvider with ChangeNotifier {
       _user = null;
     } finally {
       _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> setDemoMode(bool value) async {
+    if (uid == null || _user == null) return;
+
+    try {
+      // Optimistically update local model
+      _user = _user!.copyWith(demoMode: value);
+      notifyListeners();
+
+      // Update Firestore
+      await repository.updateField(uid!, 'demoMode', value);
+
+      AppLogger.logInfo('Demo mode updated to $value for UID: $uid', 'UserProvider.setDemoMode');
+    } catch (e, stackTrace) {
+      AppLogger.logError(e, stackTrace, 'UserProvider.setDemoMode');
+      // Revert optimistic update here if needed
+      _user = _user!.copyWith(demoMode: !value);
       notifyListeners();
     }
   }
