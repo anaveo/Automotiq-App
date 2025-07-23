@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../providers/user_provider.dart';
 import '../providers/vehicle_provider.dart';
-import '../models/vehicle_model.dart';
 
 class AccountSettingsScreen extends StatelessWidget {
   const AccountSettingsScreen({super.key});
@@ -16,7 +15,7 @@ class AccountSettingsScreen extends StatelessWidget {
     final vehicleProvider = context.watch<VehicleProvider>();
 
     return Scaffold(
-      appBar: AppBar(title: const Text("Account Settings")),
+      appBar: AppBar(title: const Text("Settings")),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -101,11 +100,36 @@ class AccountSettingsScreen extends StatelessWidget {
             ),
 
           /// Logout
-          if (user != null && !user.isAnonymous)
+          if (user != null)
             ElevatedButton.icon(
               onPressed: () async {
-                await FirebaseAuth.instance.signOut();
-                Navigator.of(context).popUntil((route) => route.isFirst);
+                late final confirm;
+                if (user.isAnonymous){
+                  confirm = await showDialog<bool>(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: const Text('Exit without creating an account?'),
+                      content: Text('All vehicles and settings will be lost.'),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context, false),
+                          child: const Text('Cancel'),
+                        ),
+                        TextButton(
+                          onPressed: () => Navigator.pop(context, true),
+                          child: const Text('Confirm', style: TextStyle(color: Colors.red)),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+                else {
+                  confirm = true;
+                }
+                if (confirm == true) {
+                  await FirebaseAuth.instance.signOut();
+                  Navigator.of(context).popUntil((route) => route.isFirst);
+                }
               },
               icon: const Icon(Icons.logout),
               label: const Text("Log Out"),
@@ -146,23 +170,25 @@ class _AnonymousLinkForm extends StatefulWidget {
 class _AnonymousLinkFormState extends State<_AnonymousLinkForm> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
   String? _error;
 
   // TODO: Check functionality, add input validation
   Future<void> _linkAccount() async {
-    // try {
-    //   final credential = EmailAuthProvider.credential(
-    //     email: _emailController.text,
-    //     password: _passwordController.text,
-    //   );
-    //   await FirebaseAuth.instance.currentUser!.linkWithCredential(credential);
-    //   setState(() => _error = null);
-    //   ScaffoldMessenger.of(context).showSnackBar(
-    //     const SnackBar(content: Text("Account linked successfully")),
-    //   );
-    // } on FirebaseAuthException catch (e) {
-    //   setState(() => _error = e.message);
-    // }
+    if (!_formKey.currentState!.validate()) return;
+    try {
+      final credential = EmailAuthProvider.credential(
+        email: _emailController.text,
+        password: _passwordController.text,
+      );
+      await FirebaseAuth.instance.currentUser!.linkWithCredential(credential);
+      setState(() => _error = null);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Account linked successfully")),
+      );
+    } on FirebaseAuthException catch (e) {
+      setState(() => _error = e.message);
+    }
   }
 
   InputDecoration _inputDecoration(String label) {
@@ -178,34 +204,56 @@ class _AnonymousLinkFormState extends State<_AnonymousLinkForm> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text("Create an account to save your data and settings.",
-            style: Theme.of(context).textTheme.bodySmall),
-        Padding(
-          padding: EdgeInsets.symmetric(vertical: 12),
-          child: TextField(
-            controller: _emailController,
-            autocorrect: false,
-            decoration: _inputDecoration('Email'),
+    return Form(
+      key: _formKey,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text("Create an account to save your data and settings.",
+              style: Theme.of(context).textTheme.bodySmall),
+          Padding(
+            padding: EdgeInsets.symmetric(vertical: 12),
+            child: TextFormField(
+              controller: _emailController,
+              decoration: _inputDecoration('Email'),
+              autocorrect: false,
+              keyboardType: TextInputType.emailAddress,
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Please enter an email';
+                }
+                if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
+                  return 'Please enter a valid email';
+                }
+                return null;
+              },
+            ),
           ),
-        ),
-        Padding(padding: EdgeInsets.symmetric(vertical: 6),
-          child: TextField(
-            controller: _passwordController,
-            obscureText: true,
-            autocorrect: false,
-            decoration: _inputDecoration('Password'),
+          Padding(padding: EdgeInsets.symmetric(vertical: 6),
+            child: TextFormField(
+              controller: _passwordController,
+              decoration: _inputDecoration('Password'),
+              obscureText: true,
+              autocorrect: false,
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Please enter a password';
+                }
+                if (value.length < 6) {
+                  return 'Password must be at least 6 characters';
+                }
+                return null;
+              },
+            ),
           ),
-        ),
-        if (_error != null) Text(_error!, style: const TextStyle(color: Colors.red)),
-        const SizedBox(height: 24),
-        ElevatedButton(
-          onPressed: _linkAccount,
-          child: const Text("Create Account"),
-        ),
-      ],
+          if (_error != null) Text(_error!, style: const TextStyle(color: Colors.red)),
+          const SizedBox(height: 24),
+          ElevatedButton(
+            onPressed: _linkAccount,
+            child: const Text("Create Account"),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -252,16 +300,18 @@ class _EmailPasswordSettingsState extends State<_EmailPasswordSettings> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Divider(),
-        const Text("Update Email/Password", style: TextStyle(fontWeight: FontWeight.bold)),
-        TextField(
-          controller: _emailController,
-          decoration: _inputDecoration('New Email'),
+        Padding(padding: EdgeInsets.symmetric(vertical: 6),
+          child: TextField(
+            controller: _emailController,
+            decoration: _inputDecoration('New Email'),
+          ),
         ),
-        TextField(
-          controller: _passwordController,
-          obscureText: true,
-          decoration: _inputDecoration('New Password'),
+        Padding(padding: EdgeInsets.symmetric(vertical: 6),
+          child: TextField(
+            controller: _passwordController,
+            obscureText: true,
+            decoration: _inputDecoration('New Password'),
+          ),
         ),
         if (_status != null) Text(_status!),
         const SizedBox(height: 8),

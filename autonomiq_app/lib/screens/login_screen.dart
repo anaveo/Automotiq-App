@@ -17,8 +17,6 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   String? _errorMessage;
-  bool _showEmailForm = true; // Always show email form by default
-  bool _isLinkingAccount = false;
 
   Future<void> _signInWithEmail() async {
     if (!_formKey.currentState!.validate()) return;
@@ -37,19 +35,15 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  Future<void> _linkWithEmail() async {
-    if (!_formKey.currentState!.validate()) return;
+  Future<void> _signInAnonymously() async {
     final authProvider = Provider.of<AppAuthProvider>(context, listen: false);
     try {
       setState(() => _errorMessage = null);
-      await authProvider.linkAnonymousToEmail(
-        _emailController.text.trim(),
-        _passwordController.text,
-      );
+      await authProvider.signInAnonymously();
     } catch (e, stackTrace) {
-      AppLogger.logError(e, stackTrace, 'LoginScreen.linkWithEmail');
+      AppLogger.logError(e, stackTrace, 'LoginScreen._signInAnonymously');
       setState(() {
-        _errorMessage = 'Failed to create account: $e';
+        _errorMessage = 'Failed to sign in: $e';
       });
     }
   }
@@ -61,6 +55,17 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  InputDecoration _inputDecoration(String label) {
+    return InputDecoration(
+      labelText: label,
+      labelStyle: Theme.of(context).textTheme.bodySmall,
+      filled: true,
+      fillColor: Colors.grey.shade900,
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    );
+  }
+  
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AppAuthProvider>(context);
@@ -95,87 +100,55 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ),
                       // Email/Password Form
-                      if (_showEmailForm)
-                        Form(
-                          key: _formKey,
-                          child: Column(
-                            children: [
-                              TextFormField(
-                                controller: _emailController,
-                                decoration: const InputDecoration(
-                                  labelText: 'Email',
-                                  labelStyle: TextStyle(color: Colors.white70),
-                                  enabledBorder: OutlineInputBorder(
-                                    borderSide: BorderSide(color: Colors.white54),
-                                  ),
-                                  focusedBorder: OutlineInputBorder(
-                                    borderSide: BorderSide(color: Colors.redAccent),
-                                  ),
-                                ),
-                                style: const TextStyle(color: Colors.white),
-                                keyboardType: TextInputType.emailAddress,
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return 'Please enter an email';
-                                  }
-                                  if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
-                                    return 'Please enter a valid email';
-                                  }
-                                  return null;
-                                },
-                              ),
-                              const SizedBox(height: 16),
-                              TextFormField(
-                                controller: _passwordController,
-                                decoration: const InputDecoration(
-                                  labelText: 'Password',
-                                  labelStyle: TextStyle(color: Colors.white70),
-                                  enabledBorder: OutlineInputBorder(
-                                    borderSide: BorderSide(color: Colors.white54),
-                                  ),
-                                  focusedBorder: OutlineInputBorder(
-                                    borderSide: BorderSide(color: Colors.redAccent),
-                                  ),
-                                ),
-                                style: const TextStyle(color: Colors.white),
-                                obscureText: true,
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return 'Please enter a password';
-                                  }
-                                  if (value.length < 6) {
-                                    return 'Password must be at least 6 characters';
-                                  }
-                                  return null;
-                                },
-                              ),
-                              const SizedBox(height: 24),
-                              ElevatedButton(
-                                onPressed: _isLinkingAccount ? _linkWithEmail : _signInWithEmail,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.redAccent,
-                                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-                                ),
-                                child: Text(
-                                  _isLinkingAccount ? 'Create Account' : 'Sign In',
-                                  style: const TextStyle(fontWeight: FontWeight.bold),
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                              TextButton(
-                                onPressed: () => setState(() {
-                                  _showEmailForm = false;
-                                  _errorMessage = null;
-                                  _isLinkingAccount = !_isLinkingAccount;
-                                }),
-                                child: Text(
-                                  _isLinkingAccount ? 'Sign In' : 'Create Account',
-                                  style: const TextStyle(color: Colors.white70),
-                                ),
-                              ),
-                            ],
-                          ),
+                      Form(
+                        key: _formKey,
+                        child: Column(
+                          children: [
+                            TextFormField(
+                              controller: _emailController,
+                              decoration: _inputDecoration('Email'),
+                              autocorrect: false,
+                              keyboardType: TextInputType.emailAddress,
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return 'Please enter an email';
+                                }
+                                if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
+                                  return 'Please enter a valid email';
+                                }
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 16),
+                            TextFormField(
+                              controller: _passwordController,
+                              decoration: _inputDecoration('Password'),
+                              obscureText: true,
+                              autocorrect: false,
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return 'Please enter a password';
+                                }
+                                if (value.length < 6) {
+                                  return 'Password must be at least 6 characters';
+                                }
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 24),
+                            ElevatedButton(
+                              onPressed: _signInWithEmail,
+                              style: Theme.of(context).elevatedButtonTheme.style,
+                              child: Text('Sign In'),
+                            ),
+                            const SizedBox(height: 16),
+                            TextButton(
+                              onPressed: _signInAnonymously,
+                              child: Text('New User? Tap here')
+                            ),
+                          ],
                         ),
+                      ),
                     ],
                   ),
                 ),
