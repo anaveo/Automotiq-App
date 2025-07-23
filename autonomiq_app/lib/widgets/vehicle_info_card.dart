@@ -180,7 +180,7 @@ class VehicleDetailsCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Odometer: ${vehicle.odometer == 0 ? "N/A" : "${vehicle.odometer} km"}',
+                    'Odometer: ${vehicle.odometer == 0 ? "N/A" : "${vehicle.odometer} miles"}',
                   ),
                 ],
               ),
