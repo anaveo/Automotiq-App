@@ -1,4 +1,5 @@
 import 'package:autonomiq_app/screens/dtc_detail_screen.dart';
+import 'package:autonomiq_app/utils/logger.dart';
 import 'package:autonomiq_app/widgets/summary_status_box.dart';
 import 'package:flutter/material.dart';
 import '../services/dtc_database_service.dart';
@@ -18,66 +19,84 @@ class CurrentStatusWidget extends StatefulWidget {
 
 class _CurrentStatusWidgetState extends State<CurrentStatusWidget> {
   Map<String, Map<String, String>> dtcDetails = {};
-  bool loading = true;
+
+  late Future<Map<String, Map<String, String>>> _dtcFuture;
 
   @override
   void initState() {
     super.initState();
-    _loadDtcDetails();
+    _dtcFuture = _loadDtcDetails();
   }
 
-  Future<void> _loadDtcDetails() async {
+  @override
+  void didUpdateWidget(covariant CurrentStatusWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.dtcs != widget.dtcs) {
+      _dtcFuture = _loadDtcDetails();
+    }
+  }
+
+  Future<Map<String, Map<String, String>>> _loadDtcDetails() async {
     final Map<String, Map<String, String>> result = {};
     for (final code in widget.dtcs) {
       final info = await DtcDatabaseService().getDtc(code);
+      AppLogger.logInfo(
+        'Loaded DTC $code: ${info?['description'] ?? 'No description available'}',
+        'CurrentStatusWidget._loadDtcDetails',
+      );
       result[code] = info ??
           {
             'description': 'Unknown DTC',
             'cause': 'No data available.'
           };
     }
-
-    setState(() {
-      dtcDetails = result;
-      loading = false;
-    });
+    return result;
   }
 
   @override
   Widget build(BuildContext context) {
-    if (loading) {
-      return const Center(child: CircularProgressIndicator());
-    }
+    return FutureBuilder<Map<String, Map<String, String>>>(
+      future: _dtcFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
 
+        if (snapshot.hasError) {
+          return Text('Error loading DTCs: ${snapshot.error}');
+        }
 
+        final dtcDetails = snapshot.data!;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children:[
-        SummaryStatusBox(hasIssues: widget.dtcs.isNotEmpty),
-        SizedBox(height: 16),
-        Column(
-          children: widget.dtcs.map((code) {
-            final detail = dtcDetails[code];
-            return CodeCard(
-              code: code,
-              description: detail?['description'] ?? '',
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => DtcDetailScreen(
-                      code: code,
-                      description: detail?['description'] ?? '',
-                      cause: detail?['cause'] ?? '',
-                    ),
-                  ),
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SummaryStatusBox(hasIssues: widget.dtcs.isNotEmpty),
+            SizedBox(height: 16),
+            Column(
+              children: widget.dtcs.map((code) {
+                final detail = dtcDetails[code];
+                return CodeCard(
+                  code: code,
+                  description: detail?['description'] ?? 'No description available',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => DtcDetailScreen(
+                          code: code,
+                          description: detail?['description'] ?? 'No description available',
+                          cause: detail?['cause'] ?? 'No cause available',
+                        ),
+                      ),
+                    );
+                  },
                 );
-              },
-            );
-          }).toList(),
-          )
-      ]
+              }).toList(),
+            ),
+          ],
+        );
+      },
     );
   }
 }
