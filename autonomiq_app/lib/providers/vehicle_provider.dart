@@ -17,8 +17,8 @@ class VehicleProvider extends ChangeNotifier {
     deviceId: '',
     vin: '4S3OMBAO2A4050702',
     year: 2002,
-    odometer: 9282,
-    diagnosticTroubleCodes: ['P0420', 'P0301'], 
+    odometer: 20618,
+    diagnosticTroubleCodes: ['P0420', 'P0325'], 
   );
 
   bool _isLoading = false;
@@ -49,12 +49,12 @@ class VehicleProvider extends ChangeNotifier {
       _isLoading = true;
       notifyListeners();
       _vehicles = await _vehicleRepository.getVehicles(user.uid);
-      _selected = _vehicles.isNotEmpty ? _vehicles.first : null;
+      _selected = _vehicles.isNotEmpty ? _vehicles.first : demoVehicle;
       AppLogger.logInfo('Loaded ${_vehicles.length} vehicle(s) for UID: ${_firebaseAuth.currentUser?.uid}', 'VehicleProvider.loadVehicles');
     } catch (e, stackTrace) {
       AppLogger.logError(e, stackTrace, 'VehicleProvider.loadVehicles');
       _vehicles = [];
-      _selected = null;
+      _selected = demoVehicle;
       rethrow;
     } finally {
       _isLoading = false;

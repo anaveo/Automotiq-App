@@ -1,3 +1,5 @@
+import 'package:autonomiq_app/providers/providers.dart';
+import 'package:autonomiq_app/providers/user_provider.dart';
 import 'package:autonomiq_app/screens/account_settings_screen.dart';
 import 'package:autonomiq_app/services/bluetooth_manager.dart';
 import 'package:flutter/material.dart';
@@ -64,12 +66,13 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final authProvider = context.watch<AppAuthProvider>();
+    final userProvider = context.watch<UserProvider>();
     final vehicleProvider = context.watch<VehicleProvider>();
 
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: _buildAppBar(context, authProvider, vehicleProvider),
-      body: _buildBody(context, authProvider, vehicleProvider),
+      body: _buildBody(context, authProvider, userProvider, vehicleProvider),
     );
   }
 
@@ -101,6 +104,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildBody(
     BuildContext context,
     AppAuthProvider authProvider,
+    UserProvider userProvider,
     VehicleProvider vehicleProvider,
   ) {
     final bluetoothManager = Provider.of<BluetoothManager?>(context, listen: false);
@@ -116,7 +120,7 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
 
-    if (vehicleProvider.vehicles.isEmpty) {
+    if (vehicleProvider.vehicles.isEmpty && userProvider.user?.demoMode == false) {
       return const _EmptyView();
     }
 
