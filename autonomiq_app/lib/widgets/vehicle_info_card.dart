@@ -6,6 +6,8 @@ import 'package:provider/provider.dart';
 import '../models/vehicle_model.dart';
 import '../services/bluetooth_manager.dart';
 import '../utils/logger.dart';
+import '../screens/model_download_screen.dart';
+import '../models/model.dart';
 
 class VehicleInfoCard extends StatefulWidget {
   final VehicleModel vehicle;
@@ -146,7 +148,18 @@ class VehicleDetailsCard extends StatelessWidget {
                   ),
                 ),
               ),
-              IconButton(onPressed: () {AppLogger.logInfo("C button pressed");/* TODO: Implement ai camera functionality*/}, icon: Icon(Icons.chat_outlined),
+              IconButton(onPressed: () {
+                // AppLogger.logInfo("C button pressed");
+                Navigator.push(
+                  context,
+                  MaterialPageRoute<void>(
+                    builder: (context) => ModelDownloadScreen(
+                      model: Model.values[7], //Hardcoded to choose gemma 3n using huggingface link
+                    ),
+                  ),
+                );
+              /* TODO: Implement ai camera functionality*/
+                }, icon: Icon(Icons.chat_outlined),
                 style: IconButton.styleFrom(
                   foregroundColor: Colors.white,
                   iconSize: 30,
