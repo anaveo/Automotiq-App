@@ -181,14 +181,17 @@ class _AnonymousLinkFormState extends State<_AnonymousLinkForm> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(padding: EdgeInsets.symmetric(vertical: 6),
+        Text("Create an account to save your data and settings.",
+            style: Theme.of(context).textTheme.bodySmall),
+        Padding(
+          padding: EdgeInsets.symmetric(vertical: 12),
           child: TextField(
             controller: _emailController,
             autocorrect: false,
             decoration: _inputDecoration('Email'),
           ),
         ),
-        Padding(padding: EdgeInsets.symmetric(vertical: 8),
+        Padding(padding: EdgeInsets.symmetric(vertical: 6),
           child: TextField(
             controller: _passwordController,
             obscureText: true,
