@@ -1,4 +1,5 @@
-import 'package:autonomiq_app/providers/providers.dart';
+// import 'package:autonomiq_app/providers/providers.dart';
+import 'package:autonomiq_app/screens/diagnosis_screen.dart';
 import 'package:autonomiq_app/widgets/current_status_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_reactive_ble/flutter_reactive_ble.dart';
@@ -139,7 +140,17 @@ class VehicleDetailsCard extends StatelessWidget {
                   ),
                 ),
               ),
-              IconButton(onPressed: () {AppLogger.logInfo("Diagnose button pressed");/* TODO: Implement ai camera functionality*/}, icon: Icon(Icons.build_circle_outlined),
+              IconButton(onPressed: () {
+                // AppLogger.logInfo("Diagnose button pressed");/* TODO: Implement ai camera functionality*/
+                Navigator.push(
+                  context,
+                  MaterialPageRoute<void>(
+                    builder: (context) => DiagnosisScreen(
+                      model: chosenModel,
+                    ),
+                  ),
+                );
+                }, icon: Icon(Icons.build_circle_outlined),
                 style: IconButton.styleFrom(
                   foregroundColor: Colors.white,
                   iconSize: 30,
@@ -154,7 +165,7 @@ class VehicleDetailsCard extends StatelessWidget {
                   context,
                   MaterialPageRoute<void>(
                     builder: (context) => ModelDownloadScreen(
-                      model: Model.values[7], //Hardcoded to choose gemma 3n using huggingface link
+                      model: chosenModel
                     ),
                   ),
                 );

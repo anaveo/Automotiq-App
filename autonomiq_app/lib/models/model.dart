@@ -1,5 +1,6 @@
 import 'pigeon.g.dart';
 import 'core/model.dart';
+Model chosenModel = Model.gemma3Gpu_1B;
 
 enum Model {
   gemma3GpuLocalAsset(
