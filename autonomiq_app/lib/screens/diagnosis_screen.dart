@@ -5,9 +5,10 @@ import '../models/model.dart';
 import 'package:path_provider/path_provider.dart';
 
 class DiagnosisScreen extends StatefulWidget {
-  const DiagnosisScreen({super.key, this.model = Model.gemma3Gpu_1B});
+  const DiagnosisScreen({super.key, this.model = Model.gemma3Gpu_1B, this.dtcs = const []});
 
   final Model model;
+  final List<String> dtcs;
 
   @override
   DiagnosisScreenState createState() => DiagnosisScreenState();
@@ -22,11 +23,16 @@ class DiagnosisScreenState extends State<DiagnosisScreen> {
   String? _inferenceOutput;
 
   // Hardcoded prompt for diagnosis
-  final String _prompt = "Patient has headache and fever for 3 days. What could be the diagnosis?";
+  String _prompt = "";
+
+  setPrompt() {
+    _prompt =  "You are an AI mechanic. Your role is to diagnose the health of a vehicle, given its diagnostic trouble codes and recommend further action. The vehicle has the following diagnostic trouble codes: ${widget.dtcs.join(', ')}";
+  }
 
   @override
   void initState() {
     super.initState();
+    setPrompt();
     _initializeModelAndRunInference();
   }
 

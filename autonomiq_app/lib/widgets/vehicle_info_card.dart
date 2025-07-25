@@ -147,6 +147,7 @@ class VehicleDetailsCard extends StatelessWidget {
                   MaterialPageRoute<void>(
                     builder: (context) => DiagnosisScreen(
                       model: chosenModel,
+                      dtcs: vehicle.diagnosticTroubleCodes ?? []
                     ),
                   ),
                 );
