@@ -334,6 +334,14 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
+  flutter_gemma:
+    dependency: "direct main"
+    description:
+      name: flutter_gemma
+      sha256: "3bf366864170092f2a3fb45998286cab1bcb00a249fc4ef5fed7b9e7c9f29a5d"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.10.0"
   flutter_lints:
     dependency: "direct dev"
     description:
