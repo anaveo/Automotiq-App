@@ -135,39 +135,58 @@ class DiagnosisScreenState extends State<DiagnosisScreen> {
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: _isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : _error != null
-                ? Center(
-                    child: Text(
-                      _error!,
-                      style: const TextStyle(color: Colors.red),
-                      textAlign: TextAlign.center,
-                    ),
-                  )
-                : _inferenceOutput != null
-                    ? SingleChildScrollView(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Prompt:',
-                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(_prompt, style: const TextStyle(fontSize: 16)),
-                            const Divider(height: 32),
-                            const Text(
-                              'Inference Output:',
-                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(_inferenceOutput!, style: const TextStyle(fontSize: 16)),
-                          ],
-                        ),
-                      )
-                    : const Center(child: Text('No inference output')),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Prompt:',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+            ),
+            const SizedBox(height: 8),
+            Text(_prompt, style: const TextStyle(fontSize: 16)),
+            const Divider(height: 32),
+
+            const Text(
+              'Inference Output:',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+            ),
+            const SizedBox(height: 8),
+
+            Expanded(
+              child: SingleChildScrollView(
+                child: Text(
+                  _inferenceOutput ?? '',
+                  style: const TextStyle(fontSize: 16),
+                ),
+              ),
+            ),
+
+            if (_isLoading)
+              Padding(
+                padding: const EdgeInsets.only(top: 16.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: const [
+                    CircularProgressIndicator(),
+                    SizedBox(width: 16),
+                    Text('Generating inference...'),
+                  ],
+                ),
+              ),
+
+            if (_error != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 16.0),
+                child: Text(
+                  _error!,
+                  style: const TextStyle(color: Colors.red),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
+
 }
