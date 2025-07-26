@@ -24,12 +24,18 @@ class SplashScreen extends StatelessWidget {
                 }
                 return Column(
                   children: [
-                    LinearProgressIndicator(
-                      value: modelProvider.isDownloading ? modelProvider.downloadProgress : null,
-                      minHeight: 8.0,
-                      backgroundColor: Theme.of(context).colorScheme.surfaceContainer,
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        Theme.of(context).colorScheme.primary,
+                    Image(
+                      image: AssetImage('assets/images/Automotiq_Full_Logo_V1.png'),
+                      width: 300,
+                    ),
+                    Padding(
+                      padding: EdgeInsets.fromLTRB(80, 0, 80, 0),
+                      child: LinearProgressIndicator(
+                        value: modelProvider.isDownloading ? modelProvider.downloadProgress : null,
+                        backgroundColor: Theme.of(context).colorScheme.surfaceContainer,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          Theme.of(context).colorScheme.primary,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -37,7 +43,7 @@ class SplashScreen extends StatelessWidget {
                       modelProvider.isDownloading
                           ? 'Downloading model: ${(modelProvider.downloadProgress * 100).toStringAsFixed(1)}%'
                           : 'Model downloaded',
-                      style: Theme.of(context).textTheme.bodyMedium,
+                      style: Theme.of(context).textTheme.bodySmall,
                       textAlign: TextAlign.center,
                     ),
                   ],
