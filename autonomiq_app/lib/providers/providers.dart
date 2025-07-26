@@ -4,18 +4,39 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
 import 'package:autonomiq_app/services/bluetooth_manager.dart';
 import 'package:autonomiq_app/repositories/user_repository.dart';
-import 'package:autonomiq_app/providers/auth_provider.dart';
 import 'package:autonomiq_app/providers/user_provider.dart';
 import 'package:autonomiq_app/providers/vehicle_provider.dart';
+import 'package:autonomiq_app/providers/auth_provider.dart';
+import 'package:autonomiq_app/providers/model_download_provider.dart';
 import 'package:autonomiq_app/repositories/vehicle_repository.dart';
 
 export 'package:autonomiq_app/providers/auth_provider.dart';
 
-
-final appAuthProvider = ChangeNotifierProvider<AppAuthProvider>(
+final modelDownloadProvider = ChangeNotifierProvider<ModelDownloadProvider>(
   create: (_) {
-    AppLogger.logInfo('Initializing AppAuthProvider', 'providers.dart');
+    AppLogger.logInfo('Initializing ModelDownloadProvider', 'providers.dart');
+    return ModelDownloadProvider(
+      modelUrl: 'https://huggingface.co/api/models/example/model',
+      modelFilename: 'model2.txt',
+      licenseUrl: 'https://huggingface.co/models/example/license',
+      apiToken: 'HUGGINGFACE API KEY', // TODO: Add
+    );
+  },
+  lazy: true,
+);
+
+final appAuthProvider = ChangeNotifierProxyProvider<ModelDownloadProvider, AppAuthProvider>(
+  create: (_) {
+    AppLogger.logInfo('Creating AppAuthProvider (initial)', 'providers.dart');
     return AppAuthProvider(firebaseAuth: FirebaseAuth.instance);
+  },
+  update: (_, modelProvider, previous) {
+    final provider = previous ?? AppAuthProvider(firebaseAuth: FirebaseAuth.instance);
+    if (modelProvider.isModelDownloaded && provider.user == null && !provider.isLoading) {
+      AppLogger.logInfo('Triggering anonymous sign-in after model download', 'providers.dart');
+      provider.signInAnonymously();
+    }
+    return provider;
   },
   lazy: true,
 );
@@ -23,7 +44,7 @@ final appAuthProvider = ChangeNotifierProvider<AppAuthProvider>(
 final userProvider = ChangeNotifierProxyProvider<AppAuthProvider, UserProvider?>(
   create: (_) {
     AppLogger.logInfo('Creating UserProvider (initial)', 'providers.dart');
-    return null; // Defer creation until user is authenticated
+    return null;
   },
   update: (_, authProvider, previous) {
     if (authProvider.user == null) {

@@ -10,6 +10,8 @@ import 'package:autonomiq_app/screens/home_screen.dart';
 import 'package:autonomiq_app/screens/splash_screen.dart';
 import 'package:autonomiq_app/screens/login_screen.dart';
 import 'package:autonomiq_app/screens/new_device_setup_screen.dart';
+import 'package:autonomiq_app/providers/model_download_provider.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class RootScreen extends StatefulWidget {
   const RootScreen({super.key});
@@ -25,26 +27,30 @@ class _RootScreenState extends State<RootScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final modelDownloadProvider = Provider.of<ModelDownloadProvider>(context, listen: false);
       final authProvider = Provider.of<AppAuthProvider>(context, listen: false);
-      if (authProvider.user == null && !authProvider.isLoading) {
+
+      // Provider initialization flow:
+      // [Model] -> [Auth] -> [User & Vehicle & Bluetooth]
+      //
+      // Downstream providers are set to initialize lazily to ensure no 
+      // services are set up if their upstream components have failed
+            
+      // Check if model is downloaded or downloading
+      if (!modelDownloadProvider.isModelDownloaded && !modelDownloadProvider.isDownloading) {
         try {
-          AppLogger.logInfo('Attempting anonymous login', 'RootScreen.initState');
-          await authProvider.signInAnonymously();
-          AppLogger.logInfo(
-            'Anonymous login successful, user: ${authProvider.user?.uid} (anonymous: ${authProvider.user?.isAnonymous})',
-            'RootScreen.initState',
-          );
-          // Trigger UserProvider initialization
-          final userProvider = Provider.of<UserProvider?>(context, listen: false);
-          if (userProvider != null && userProvider.isLoading) {
-            AppLogger.logInfo('Waiting for UserProvider to load user profile', 'RootScreen.initState');
-            await Future.delayed(const Duration(milliseconds: 100)); // Small delay to ensure provider initialization
-          }
+          AppLogger.logInfo('Starting model download', 'RootScreen.initState');
+          await modelDownloadProvider.initializeModel();
+          AppLogger.logInfo('Model initialization completed', 'RootScreen.initState');
         } catch (e, stackTrace) {
           AppLogger.logError(e, stackTrace, 'RootScreen.initState');
-          setState(() => _errorMessage = 'Authentication failed: $e');
+          setState(() => _errorMessage = 'Model initialization failed: $e');
+          return;
         }
-      } else if (authProvider.user != null) {
+      }
+
+      // Log authentication status
+      if (authProvider.user != null) {
         AppLogger.logInfo(
           'User already authenticated: ${authProvider.user!.uid} (anonymous: ${authProvider.user!.isAnonymous})',
           'RootScreen.initState',
@@ -55,15 +61,24 @@ class _RootScreenState extends State<RootScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final modelProvider = Provider.of<ModelDownloadProvider>(context);
     final authProvider = Provider.of<AppAuthProvider>(context);
     final userProvider = Provider.of<UserProvider?>(context);
-    if (authProvider.isLoading || (userProvider != null && userProvider.isLoading)) {
+
+    if (modelProvider.isDownloading ||
+        authProvider.isLoading ||
+        (userProvider != null && userProvider.isLoading)) {
       return const SplashScreen();
     }
-    if (_errorMessage != null || authProvider.authError != null) {
-      return ErrorApp(errorMessage: _errorMessage ?? authProvider.authError!);
+    if (_errorMessage != null || modelProvider.downloadError != null || authProvider.authError != null) {
+      return ErrorApp(
+        errorMessage: _errorMessage ?? modelProvider.downloadError ?? authProvider.authError!,
+      );
     }
-    if (authProvider.user != null && userProvider != null && userProvider.user != null) {
+    if (modelProvider.isModelDownloaded &&
+        authProvider.user != null &&
+        userProvider != null &&
+        userProvider.user != null) {
       return const HomeScreen();
     }
     return const LoginScreen();
@@ -109,6 +124,8 @@ class ErrorApp extends StatelessWidget {
 }
 
 void main() async {
+  await dotenv.load(fileName: 'assets/.env');
+  
   WidgetsFlutterBinding.ensureInitialized();
   AppLogger.logInfo('Starting app initialization', 'main');
   try {
@@ -128,6 +145,7 @@ void main() async {
   runApp(
     MultiProvider(
       providers: [
+        modelDownloadProvider,
         appAuthProvider,
         userProvider,
         vehicleProvider,
