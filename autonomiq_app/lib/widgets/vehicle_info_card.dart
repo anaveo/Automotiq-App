@@ -7,7 +7,7 @@ import 'package:provider/provider.dart';
 import '../models/vehicle_model.dart';
 import '../services/bluetooth_manager.dart';
 import '../utils/logger.dart';
-import '../screens/model_download_screen.dart';
+// import '../screens/model_download_screen.dart';
 import '../models/model.dart';
 
 class VehicleInfoCard extends StatefulWidget {
@@ -161,15 +161,15 @@ class VehicleDetailsCard extends StatelessWidget {
                 ),
               ),
               IconButton(onPressed: () {
-                // AppLogger.logInfo("C button pressed");
-                Navigator.push(
-                  context,
-                  MaterialPageRoute<void>(
-                    builder: (context) => ModelDownloadScreen(
-                      model: chosenModel
-                    ),
-                  ),
-                );
+                AppLogger.logInfo("C button pressed");
+                // Navigator.push(
+                //   context,
+                //   MaterialPageRoute<void>(
+                //     builder: (context) => ModelDownloadScreen(
+                //       model: chosenModel
+                //     ),
+                //   ),
+                // );
               /* TODO: Implement ai camera functionality*/
                 }, icon: Icon(Icons.chat_outlined),
                 style: IconButton.styleFrom(
