@@ -1,3 +1,4 @@
+import 'package:automotiq_app/screens/chat_screen.dart';
 import 'package:automotiq_app/screens/diagnosis_screen.dart';
 import 'package:automotiq_app/widgets/current_status_widget.dart';
 import 'package:flutter/material.dart';
@@ -160,14 +161,14 @@ class VehicleDetailsCard extends StatelessWidget {
               ),
               IconButton(onPressed: () {
                 AppLogger.logInfo("C button pressed");
-                // Navigator.push(
-                //   context,
-                //   MaterialPageRoute<void>(
-                //     builder: (context) => ModelDownloadScreen(
-                //       model: chosenModel
-                //     ),
-                //   ),
-                // );
+                Navigator.push(
+                  context,
+                  MaterialPageRoute<void>(
+                    builder: (context) => ChatScreen(
+                      model: chosenModel
+                    ),
+                  ),
+                );
               /* TODO: Implement ai camera functionality*/
                 }, icon: Icon(Icons.chat_outlined),
                 style: IconButton.styleFrom(

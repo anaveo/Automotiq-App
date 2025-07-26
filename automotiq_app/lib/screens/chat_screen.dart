@@ -22,8 +22,7 @@ class ChatScreenState extends State<ChatScreen> {
   bool _isModelInitialized = false;
   bool _isStreaming = false; // Track streaming state
   String? _error;
-  Color _backgroundColor = const Color(0xFF0b2351);
-  String _appTitle = 'Flutter Gemma Example'; // Track the current app title
+  String _appTitle = 'Vehicle Chat'; // Track the current app title
 
   // Define the tools
   final List<Tool> _tools = [
@@ -39,20 +38,6 @@ class ChatScreenState extends State<ChatScreen> {
           },
         },
         'required': ['title'],
-      },
-    ),
-    const Tool(
-      name: 'change_background_color',
-      description: "Changes the background color of the app. The color should be a standard web color name like 'red', 'blue', 'green', 'yellow', 'purple', or 'orange'.",
-      parameters: {
-        'type': 'object',
-        'properties': {
-          'color': {
-            'type': 'string',
-            'description': 'The color name',
-          },
-        },
-        'required': ['color'],
       },
     ),
     /* const Tool(
@@ -226,25 +211,6 @@ class ChatScreenState extends State<ChatScreen> {
         return {'error': 'Title cannot be empty'};
       }
     }
-    if (functionCall.name == 'change_background_color') {
-      final colorName = functionCall.args['color']?.toLowerCase();
-      final colorMap = {
-        'red': Colors.red,
-        'blue': Colors.blue,
-        'green': Colors.green,
-        'yellow': Colors.yellow,
-        'purple': Colors.purple,
-        'orange': Colors.orange,
-      };
-      if (colorMap.containsKey(colorName)) {
-        setState(() {
-          _backgroundColor = colorMap[colorName]!;
-        });
-        return {'status': 'success', 'message': 'Background color changed to $colorName'};
-      } else {
-        return {'error': 'Color not supported', 'available_colors': colorMap.keys.toList()};
-      }
-    }
     if (functionCall.name == 'show_alert') {
       final title = functionCall.args['title'] as String? ?? 'Alert';
       final message = functionCall.args['message'] as String? ?? 'No message provided';
@@ -275,15 +241,12 @@ class ChatScreenState extends State<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _backgroundColor,
       appBar: AppBar(
-        backgroundColor: _backgroundColor,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               _appTitle,
-              style: const TextStyle(fontSize: 18),
               softWrap: true,
               overflow: TextOverflow.ellipsis,
               maxLines: 1,
@@ -313,13 +276,6 @@ class ChatScreenState extends State<ChatScreen> {
         ],
       ),
       body: Stack(children: [
-        Center(
-          child: Image.asset(
-            'assets/images/background.png',
-            width: 200,
-            height: 200,
-          ),
-        ),
         _isModelInitialized
             ? Column(children: [
           if (_error != null) _buildErrorBanner(_error!),
@@ -345,7 +301,7 @@ class ChatScreenState extends State<ChatScreen> {
             ),
           )
         ])
-            : const LoadingWidget(message: 'Initializing model'),
+            : const LoadingWidget(message: 'Initializing chat'),
       ]),
     );
   }

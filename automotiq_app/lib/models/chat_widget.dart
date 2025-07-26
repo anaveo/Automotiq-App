@@ -50,7 +50,7 @@ class ChatListWidget extends StatelessWidget {
             );
           }
         } else if (index == 1) {
-          return const Divider(height: 1.0);
+          return const Divider(height: 0.0);
         } else {
           final message = messages.reversed.toList()[index - 2];
           return ChatMessageWidget(

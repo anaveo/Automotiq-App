@@ -92,6 +92,17 @@ class ChatInputFieldState extends State<ChatInputField> {
     }
   }
 
+  InputDecoration _inputDecoration(String label) {
+    return InputDecoration(
+      labelText: label,
+      labelStyle: Theme.of(context).textTheme.bodySmall,
+      filled: true,
+      fillColor: Colors.grey.shade900,
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -104,10 +115,6 @@ class ChatInputFieldState extends State<ChatInputField> {
           data: IconThemeData(color: Theme.of(context).hoverColor),
           child: Container(
             margin: const EdgeInsets.symmetric(horizontal: 8.0),
-            decoration: BoxDecoration(
-              color: const Color(0xFF1a3a5c),
-              borderRadius: BorderRadius.circular(20),
-            ),
             child: Row(
               children: <Widget>[
                 // Add image button
@@ -126,17 +133,9 @@ class ChatInputFieldState extends State<ChatInputField> {
                   child: TextField(
                     controller: _textController,
                     onSubmitted: _handleSubmitted,
-                    style: const TextStyle(color: Colors.white),
-                    decoration: InputDecoration(
-                      hintText: _selectedImageBytes != null
+                    decoration: _inputDecoration(_selectedImageBytes != null
                           ? 'Add description to image...'
-                          : 'Send message',
-                      hintStyle: const TextStyle(color: Colors.white54),
-                      border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16.0,
-                        vertical: 12.0,
-                      ),
+                          : 'Send message'
                     ),
                     maxLines: null,
                   ),

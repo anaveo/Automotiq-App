@@ -10,15 +10,16 @@ import 'package:automotiq_app/providers/auth_provider.dart';
 import 'package:automotiq_app/providers/model_download_provider.dart';
 import 'package:automotiq_app/repositories/vehicle_repository.dart';
 export 'package:automotiq_app/providers/auth_provider.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 final modelDownloadProvider = ChangeNotifierProvider<ModelDownloadProvider>(
   create: (_) {
     AppLogger.logInfo('Initializing ModelDownloadProvider', 'providers.dart');
     return ModelDownloadProvider(
-      modelUrl: 'https://huggingface.co/api/models/example/model',
-      modelFilename: 'model2.txt',
+      modelUrl: dotenv.env['HUGGINGFACE_MODEL_URL'] ?? '',
+      modelFilename: dotenv.env['HUGGINGFACE_MODEL_FILENAME'] ?? '',
       licenseUrl: 'https://huggingface.co/models/example/license',
-      apiToken: 'HUGGINGFACE API KEY', // TODO: Add
+      apiToken: dotenv.env['HUGGINGFACE_API_KEY'] ?? '',
     );
   },
   lazy: true,

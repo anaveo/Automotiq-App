@@ -5,7 +5,7 @@ import '../models/model.dart';
 import 'package:path_provider/path_provider.dart';
 
 class DiagnosisScreen extends StatefulWidget {
-  const DiagnosisScreen({super.key, this.model = Model.gemma3Gpu_1B, this.dtcs = const []});
+  const DiagnosisScreen({super.key, this.model = Model.gemma3nLocalAsset, this.dtcs = const []});
 
   final Model model;
   final List<String> dtcs;

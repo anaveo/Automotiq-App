@@ -1,6 +1,6 @@
 import 'pigeon.g.dart';
 import 'core/model.dart';
-Model chosenModel = Model.gemma3Gpu_1B;
+Model chosenModel = Model.gemma3nLocalAsset;
 
 enum Model {
   gemma3GpuLocalAsset(
@@ -20,7 +20,7 @@ enum Model {
 
   gemma3nLocalAsset(
     // model file should be pre-downloaded and placed in the assets folder
-    url: 'assets/gemma-3n-E2B-it-int4.task',
+    url: '/data/user/0/com.automotiq.obdapp/app_flutter/gemma-3n-E2B-it-int4.task',
     filename: 'gemma-3n-E2B-it-int4.task',
     displayName: 'Gemma 3 Nano E2B IT Multimodal (Local Asset) ',
     licenseUrl: '',

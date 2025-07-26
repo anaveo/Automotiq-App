@@ -22,7 +22,6 @@ class ModelDownloadProvider extends ChangeNotifier {
   }) : _modelService = ModelDownloadService(
           modelUrl: modelUrl,
           modelFilename: modelFilename,
-          licenseUrl: licenseUrl,
           apiToken: apiToken,
         ) {
     _checkModelExistence();

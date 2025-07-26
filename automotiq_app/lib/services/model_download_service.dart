@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:automotiq_app/utils/logger.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
@@ -7,13 +8,11 @@ import 'package:path_provider/path_provider.dart';
 class ModelDownloadService {
   final String modelUrl;
   final String modelFilename;
-  final String licenseUrl;
   final String apiToken;
 
   ModelDownloadService({
     required this.modelUrl,
     required this.modelFilename,
-    required this.licenseUrl,
     required this.apiToken,
   });
 
@@ -28,7 +27,7 @@ class ModelDownloadService {
     try {
       final filePath = await _getFilePath();
       final file = File(filePath);
-
+      AppLogger.logInfo("Path: ${filePath}");
       final headers = {'Authorization': 'Bearer $apiToken'};
       final headResponse = await http.head(Uri.parse(modelUrl), headers: headers);
 
