@@ -11,6 +11,7 @@ import 'package:autonomiq_app/screens/splash_screen.dart';
 import 'package:autonomiq_app/screens/login_screen.dart';
 import 'package:autonomiq_app/screens/new_device_setup_screen.dart';
 import 'package:autonomiq_app/providers/model_download_provider.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class RootScreen extends StatefulWidget {
   const RootScreen({super.key});
@@ -123,6 +124,8 @@ class ErrorApp extends StatelessWidget {
 }
 
 void main() async {
+  await dotenv.load(fileName: 'assets/.env');
+  
   WidgetsFlutterBinding.ensureInitialized();
   AppLogger.logInfo('Starting app initialization', 'main');
   try {
