@@ -3,7 +3,6 @@ import 'package:autonomiq_app/theme/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
-import 'package:autonomiq_app/utils/firebase_options.dart';
 import 'package:autonomiq_app/utils/logger.dart';
 import 'package:autonomiq_app/providers/providers.dart';
 import 'package:autonomiq_app/screens/home_screen.dart';
@@ -131,8 +130,15 @@ void main() async {
   try {
     AppLogger.logInfo('Initializing Firebase...', 'main');
     await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
+        options: FirebaseOptions(
+          apiKey: dotenv.get('FIRESTORE_API_KEY'),
+          authDomain: dotenv.get('FIREBASE_AUTH_DOMAIN'),
+          projectId: dotenv.get('FIREBASE_PROJECT_ID'),
+          storageBucket: dotenv.get('FIREBASE_STORAGE_BUCKET'),
+          messagingSenderId: dotenv.get('FIREBASE_MESSAGING_SENDER_ID'),
+          appId: dotenv.get('FIREBASE_APP_ID'),
+        ),
+      );
     AppLogger.logInfo('Firebase initialized successfully', 'main');
   } catch (e, stackTrace) {
     AppLogger.logError(e, stackTrace, 'main');
