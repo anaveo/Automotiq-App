@@ -7,7 +7,7 @@ import 'package:provider/provider.dart';
 import '../models/vehicle_model.dart';
 import '../services/bluetooth_manager.dart';
 import '../utils/logger.dart';
-import '../models/model.dart';
+import '../models/gemma_model.dart';
 
 class VehicleInfoCard extends StatefulWidget {
   final VehicleModel vehicle;

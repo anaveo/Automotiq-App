@@ -8,7 +8,6 @@ import 'model_response.dart';
 import 'tool.dart';
 import '../flutter_gemma_interface.dart';
 
-import 'model.dart';
 
 class InferenceChat {
   final Future<InferenceModelSession> Function()? sessionCreator;
@@ -16,7 +15,6 @@ class InferenceChat {
   final int tokenBuffer;
   final bool supportImage;
   final bool supportsFunctionCalls;
-  final ModelType modelType; // Add modelType parameter
   late InferenceModelSession session;
   final List<Tool> tools;
 
@@ -32,7 +30,6 @@ class InferenceChat {
     this.supportImage = false,
     this.supportsFunctionCalls = false,
     this.tools = const [],
-    this.modelType = ModelType.gemmaIt, // Default to gemmaIt for backward compatibility
   });
 
   List<Message> get fullHistory => List.unmodifiable(_fullHistory);
@@ -65,10 +62,10 @@ class InferenceChat {
     }
 
     // --- DETAILED LOGGING ---
-    final historyForLogging = _modelHistory.map((m) => m.transformToChatPrompt(type: modelType)).join('\n');
+    final historyForLogging = _modelHistory.map((m) => m.transformToChatPrompt()).join('\n');
     debugPrint('--- Sending to Native ---');
     debugPrint('History:\n$historyForLogging');
-    debugPrint('Current Message:\n${messageToSend.transformToChatPrompt(type: modelType)}');
+    debugPrint('Current Message:\n${messageToSend.transformToChatPrompt()}');
     debugPrint('-------------------------');
     // --- END LOGGING ---
 
@@ -271,21 +268,10 @@ class InferenceChat {
   int get imageMessageCount => _fullHistory.where((msg) => msg.hasImage).length;
 
   String _cleanResponse(String response) {
-    switch (modelType) {
-      case ModelType.general:
-      case ModelType.gemmaIt:
-        // Remove trailing <end_of_turn> tags and trim whitespace
-        return response
-            .replaceAll(RegExp(r'<end_of_turn>\s*$'), '')
-            .trim();
-      
-      case ModelType.deepSeek:
-        String cleaned = response;
-        // Remove <think> blocks (DeepSeek internal reasoning)
-        cleaned = cleaned.replaceAll(RegExp(r'<think>[\s\S]*?</think>'), '');
-        // DeepSeek doesn't use <end_of_turn>, just trim whitespace
-        return cleaned.trim();
-    }
+    // Remove trailing <end_of_turn> tags and trim whitespace
+    return response
+        .replaceAll(RegExp(r'<end_of_turn>\s*$'), '')
+        .trim();
   }
 
   String _createToolsPrompt() {

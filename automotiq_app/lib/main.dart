@@ -9,7 +9,7 @@ import 'package:automotiq_app/screens/home_screen.dart';
 import 'package:automotiq_app/screens/splash_screen.dart';
 import 'package:automotiq_app/screens/login_screen.dart';
 import 'package:automotiq_app/screens/new_device_setup_screen.dart';
-import 'package:automotiq_app/providers/model_download_provider.dart';
+import 'package:automotiq_app/providers/model_provider.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class RootScreen extends StatefulWidget {
@@ -26,7 +26,7 @@ class _RootScreenState extends State<RootScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final modelDownloadProvider = Provider.of<ModelDownloadProvider>(context, listen: false);
+      final modelProvider = Provider.of<ModelProvider>(context, listen: false);
       final authProvider = Provider.of<AppAuthProvider>(context, listen: false);
 
       // Provider initialization flow:
@@ -36,10 +36,10 @@ class _RootScreenState extends State<RootScreen> {
       // services are set up if their upstream components have failed
             
       // Check if model is downloaded or downloading
-      if (!modelDownloadProvider.isModelDownloaded && !modelDownloadProvider.isDownloading) {
+      if (!modelProvider.isModelDownloaded && !modelProvider.isDownloading) {
         try {
           AppLogger.logInfo('Starting model download', 'RootScreen.initState');
-          await modelDownloadProvider.initializeModel();
+          await modelProvider.initializeModel();
           AppLogger.logInfo('Model initialization completed', 'RootScreen.initState');
         } catch (e, stackTrace) {
           AppLogger.logError(e, stackTrace, 'RootScreen.initState');
@@ -60,7 +60,7 @@ class _RootScreenState extends State<RootScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final modelProvider = Provider.of<ModelDownloadProvider>(context);
+    final modelProvider = Provider.of<ModelProvider>(context);
     final authProvider = Provider.of<AppAuthProvider>(context);
     final userProvider = Provider.of<UserProvider?>(context);
 
@@ -144,7 +144,7 @@ void main() async {
   runApp(
     MultiProvider(
       providers: [
-        modelDownloadProvider,
+        modelProvider,
         appAuthProvider,
         userProvider,
         vehicleProvider,

@@ -6,7 +6,6 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
-import 'core/model.dart';
 import 'pigeon.g.dart';
 import 'package:large_file_handler/large_file_handler.dart';
 import 'package:path_provider/path_provider.dart';
@@ -18,7 +17,6 @@ part 'flutter_gemma_mobile_model_manager.dart';
 part 'flutter_gemma_mobile_inference_model.dart';
 
 class MobileInferenceModelSession extends InferenceModelSession {
-  final ModelType modelType;
   final VoidCallback onClose;
   final bool supportImage;
   bool _isClosed = false;
@@ -28,7 +26,6 @@ class MobileInferenceModelSession extends InferenceModelSession {
 
   MobileInferenceModelSession({
     required this.onClose,
-    required this.modelType,
     this.supportImage = false,
   });
 
@@ -49,7 +46,7 @@ class MobileInferenceModelSession extends InferenceModelSession {
 
   @override
   Future<void> addQueryChunk(Message message) async {
-        final finalPrompt = message.transformToChatPrompt(type: modelType);
+        final finalPrompt = message.transformToChatPrompt();
     await _platformService.addQueryChunk(finalPrompt);
     if (message.hasImage && message.imageBytes != null && supportImage) {
       await _addImage(message.imageBytes!);
@@ -148,7 +145,6 @@ class FlutterGemma extends FlutterGemmaPlugin {
 
   @override
   Future<InferenceModel> createModel({
-    required ModelType modelType,
     int maxTokens = 1024,
     PreferredBackend? preferredBackend,
     List<int>? loraRanks,
@@ -188,7 +184,6 @@ class FlutterGemma extends FlutterGemmaPlugin {
 
       final model = _initializedModel = MobileInferenceModel(
         maxTokens: maxTokens,
-        modelType: modelType,
         modelManager: modelManager,
         preferredBackend: preferredBackend,
         supportedLoraRanks: loraRanks ?? supportedLoraRanks,

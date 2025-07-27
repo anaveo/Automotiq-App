@@ -1,13 +1,13 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../models/flutter_gemma.dart';
-import '../models/model.dart';
+import '../models/gemma_model.dart';
 import 'package:path_provider/path_provider.dart';
 
 class DiagnosisScreen extends StatefulWidget {
-  const DiagnosisScreen({super.key, this.model = Model.gemma3nLocalAsset, this.dtcs = const []});
+  const DiagnosisScreen({super.key, this.model = GemmaModel.gemma3nLocalAsset, this.dtcs = const []});
 
-  final Model model;
+  final GemmaModel model;
   final List<String> dtcs;
 
   @override
@@ -57,7 +57,6 @@ class DiagnosisScreenState extends State<DiagnosisScreen> {
       }
 
       final model = await _gemma.createModel(
-        modelType: widget.model.modelType,
         preferredBackend: widget.model.preferredBackend,
         maxTokens: 1024,
         supportImage: widget.model.supportImage,

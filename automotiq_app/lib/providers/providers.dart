@@ -7,15 +7,15 @@ import 'package:automotiq_app/repositories/user_repository.dart';
 import 'package:automotiq_app/providers/user_provider.dart';
 import 'package:automotiq_app/providers/vehicle_provider.dart';
 import 'package:automotiq_app/providers/auth_provider.dart';
-import 'package:automotiq_app/providers/model_download_provider.dart';
+import 'package:automotiq_app/providers/model_provider.dart';
 import 'package:automotiq_app/repositories/vehicle_repository.dart';
 export 'package:automotiq_app/providers/auth_provider.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-final modelDownloadProvider = ChangeNotifierProvider<ModelDownloadProvider>(
+final modelProvider = ChangeNotifierProvider<ModelProvider>(
   create: (_) {
-    AppLogger.logInfo('Initializing ModelDownloadProvider', 'providers.dart');
-    return ModelDownloadProvider(
+    AppLogger.logInfo('Initializing ModelProvider', 'providers.dart');
+    return ModelProvider(
       modelUrl: dotenv.env['HUGGINGFACE_MODEL_URL'] ?? '',
       modelFilename: dotenv.env['HUGGINGFACE_MODEL_FILENAME'] ?? '',
       licenseUrl: 'https://huggingface.co/models/example/license',
@@ -25,7 +25,7 @@ final modelDownloadProvider = ChangeNotifierProvider<ModelDownloadProvider>(
   lazy: true,
 );
 
-final appAuthProvider = ChangeNotifierProxyProvider<ModelDownloadProvider, AppAuthProvider>(
+final appAuthProvider = ChangeNotifierProxyProvider<ModelProvider, AppAuthProvider>(
   create: (_) {
     AppLogger.logInfo('Creating AppAuthProvider (initial)', 'providers.dart');
     return AppAuthProvider(firebaseAuth: FirebaseAuth.instance);

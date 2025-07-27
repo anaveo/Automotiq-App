@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:automotiq_app/services/model_download_service.dart';
+import 'package:automotiq_app/services/model_service.dart';
 import 'package:automotiq_app/utils/logger.dart';
 
-class ModelDownloadProvider extends ChangeNotifier {
-  final ModelDownloadService _modelService;
+class ModelProvider extends ChangeNotifier {
+  final ModelService _modelService;
   double _downloadProgress = 0.0;
   bool _isDownloading = false;
   bool _isModelDownloaded = false;
@@ -14,12 +14,12 @@ class ModelDownloadProvider extends ChangeNotifier {
   bool get isModelDownloaded => _isModelDownloaded;
   String? get downloadError => _downloadError;
 
-  ModelDownloadProvider({
+  ModelProvider({
     required String modelUrl,
     required String modelFilename,
     required String licenseUrl,
     required String apiToken,
-  }) : _modelService = ModelDownloadService(
+  }) : _modelService = ModelService(
           modelUrl: modelUrl,
           modelFilename: modelFilename,
           apiToken: apiToken,
@@ -32,7 +32,7 @@ class ModelDownloadProvider extends ChangeNotifier {
       _isModelDownloaded = await _modelService.checkModelExistence();
       notifyListeners();
     } catch (e, stackTrace) {
-      AppLogger.logError(e, stackTrace, 'ModelDownloadProvider._checkModelExistence');
+      AppLogger.logError(e, stackTrace, 'ModelProvider._checkModelExistence');
       _downloadError = e.toString();
       notifyListeners();
     }
@@ -42,11 +42,11 @@ class ModelDownloadProvider extends ChangeNotifier {
     await _checkModelExistence();
 
     if (_isModelDownloaded) {
-      AppLogger.logInfo('Existing model found', 'ModelDownloadProvider.initializeModel');
+      AppLogger.logInfo('Existing model found', 'ModelProvider.initializeModel');
       return;
     }
     if (_isDownloading) {
-      AppLogger.logWarning('Method called while model is downloading', 'ModelDownloadProvider.initializeModel');
+      AppLogger.logWarning('Method called while model is downloading', 'ModelProvider.initializeModel');
       return;
     }
 
@@ -63,9 +63,9 @@ class ModelDownloadProvider extends ChangeNotifier {
       );
 
       _isModelDownloaded = true;
-      AppLogger.logInfo('Model download completed', 'ModelDownloadProvider.initializeModel');
+      AppLogger.logInfo('Model download completed', 'ModelProvider.initializeModel');
     } catch (e, stackTrace) {
-      AppLogger.logError(e, stackTrace, 'ModelDownloadProvider.initializeModel');
+      AppLogger.logError(e, stackTrace, 'ModelProvider.initializeModel');
       _downloadError = e.toString();
       rethrow;
     } finally {

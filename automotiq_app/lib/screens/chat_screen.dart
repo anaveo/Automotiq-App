@@ -3,13 +3,13 @@ import 'package:flutter/material.dart';
 import '../models/flutter_gemma.dart';
 import '../models/chat_widget.dart';
 import '../models/loading_widget.dart';
-import '../models/model.dart';
+import '../models/gemma_model.dart';
 import 'package:path_provider/path_provider.dart';
 
 class ChatScreen extends StatefulWidget {
-  const ChatScreen({super.key, this.model = Model.gemma3Gpu_1B});
+  const ChatScreen({super.key, this.model = GemmaModel.gemma3Gpu_1B});
 
-  final Model model;
+  final GemmaModel model;
 
   @override
   ChatScreenState createState() => ChatScreenState();
@@ -85,7 +85,6 @@ class ChatScreenState extends State<ChatScreen> {
     }
 
     final model = await _gemma.createModel(
-      modelType: super.widget.model.modelType,
       preferredBackend: super.widget.model.preferredBackend,
       maxTokens: 1024,
       supportImage: widget.model.supportImage, // Pass image support

@@ -3,7 +3,6 @@ import 'dart:async';
 import 'core/tool.dart';
 import 'core/chat.dart';
 import 'core/message.dart';
-import 'core/model.dart';
 import 'core/model_response.dart';
 import 'model_file_manager_interface.dart';
 import 'pigeon.g.dart';
@@ -33,14 +32,12 @@ abstract class FlutterGemmaPlugin extends PlatformInterface {
 
   /// Creates and returns a new [InferenceModel] instance.
   ///
-  /// [modelType] — model type to create.
   /// [maxTokens] — maximum context length for the model.
   /// [preferredBackend] — backend preference (e.g., CPU, GPU).
   /// [loraRanks] — optional supported LoRA ranks.
   /// [maxNumImages] — maximum number of images (for multimodal models).
   /// [supportImage] — whether the model supports images.
   Future<InferenceModel> createModel({
-    required ModelType modelType,
     int maxTokens = 1024,
     PreferredBackend? preferredBackend,
     List<int>? loraRanks,

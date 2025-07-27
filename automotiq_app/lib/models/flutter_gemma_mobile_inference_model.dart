@@ -5,14 +5,12 @@ class MobileInferenceModel extends InferenceModel {
     required this.maxTokens,
     required this.onClose,
     required this.modelManager,
-    required this.modelType,
     this.preferredBackend,
     this.supportedLoraRanks,
     this.supportImage = false, // Enabling image support
     this.maxNumImages,
   });
 
-  final ModelType modelType;
   @override
   Future<InferenceChat> createChat({
     double temperature = .8,
@@ -39,7 +37,6 @@ class MobileInferenceModel extends InferenceModel {
       supportImage: supportImage ?? false,
       supportsFunctionCalls: supportsFunctionCalls ?? false,
       tools: tools,
-      modelType: modelType, // Pass the actual model type!
     );
     await chat!.initSession();
     return chat!;
@@ -97,7 +94,6 @@ class MobileInferenceModel extends InferenceModel {
       );
 
       final session = _session = MobileInferenceModelSession(
-        modelType: modelType,
         supportImage: supportImage,
         onClose: () {
           _session = null;

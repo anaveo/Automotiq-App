@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:automotiq_app/providers/model_download_provider.dart';
+import 'package:automotiq_app/providers/model_provider.dart';
 import 'package:automotiq_app/providers/auth_provider.dart';
 
 class SplashScreen extends StatelessWidget {
@@ -13,7 +13,7 @@ class SplashScreen extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Consumer<ModelDownloadProvider>(
+            Consumer<ModelProvider>(
               builder: (context, modelProvider, _) {
                 if (modelProvider.downloadError != null) {
                   return Text(

@@ -5,12 +5,12 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 
-class ModelDownloadService {
+class ModelService {
   final String modelUrl;
   final String modelFilename;
   final String apiToken;
 
-  ModelDownloadService({
+  ModelService({
     required this.modelUrl,
     required this.modelFilename,
     required this.apiToken,
