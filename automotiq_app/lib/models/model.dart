@@ -1,7 +1,11 @@
 import 'pigeon.g.dart';
 import 'core/model.dart';
-Model chosenModel = Model.gemma3nLocalAsset;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
+Model chosenModel = Model.values.firstWhere(
+    (e) => e.filename == dotenv.env['HUGGINGFACE_MODEL_FILENAME'],
+  );
+  
 enum Model {
   gemma3GpuLocalAsset(
     // model file should be pre-downloaded and placed in the assets folder
