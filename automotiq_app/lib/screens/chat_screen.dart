@@ -1,7 +1,9 @@
 import 'dart:typed_data';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:automotiq_app/providers/model_provider.dart';
 import 'package:automotiq_app/utils/logger.dart';
 import 'package:flutter_gemma/flutter_gemma.dart';
@@ -19,14 +21,60 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _isLoading = false;
   Uint8List? _selectedImage;
 
+  @override
+  void initState() {
+    super.initState();
+    _loadMessages();
+  }
+
+  Future<void> _loadMessages() async {
+    final prefs = await SharedPreferences.getInstance();
+    final data = prefs.getStringList('chat_messages') ?? [];
+
+    final loadedMessages = data.map((msgJson) {
+      final dynamic decoded = json.decode(msgJson);
+      final map = Map<String, dynamic>.from(decoded);
+      if (map['image'] != null) {
+        map['image'] = base64Decode(map['image']);
+      }
+      return map;
+    });
+
+    setState(() {
+      _messages.addAll(loadedMessages);
+    });
+  }
+
+  Future<void> _saveMessages() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    final encoded = _messages.map((msg) {
+      final newMsg = Map<String, dynamic>.from(msg);
+      if (newMsg['image'] != null) {
+        newMsg['image'] = base64Encode(newMsg['image']);
+      }
+      return json.encode(newMsg);
+    }).toList();
+
+    await prefs.setStringList('chat_messages', encoded);
+  }
+
+  Future<void> _clearMessages() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('chat_messages');
+    setState(() {
+      _messages.clear();
+    });
+  }
+
   Future<void> _pickImage() async {
     try {
       final picker = ImagePicker();
       final pickedFile = await picker.pickImage(
         source: ImageSource.gallery,
-        maxWidth: 1024, // Resize to reduce memory usage
+        maxWidth: 1024,
         maxHeight: 1024,
-        imageQuality: 85, // Compress to balance quality and size
+        imageQuality: 85,
       );
       if (pickedFile != null) {
         final imageBytes = await pickedFile.readAsBytes();
@@ -64,8 +112,10 @@ class _ChatScreenState extends State<ChatScreen> {
       _messages.add(messageData);
       _isLoading = true;
     });
+    await _saveMessages();
+
     _controller.clear();
-    final tempImage = _selectedImage; // Store image before clearing
+    final tempImage = _selectedImage;
     _selectedImage = null;
 
     try {
@@ -83,7 +133,6 @@ class _ChatScreenState extends State<ChatScreen> {
         'ChatScreen._sendMessage',
       );
 
-      // Check token size to avoid overflow
       final tokenCount = await chat.maxTokens;
       AppLogger.logInfo('Prompt token count: $tokenCount', 'ChatScreen._sendMessage');
 
@@ -105,6 +154,7 @@ class _ChatScreenState extends State<ChatScreen> {
               });
             }
           });
+          await _saveMessages();
         } else if (response is FunctionCallResponse) {
           final finalResponse = await chat.generateChatResponse();
           setState(() {
@@ -114,8 +164,10 @@ class _ChatScreenState extends State<ChatScreen> {
               'image': null,
             });
           });
+          await _saveMessages();
         }
       }
+
       AppLogger.logInfo('Response received: $fullResponse', 'ChatScreen._sendMessage');
     } catch (e, stackTrace) {
       AppLogger.logError(e, stackTrace, 'ChatScreen._sendMessage');
@@ -126,6 +178,7 @@ class _ChatScreenState extends State<ChatScreen> {
           'image': null,
         });
       });
+      await _saveMessages();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to send message: $e')),
       );
@@ -151,7 +204,32 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Vehicle Assistant')),
+        title: const Text('Vehicle Assistant'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.delete),
+            tooltip: 'Clear chat',
+            onPressed: _isLoading
+                ? null
+                : () async {
+                    final confirmed = await showDialog<bool>(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: const Text('Clear Chat History?'),
+                        content: const Text('This will permanently delete all messages.'),
+                        actions: [
+                          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+                          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Clear')),
+                        ],
+                      ),
+                    );
+                    if (confirmed == true) {
+                      await _clearMessages();
+                    }
+                  },
+          ),
+        ],
+      ),
       body: Consumer<ModelProvider>(
         builder: (context, modelProvider, child) {
           if (!modelProvider.isChatInitialized) {
@@ -203,7 +281,9 @@ class _ChatScreenState extends State<ChatScreen> {
                                   ),
                                   child: Text(
                                     message['text']!,
-                                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: isUser ? Colors.white : Colors.white70),
+                                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                          color: isUser ? Colors.white : Colors.white70,
+                                        ),
                                   ),
                                 ),
                             ],
