@@ -1,25 +1,26 @@
 import 'dart:io';
 
+import 'package:automotiq_app/models/gemma_model.dart';
 import 'package:automotiq_app/utils/logger.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 
 class ModelService {
-  final String modelUrl;
-  final String modelFilename;
-  final String apiToken;
+  final GemmaModel model;
 
   ModelService({
-    required this.modelUrl,
-    required this.modelFilename,
-    required this.apiToken,
-  });
+    required String variant,
+  }) : model = GemmaModel.values.firstWhere(
+         (e) => e.name == variant,
+         orElse: () => throw Exception('Model variant $variant not found in Model enum'),
+       );
 
   /// Helper method to get the file path.
   Future<String> _getFilePath() async {
     final directory = await getApplicationDocumentsDirectory();
-    return '${directory.path}/$modelFilename';
+    return '${directory.path}/${model.filename}';
   }
 
   /// Checks if the model file exists and matches the remote file size.
@@ -28,8 +29,8 @@ class ModelService {
       final filePath = await _getFilePath();
       final file = File(filePath);
       AppLogger.logInfo("Path: ${filePath}");
-      final headers = {'Authorization': 'Bearer $apiToken'};
-      final headResponse = await http.head(Uri.parse(modelUrl), headers: headers);
+      final headers = {'Authorization': 'Bearer ${dotenv.env['HUGGINGFACE_API_KEY']}'};
+      final headResponse = await http.head(Uri.parse(model.url), headers: headers);
 
       if (headResponse.statusCode == 200) {
         final contentLengthHeader = headResponse.headers['content-length'];
@@ -41,9 +42,7 @@ class ModelService {
         }
       }
     } catch (e) {
-      if (kDebugMode) {
-        print('Error checking model existence: $e');
-      }
+        AppLogger.logError('Error checking model existence: $e', null, 'ModelService.checkModelExistence');
     }
     return false;
   }
@@ -64,8 +63,8 @@ class ModelService {
         downloadedBytes = await file.length();
       }
 
-      final request = http.Request('GET', Uri.parse(modelUrl));
-      request.headers['Authorization'] = 'Bearer $apiToken';
+      final request = http.Request('GET', Uri.parse(model.url));
+      request.headers['Authorization'] = 'Bearer ${dotenv.env['HUGGINGFACE_API_KEY']}';
 
       if (downloadedBytes > 0) {
         request.headers['Range'] = 'bytes=$downloadedBytes-';
@@ -86,21 +85,18 @@ class ModelService {
         }
       } else {
         if (kDebugMode) {
-          print('Failed to download model. Status code: ${response.statusCode}');
-          print('Headers: ${response.headers}');
+          AppLogger.logError('Failed to download model. Status code: ${response.statusCode}', null, 'ModelService.downloadModel');
           try {
             final errorBody = await response.stream.bytesToString();
-            print('Error body: $errorBody');
+            AppLogger.logInfo('Error body: $errorBody');
           } catch (e) {
-            print('Could not read error body: $e');
+            AppLogger.logError('Could not read error body: $e', null, 'ModelService.downloadModel');
           }
         }
-        throw Exception('Failed to download the model.');
+        throw HttpException('Status code ${response.statusCode}');
       }
     } catch (e) {
-      if (kDebugMode) {
-        print('Error downloading model: $e');
-      }
+        AppLogger.logError('Error downloading model: $e', null, 'ModelService.checkModelExistence');
       rethrow;
     } finally {
       if (fileSink != null) await fileSink.close();

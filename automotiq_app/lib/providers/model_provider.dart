@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:automotiq_app/services/model_service.dart';
 import 'package:automotiq_app/utils/logger.dart';
 
-class ModelProvider extends ChangeNotifier {
+class GemmaProvider extends ChangeNotifier {
   final ModelService _modelService;
   double _downloadProgress = 0.0;
   bool _isDownloading = false;
@@ -14,15 +14,10 @@ class ModelProvider extends ChangeNotifier {
   bool get isModelDownloaded => _isModelDownloaded;
   String? get downloadError => _downloadError;
 
-  ModelProvider({
-    required String modelUrl,
-    required String modelFilename,
-    required String licenseUrl,
-    required String apiToken,
+  GemmaProvider({
+    required String variant
   }) : _modelService = ModelService(
-          modelUrl: modelUrl,
-          modelFilename: modelFilename,
-          apiToken: apiToken,
+          variant: variant,
         ) {
     _checkModelExistence();
   }
@@ -33,7 +28,6 @@ class ModelProvider extends ChangeNotifier {
       notifyListeners();
     } catch (e, stackTrace) {
       AppLogger.logError(e, stackTrace, 'ModelProvider._checkModelExistence');
-      _downloadError = e.toString();
       notifyListeners();
     }
   }

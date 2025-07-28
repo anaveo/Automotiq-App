@@ -1,40 +1,13 @@
 import 'pigeon.g.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-GemmaModel chosenModel = GemmaModel.values.firstWhere(
-    (e) => e.filename == dotenv.env['HUGGINGFACE_MODEL_FILENAME'],
-  );
-  
 enum GemmaModel {
-  gemma3GpuLocalAsset(
-    // model file should be pre-downloaded and placed in the assets folder
-    url: 'assets/gemma3-1b-it-int4.task',
-    filename: 'gemma3-1b-it-int4.task',
-    displayName: 'Gemma3 1B IT (GPU / Local)',
-    preferredBackend: PreferredBackend.gpu,
-    temperature: 0.1,
-    topK: 40,
-    topP: 0.95,
-  ),
 
-  gemma3nLocalAsset(
-    // model file should be pre-downloaded and placed in the assets folder
-    url: '/data/user/0/com.automotiq.obdapp/app_flutter/gemma-3n-E2B-it-int4.task',
-    filename: 'gemma-3n-E2B-it-int4.task',
-    displayName: 'Gemma 3 Nano E2B IT Multimodal (Local Asset) ',
-    preferredBackend: PreferredBackend.gpu,
-    temperature: 0.1,
-    topK: 5,
-    topP: 0.95,
-    supportsFunctionCalls: true,
-  ),
-
-  // Models from JSON - Gemma 3n E2B (Updated version)
+  // Gemma 3n 2B Models
   gemma3nGpu_2B(
     url:
     'https://huggingface.co/google/gemma-3n-E2B-it-litert-preview/resolve/main/gemma-3n-E2B-it-int4.task',
     filename: 'gemma-3n-E2B-it-int4.task',
-    displayName: 'Gemma 3n E2B IT Multimodal (GPU) 3.1Gb',
+    displayName: 'Gemma 3n E2B IT Multimodal (GPU)',
     preferredBackend: PreferredBackend.gpu,
     temperature: 1.0,
     topK: 64,
@@ -48,7 +21,7 @@ enum GemmaModel {
     url:
     'https://huggingface.co/google/gemma-3n-E2B-it-litert-preview/resolve/main/gemma-3n-E2B-it-int4.task',
     filename: 'gemma-3n-E2B-it-int4.task',
-    displayName: 'Gemma 3n E2B IT Multimodal (CPU) 3.1Gb',
+    displayName: 'Gemma 3n E2B IT Multimodal (CPU)',
     preferredBackend: PreferredBackend.cpu,
     temperature: 1.0,
     topK: 64,
@@ -59,11 +32,12 @@ enum GemmaModel {
     supportsFunctionCalls: true,
   ),
 
+  // Gemma 3n 4B Models
   gemma3nGpu_4B(
     url:
     'https://huggingface.co/google/gemma-3n-E4B-it-litert-preview/resolve/main/gemma-3n-E4B-it-int4.task',
     filename: 'gemma-3n-E4B-it-int4.task',
-    displayName: 'Gemma 3n E4B IT Multimodal (GPU) 6.5Gb',
+    displayName: 'Gemma 3n E4B IT Multimodal (GPU)',
     preferredBackend: PreferredBackend.gpu,
     temperature: 1.0,
     topK: 64,
@@ -77,7 +51,7 @@ enum GemmaModel {
     url:
     'https://huggingface.co/google/gemma-3n-E4B-it-litert-preview/resolve/main/gemma-3n-E4B-it-int4.task',
     filename: 'gemma-3n-E4B-it-int4.task',
-    displayName: 'Gemma 3n E4B IT Multimodal (CPU) 6.5Gb',
+    displayName: 'Gemma 3n E4B IT Multimodal (CPU)',
     preferredBackend: PreferredBackend.cpu,
     temperature: 1.0,
     topK: 64,
@@ -88,12 +62,12 @@ enum GemmaModel {
     supportsFunctionCalls: true,
   ),
 
-  // Models from JSON - Gemma3 1B IT q4 (Updated version)
+  // Gemma 3 1B Models
   gemma3Gpu_1B(
     url:
     'https://huggingface.co/litert-community/Gemma3-1B-IT/resolve/main/Gemma3-1B-IT_multi-prefill-seq_q4_ekv2048.task',
     filename: 'Gemma3-1B-IT_multi-prefill-seq_q4_ekv2048.task',
-    displayName: 'Gemma3 1B IT q4 (GPU) 0.5Gb',
+    displayName: 'Gemma3 1B IT q4 (GPU)',
     preferredBackend: PreferredBackend.gpu,
     temperature: 1.0,
     topK: 64,
@@ -104,7 +78,7 @@ enum GemmaModel {
     url:
     'https://huggingface.co/litert-community/Gemma3-1B-IT/resolve/main/Gemma3-1B-IT_multi-prefill-seq_q4_ekv2048.task',
     filename: 'Gemma3-1B-IT_multi-prefill-seq_q4_ekv2048.task',
-    displayName: 'Gemma3 1B IT q4 (CPU) 0.5Gb',
+    displayName: 'Gemma3 1B IT q4 (CPU)',
     preferredBackend: PreferredBackend.cpu,
     temperature: 1.0,
     topK: 64,

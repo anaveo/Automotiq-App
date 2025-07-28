@@ -12,20 +12,17 @@ import 'package:automotiq_app/repositories/vehicle_repository.dart';
 export 'package:automotiq_app/providers/auth_provider.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-final modelProvider = ChangeNotifierProvider<ModelProvider>(
+final modelProvider = ChangeNotifierProvider<GemmaProvider>(
   create: (_) {
     AppLogger.logInfo('Initializing ModelProvider', 'providers.dart');
-    return ModelProvider(
-      modelUrl: dotenv.env['HUGGINGFACE_MODEL_URL'] ?? '',
-      modelFilename: dotenv.env['HUGGINGFACE_MODEL_FILENAME'] ?? '',
-      licenseUrl: 'https://huggingface.co/models/example/license',
-      apiToken: dotenv.env['HUGGINGFACE_API_KEY'] ?? '',
+    return GemmaProvider(
+      variant: dotenv.env['GEMMA_MODEL_VARIANT'] ?? ''
     );
   },
   lazy: true,
 );
 
-final appAuthProvider = ChangeNotifierProxyProvider<ModelProvider, AppAuthProvider>(
+final appAuthProvider = ChangeNotifierProxyProvider<GemmaProvider, AppAuthProvider>(
   create: (_) {
     AppLogger.logInfo('Creating AppAuthProvider (initial)', 'providers.dart');
     return AppAuthProvider(firebaseAuth: FirebaseAuth.instance);

@@ -26,7 +26,7 @@ class _RootScreenState extends State<RootScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final modelProvider = Provider.of<ModelProvider>(context, listen: false);
+      final modelProvider = Provider.of<GemmaProvider>(context, listen: false);
       final authProvider = Provider.of<AppAuthProvider>(context, listen: false);
 
       // Provider initialization flow:
@@ -60,7 +60,7 @@ class _RootScreenState extends State<RootScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final modelProvider = Provider.of<ModelProvider>(context);
+    final modelProvider = Provider.of<GemmaProvider>(context);
     final authProvider = Provider.of<AppAuthProvider>(context);
     final userProvider = Provider.of<UserProvider?>(context);
 

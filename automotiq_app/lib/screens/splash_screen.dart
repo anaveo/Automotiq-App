@@ -13,7 +13,7 @@ class SplashScreen extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Consumer<ModelProvider>(
+            Consumer<GemmaProvider>(
               builder: (context, modelProvider, _) {
                 if (modelProvider.downloadError != null) {
                   return Text(
