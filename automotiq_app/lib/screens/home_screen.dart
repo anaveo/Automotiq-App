@@ -1,4 +1,4 @@
-import 'package:automotiq_app/providers/providers.dart';
+import 'package:automotiq_app/providers/model_provider.dart';
 import 'package:automotiq_app/providers/user_provider.dart';
 import 'package:automotiq_app/screens/account_settings_screen.dart';
 import 'package:automotiq_app/services/bluetooth_manager.dart';
@@ -25,14 +25,28 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+
       final vehicleProvider = context.read<VehicleProvider>();
       try {
         await vehicleProvider.loadVehicles();
-        AppLogger.logInfo('Vehicles loaded successfully', 'HomeScreen.initState');
         setState(() => _errorMessage = null);
       } catch (e, stackTrace) {
         AppLogger.logError(e, stackTrace, 'HomeScreen.initState');
         setState(() => _errorMessage = 'Failed to load vehicles: $e');
+      }
+
+      // Initialize model and chat in the background
+      final modelProvider = Provider.of<ModelProvider>(context, listen: false);
+      if (!modelProvider.isModelInitializing && !modelProvider.isModelInitialized) {
+        try {
+          await modelProvider.initializeModel();
+          if (modelProvider.isModelInitialized && !modelProvider.isChatInitializing && !modelProvider.isChatInitialized) {
+            await modelProvider.initializeGlobalChat();
+          }
+        } catch (e, stackTrace) {
+          AppLogger.logError(e, stackTrace, 'HomeScreen.initializeModelAndChat');
+          setState(() => _errorMessage = 'Failed to initialize model/chat: $e');
+        }
       }
     });
   }

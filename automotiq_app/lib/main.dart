@@ -40,38 +40,25 @@ class RootScreen extends StatelessWidget {
           ],
           child: Consumer<AppAuthProvider>(
             builder: (context, authProvider, child) {
-              // Diagnostic logging
-              AppLogger.logInfo(
-                'RootScreen state: authProvider.user=${authProvider.user?.uid}, '
-                'isModelInitialized=${modelProvider.isModelInitialized}, '
-                'isChatInitialized=${modelProvider.isChatInitialized}, '
-                'userProvider=${Provider.of<UserProvider>(context) != null}, '
-                'userProvider.user=${Provider.of<UserProvider>(context).user != null}',
-                'RootScreen',
-              );
-              // Show loader during auth, model init, chat init, or user loading
-              if (authProvider.isLoading ||
-                  modelProvider.isModelInitializing ||
-                  modelProvider.isChatInitializing ||
-                  Provider.of<UserProvider>(context).isLoading) {
+
+              // Show loader during auth or user loading
+              if (authProvider.isLoading || Provider.of<UserProvider>(context).isLoading) {
                 return const LoaderScreen();
               }
-              // Show error screen if auth or init fails
+
+              // Show error screen if auth fails
               if (authProvider.authError != null) {
                 return ErrorApp(errorMessage: authProvider.authError!);
               }
-              if (modelProvider.initializeError != null) {
-                return ErrorApp(errorMessage: modelProvider.initializeError!);
-              }
+
               // Access UserProvider
               final userProvider = Provider.of<UserProvider>(context);
-              // Show home screen if fully initialized
-              if (authProvider.user != null &&
-                  modelProvider.isModelInitialized &&
-                  modelProvider.isChatInitialized &&
-                  userProvider.user != null) {
+
+              // Show home screen if authenticated and user initialized
+              if (authProvider.user != null && userProvider.user != null) {
                 return const HomeScreen();
               }
+
               // Default to login screen
               return const LoginScreen();
             },

@@ -103,7 +103,7 @@ class ModelProvider extends ChangeNotifier {
 
   Future<void> initializeGlobalChat() async {
     if (_chatInitializing || _chatInitialized) {
-      AppLogger.logInfo('Chat already initializing or initialized', 'ModelProvider.initializeGlobalChat');
+      AppLogger.logInfo('Global chat already initializing or initialized', 'ModelProvider.initializeGlobalChat');
       return;
     }
     try {
