@@ -8,6 +8,7 @@ import '../models/vehicle_model.dart';
 import '../services/bluetooth_manager.dart';
 import '../utils/logger.dart';
 import '../models/model_config_object.dart';
+import '../services/dtc_database_service.dart';
 
 class VehicleInfoCard extends StatefulWidget {
   final VehicleModel vehicle;
@@ -99,12 +100,20 @@ class VehicleImagePlaceholder extends StatelessWidget {
   }
 }
 
-class VehicleDetailsCard extends StatelessWidget {
+class VehicleDetailsCard extends StatefulWidget {
   final VehicleModel vehicle;
+
   const VehicleDetailsCard({
     super.key,
     required this.vehicle,
   });
+
+  @override
+  State<VehicleDetailsCard> createState() => _VehicleDetailsCardState();
+}
+
+class _VehicleDetailsCardState extends State<VehicleDetailsCard> {
+  VehicleModel get vehicle => widget.vehicle;
 
   String _mapConnectionStateToString(DeviceConnectionState state) {
     switch (state) {
@@ -119,6 +128,20 @@ class VehicleDetailsCard extends StatelessWidget {
     }
   }
 
+  Future<List<String>> loadRandomDtcCodes() async {
+    Set<String> codesSet = {};
+
+    // Keep fetching until we have 2 unique codes
+    while (codesSet.length < 2) {
+      String? codeNullable = await DtcDatabaseService().getRandomDtcCode();
+      if (codeNullable != null) {
+        codesSet.add(codeNullable);
+      }
+    }
+
+    return codesSet.toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     final bluetoothManager = Provider.of<BluetoothManager?>(context, listen: false);
@@ -128,52 +151,67 @@ class VehicleDetailsCard extends StatelessWidget {
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
-            spacing: 30,
             children: [
-              IconButton(onPressed: () {AppLogger.logInfo("Refresh button pressed");/* TODO: Implement refresh functionality*/}, icon: Icon(Icons.refresh_rounded),
+              IconButton(
+                onPressed: () {
+                  AppLogger.logInfo("Refresh button pressed");
+                  if (vehicle.id == 'demo') {
+                    loadRandomDtcCodes().then((codes) {
+                      setState(() {
+                        vehicle.diagnosticTroubleCodes = codes;
+                      });
+                    });
+                  }
+                  // else: TODO: Implement refresh logic for real vehicle
+                },
+                icon: const Icon(Icons.refresh_rounded),
                 style: IconButton.styleFrom(
                   foregroundColor: Colors.white,
                   iconSize: 30,
-                  shape: CircleBorder(
+                  shape: const CircleBorder(
                     side: BorderSide(color: Colors.white, width: 2),
                   ),
                 ),
               ),
-              IconButton(onPressed: () {
-                AppLogger.logInfo("Diagnose button pressed");
-                Navigator.push(
-                  context,
-                  MaterialPageRoute<void>(
-                    builder: (context) => DiagnosisScreen(
-                      dtcs: vehicle.diagnosticTroubleCodes ?? []
+              IconButton(
+                onPressed: () {
+                  AppLogger.logInfo("Diagnose button pressed");
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute<void>(
+                      builder: (context) => DiagnosisScreen(
+                        dtcs: vehicle.diagnosticTroubleCodes ?? [],
+                      ),
                     ),
-                  ),
-                );
-                }, icon: Icon(Icons.build_circle_outlined),
+                  );
+                },
+                icon: const Icon(Icons.build_circle_outlined),
                 style: IconButton.styleFrom(
                   foregroundColor: Colors.white,
                   iconSize: 30,
-                  shape: CircleBorder(
+                  shape: const CircleBorder(
                     side: BorderSide(color: Colors.white, width: 2),
                   ),
                 ),
               ),
-              IconButton(onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute<void>(
-                    builder: (context) => ChatScreen(),
-                  ),
-                );
-                }, icon: Icon(Icons.chat_outlined),
+              IconButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute<void>(
+                      builder: (context) => ChatScreen(),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.chat_outlined),
                 style: IconButton.styleFrom(
                   foregroundColor: Colors.white,
                   iconSize: 30,
-                  shape: CircleBorder(
+                  shape: const CircleBorder(
                     side: BorderSide(color: Colors.white, width: 2),
                   ),
                 ),
-              )  
+              ),
             ],
           ),
           Card(
@@ -205,7 +243,7 @@ class VehicleDetailsCard extends StatelessWidget {
               ),
             ),
           )
-        ]
+        ],
       ),
     );
   }
@@ -245,7 +283,7 @@ class ConnectionStatusWidget extends StatelessWidget {
           AppLogger.logError(snapshot.error, null, 'ConnectionStatusWidget');
           return Center(
             child: Padding(
-              padding: EdgeInsets.all(18.0),
+              padding: const EdgeInsets.all(18.0),
               child: Text(
                 'Vehicle Status: Error',
                 style: Theme.of(context).textTheme.labelSmall,
@@ -277,12 +315,12 @@ class ConnectionStatusWidget extends StatelessWidget {
                 Text(
                   stateMapper(state),
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: state == DeviceConnectionState.connected
-                        ? Colors.greenAccent
-                        : isLoading
-                            ? Colors.white70
-                            : Colors.redAccent,
-                  ),
+                        color: state == DeviceConnectionState.connected
+                            ? Colors.greenAccent
+                            : isLoading
+                                ? Colors.white70
+                                : Colors.redAccent,
+                      ),
                   textAlign: TextAlign.center,
                 ),
               ],
