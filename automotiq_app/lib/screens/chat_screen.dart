@@ -151,10 +151,7 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Vehicle Assistant'),
-        elevation: 4,
-        shadowColor: Colors.grey.withOpacity(0.3),
-      ),
+        title: const Text('Vehicle Assistant')),
       body: Consumer<ModelProvider>(
         builder: (context, modelProvider, child) {
           if (!modelProvider.isChatInitialized) {

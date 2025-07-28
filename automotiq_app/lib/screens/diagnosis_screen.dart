@@ -1,191 +1,148 @@
-// import 'package:flutter/foundation.dart';
-// import 'package:flutter/material.dart';
-// import '../models/flutter_gemma.dart';
-// import '../models/gemma_model.dart';
-// import 'package:path_provider/path_provider.dart';
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:automotiq_app/providers/model_provider.dart';
+import 'package:automotiq_app/utils/logger.dart';
+import 'package:flutter_gemma/flutter_gemma.dart';
 
-// class DiagnosisScreen extends StatefulWidget {
-//   DiagnosisScreen({super.key, this.dtcs = const []});
+class DiagnosisScreen extends StatefulWidget {
+  const DiagnosisScreen({super.key, this.dtcs = const []});
 
-//   final GemmaModel model = chosenModel;
-//   final List<String> dtcs;
+  final List<String> dtcs;
 
-//   @override
-//   DiagnosisScreenState createState() => DiagnosisScreenState();
-// }
+  @override
+  DiagnosisScreenState createState() => DiagnosisScreenState();
+}
 
-// class DiagnosisScreenState extends State<DiagnosisScreen> {
-//   final _gemma = FlutterGemmaPlugin.instance;
-//   InferenceChat? chat;
-//   bool _isModelInitialized = false;
-//   bool _isLoading = false;
-//   String? _error;
-//   String? _inferenceOutput;
+class DiagnosisScreenState extends State<DiagnosisScreen> {
+  bool _isLoading = false;
+  String? _error;
+  String? _inferenceOutput;
+  String _prompt = "";
 
-//   // Hardcoded prompt for diagnosis
-//   String _prompt = "";
+  @override
+  void initState() {
+    super.initState();
+    _setPrompt();
+    _runInference();
+  }
 
-//   setPrompt() {
-//     _prompt =  "You are an AI mechanic. Your role is to diagnose the health of a vehicle, given its diagnostic trouble codes and recommend further action. The vehicle has the following diagnostic trouble codes: ${widget.dtcs.join(', ')}";
-//   }
+  void _setPrompt() {
+    _prompt = "You are an AI mechanic. Your role is to diagnose the health of a vehicle, given its diagnostic trouble codes and recommend further action. The vehicle has the following diagnostic trouble codes: ${widget.dtcs.join(', ')}";
+  }
 
-//   @override
-//   void initState() {
-//     super.initState();
-//     setPrompt();
-//     _initializeModelAndRunInference();
-//   }
+  Future<void> _runInference() async {
+    final modelProvider = Provider.of<ModelProvider>(context, listen: false);
+    if (!modelProvider.isChatInitialized || modelProvider.globalAgent == null) {
+      AppLogger.logError('Global chat not initialized', null, 'DiagnosisScreen._runInference');
+      setState(() {
+        _error = 'Chat not initialized. Please try again.';
+        _isLoading = false;
+      });
+      return;
+    }
 
-//   @override
-//   void dispose() {
-//     super.dispose();
-//     _gemma.modelManager.deleteModel();
-//   }
+    setState(() {
+      _isLoading = true;
+      _error = null;
+      _inferenceOutput = null;
+    });
 
-//   Future<void> _initializeModelAndRunInference() async {
-//     setState(() {
-//       _isLoading = true;
-//       _error = null;
-//     });
+    try {
+      final chat = modelProvider.globalAgent!;
 
-//     try {
-//       if (!await _gemma.modelManager.isModelInstalled) {
-//         final path = kIsWeb
-//             ? widget.model.url
-//             : '${(await getApplicationDocumentsDirectory()).path}/${widget.model.filename}';
-//         await _gemma.modelManager.setModelPath(path);
-//       }
+      // Log token count to check for context overflow
+      final tokenCount = await chat.maxTokens; // TODO: Replace with await chat.sizeInTokens(_prompt);
+      AppLogger.logInfo('Prompt token count: $tokenCount', 'DiagnosisScreen._runInference');
 
-//       final model = await _gemma.createModel( // TODO: Replace with a session!!!
-//         preferredBackend: widget.model.preferredBackend,
-//         maxTokens: 1024,
-//         supportImage: widget.model.supportImage,
-//         maxNumImages: widget.model.maxNumImages,
-//       );
+      // Clear previous context to isolate DTC query
+      // Note: Comment out if you want to retain ChatScreen context
+      await chat.addQueryChunk(Message.text(text: 'Reset context for new diagnosis', isUser: false));
 
-//       chat = await model.createChat(
-//         temperature: widget.model.temperature,
-//         randomSeed: 1,
-//         topK: widget.model.topK,
-//         topP: widget.model.topP,
-//         tokenBuffer: 256,
-//         supportImage: widget.model.supportImage,
-//         supportsFunctionCalls: widget.model.supportsFunctionCalls,
-//         tools: [], // No tools needed for this screen
-//       );
+      await chat.addQueryChunk(Message.text(text: _prompt, isUser: true));
+      final responseStream = chat.generateChatResponseAsync();
+      String responseText = '';
 
-//       setState(() {
-//         _isModelInitialized = true;
-//       });
+      await for (final response in responseStream) {
+        if (response is TextResponse) {
+          setState(() {
+            responseText += response.token;
+            _inferenceOutput = responseText;
+          });
+        } else if (response is FunctionCallResponse) {
+          final finalResponse = await chat.generateChatResponse();
+          setState(() {
+            _inferenceOutput = finalResponse.toString();
+          });
+        }
+      }
+      AppLogger.logInfo('Response received: $responseText', 'DiagnosisScreen._runInference');
+    } catch (e, stackTrace) {
+      AppLogger.logError(e, stackTrace, 'DiagnosisScreen._runInference');
+      setState(() {
+        _error = 'Inference failed: $e';
+      });
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
 
-//       // Run inference for the hardcoded prompt
-//       await _runInference(_prompt);
-//     } catch (e) {
-//       setState(() {
-//         _error = 'Error initializing model: $e';
-//         _isLoading = false;
-//       });
-//     }
-//   }
-
-//   Future<void> _runInference(String prompt) async {
-//     if (chat == null) return;
-
-//     setState(() {
-//       _isLoading = true;
-//       _inferenceOutput = null;
-//       _error = null;
-//     });
-
-//     try {
-//       // Add the prompt as user message
-//       final userMessage = Message.text(text: prompt);
-//       await chat!.addQuery(userMessage);
-
-//       // Collect tokens from streaming async response
-//       String responseText = '';
-//       await for (final token in chat!.generateChatResponseAsync()) {
-//         if (token is TextResponse) {
-//           responseText += token.token;
-//           setState(() {
-//             _inferenceOutput = responseText;
-//           });
-//         } else if (token is FunctionCallResponse) {
-//           // You can handle function calls here if needed
-//         }
-//       }
-
-//       setState(() {
-//         _isLoading = false;
-//       });
-//     } catch (e) {
-//       setState(() {
-//         _error = 'Inference failed: $e';
-//         _isLoading = false;
-//       });
-//     }
-//   }
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       appBar: AppBar(
-//         title: const Text('Diagnosis Screen'),
-//       ),
-//       body: Padding(
-//         padding: const EdgeInsets.all(16.0),
-//         child: Column(
-//           crossAxisAlignment: CrossAxisAlignment.start,
-//           children: [
-//             const Text(
-//               'Prompt:',
-//               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-//             ),
-//             const SizedBox(height: 8),
-//             Text(_prompt, style: const TextStyle(fontSize: 16)),
-//             const Divider(height: 32),
-
-//             const Text(
-//               'Inference Output:',
-//               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-//             ),
-//             const SizedBox(height: 8),
-
-//             Expanded(
-//               child: SingleChildScrollView(
-//                 child: Text(
-//                   _inferenceOutput ?? '',
-//                   style: const TextStyle(fontSize: 16),
-//                 ),
-//               ),
-//             ),
-
-//             if (_isLoading)
-//               Padding(
-//                 padding: const EdgeInsets.only(top: 16.0),
-//                 child: Row(
-//                   mainAxisAlignment: MainAxisAlignment.center,
-//                   children: const [
-//                     CircularProgressIndicator(),
-//                     SizedBox(width: 16),
-//                     Text('Generating inference...'),
-//                   ],
-//                 ),
-//               ),
-
-//             if (_error != null)
-//               Padding(
-//                 padding: const EdgeInsets.only(top: 16.0),
-//                 child: Text(
-//                   _error!,
-//                   style: const TextStyle(color: Colors.red),
-//                   textAlign: TextAlign.center,
-//                 ),
-//               ),
-//           ],
-//         ),
-//       ),
-//     );
-//   }
-
-// }
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Diagnosis Screen'),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Prompt:',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+            ),
+            const SizedBox(height: 8),
+            Text(_prompt, style: const TextStyle(fontSize: 16)),
+            const Divider(height: 32),
+            const Text(
+              'Inference Output:',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+            ),
+            const SizedBox(height: 8),
+            Expanded(
+              child: SingleChildScrollView(
+                child: Text(
+                  _inferenceOutput ?? '',
+                  style: const TextStyle(fontSize: 16),
+                ),
+              ),
+            ),
+            if (_isLoading)
+              Padding(
+                padding: const EdgeInsets.only(top: 16.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: const [
+                    CircularProgressIndicator(),
+                    SizedBox(width: 16),
+                    Text('Generating inference...'),
+                  ],
+                ),
+              ),
+            if (_error != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 16.0),
+                child: Text(
+                  _error!,
+                  style: const TextStyle(color: Colors.red),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}

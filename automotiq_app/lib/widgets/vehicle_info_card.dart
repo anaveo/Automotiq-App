@@ -141,14 +141,14 @@ class VehicleDetailsCard extends StatelessWidget {
               ),
               IconButton(onPressed: () {
                 AppLogger.logInfo("Diagnose button pressed");
-                // Navigator.push(
-                //   context,
-                //   MaterialPageRoute<void>(
-                //     builder: (context) => DiagnosisScreen(
-                //       dtcs: vehicle.diagnosticTroubleCodes ?? []
-                //     ),
-                //   ),
-                // );
+                Navigator.push(
+                  context,
+                  MaterialPageRoute<void>(
+                    builder: (context) => DiagnosisScreen(
+                      dtcs: vehicle.diagnosticTroubleCodes ?? []
+                    ),
+                  ),
+                );
                 }, icon: Icon(Icons.build_circle_outlined),
                 style: IconButton.styleFrom(
                   foregroundColor: Colors.white,
