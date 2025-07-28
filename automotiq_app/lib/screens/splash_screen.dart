@@ -24,8 +24,8 @@ class SplashScreen extends StatelessWidget {
                 return Column(
                   children: [
                     Image(
-                      image: AssetImage('assets/images/Automotiq_Full_Logo_V1.png'),
-                      width: 300,
+                      image: AssetImage('assets/images/Automotiq_Logo_Animated.gif'),
+                      width: MediaQuery.of(context).size.width,
                     ),
                     Padding(
                       padding: EdgeInsets.fromLTRB(80, 0, 80, 0),

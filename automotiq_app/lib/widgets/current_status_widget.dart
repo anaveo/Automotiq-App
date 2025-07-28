@@ -40,10 +40,6 @@ class _CurrentStatusWidgetState extends State<CurrentStatusWidget> {
     final Map<String, Map<String, String>> result = {};
     for (final code in widget.dtcs) {
       final info = await DtcDatabaseService().getDtc(code);
-      AppLogger.logInfo(
-        'Loaded DTC $code: ${info?['description'] ?? 'No description available'}',
-        'CurrentStatusWidget._loadDtcDetails',
-      );
       result[code] = info ??
           {
             'description': 'Unknown DTC',
