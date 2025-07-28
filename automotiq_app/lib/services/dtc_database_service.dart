@@ -69,4 +69,11 @@ class DtcDatabaseService {
       'cause': result[0]['cause'] as String,
     };
   }
+
+  Future<String?> getRandomDtcCode() async {
+    final db = await database;
+    final result = await db.rawQuery('SELECT code FROM dtcs ORDER BY RANDOM() LIMIT 1');
+    if (result.isEmpty) return null;
+    return result.first['code'] as String;
+  }
 }
