@@ -1,4 +1,5 @@
 import 'package:automotiq_app/utils/logger.dart';
+import 'package:automotiq_app/utils/navigation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -22,6 +23,50 @@ class AccountSettingsScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          /// My Vehicles section
+          if (vehicleProvider.vehicles.isNotEmpty)
+            _card(
+              title: 'My Vehicles',
+              child: Column(
+                children: [
+                  ...vehicleProvider.vehicles.map((vehicle) {
+                    return ListTile(
+                      title: Text(vehicle.name),
+                      subtitle: Text(vehicle.vin, style: Theme.of(context).textTheme.bodySmall,),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.delete, color: Colors.red),
+                        onPressed: () async {
+                          final confirm = await showDialog<bool>(
+                            context: context,
+                            builder: (context) => AlertDialog(
+                              title: const Text('Delete Vehicle?'),
+                              content: Text('${vehicle.name} and all settings will be deleted.'),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(context, false),
+                                  child: const Text('Cancel'),
+                                ),
+                                TextButton(
+                                  onPressed: () => Navigator.pop(context, true),
+                                  child: const Text('Delete', style: TextStyle(color: Colors.red)),
+                                ),
+                              ],
+                            ),
+                          );
+                          if (confirm == true) {
+                            await vehicleProvider.removeVehicle(vehicle.id);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('${vehicle.name} deleted')),
+                            );
+                          }
+                        },
+                      ),
+                    );
+                  }),
+                ],
+              ),
+            ),
+
           /// Demo mode
           _card(
             title: 'Demo Mode',
@@ -112,59 +157,7 @@ class AccountSettingsScreen extends StatelessWidget {
           if (user != null && !user.isAnonymous)
             _card(title: 'Update Email / Password', child: _EmailPasswordSettings()),
 
-          /// My Vehicles section
-          if (vehicleProvider.vehicles.isNotEmpty)
-            _card(
-              title: 'My Vehicles',
-              child: Column(
-                children: [
-                  ...vehicleProvider.vehicles.map((vehicle) {
-                    return ListTile(
-                      title: Text(vehicle.name),
-                      subtitle: Text(vehicle.vin),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.delete, color: Colors.red),
-                        onPressed: () async {
-                          final confirm = await showDialog<bool>(
-                            context: context,
-                            builder: (context) => AlertDialog(
-                              title: const Text('Delete Vehicle'),
-                              content: Text('Are you sure you want to delete ${vehicle.name}?'),
-                              actions: [
-                                TextButton(
-                                  onPressed: () => Navigator.pop(context, false),
-                                  child: const Text('Cancel'),
-                                ),
-                                TextButton(
-                                  onPressed: () => Navigator.pop(context, true),
-                                  child: const Text('Delete', style: TextStyle(color: Colors.red)),
-                                ),
-                              ],
-                            ),
-                          );
-                          if (confirm == true) {
-                            // await vehicleProvider.deleteVehicle(vehicle.id);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('${vehicle.name} deleted')),
-                            );
-                          }
-                        },
-                      ),
-                    );
-                  }),
-                  const SizedBox(height: 12),
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Add Vehicle tapped')),
-                      );
-                    },
-                    icon: const Icon(Icons.add),
-                    label: const Text('Add Vehicle'),
-                  ),
-                ],
-              ),
-            ),
+
 
           /// Logout
           if (user != null)
