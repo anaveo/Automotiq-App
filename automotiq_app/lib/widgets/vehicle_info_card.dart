@@ -159,13 +159,12 @@ class VehicleDetailsCard extends StatelessWidget {
                 ),
               ),
               IconButton(onPressed: () {
-                AppLogger.logInfo("Chat button pressed");
-                // Navigator.push(
-                //   context,
-                //   MaterialPageRoute<void>(
-                //     builder: (context) => ChatScreen(),
-                //   ),
-                // );
+                Navigator.push(
+                  context,
+                  MaterialPageRoute<void>(
+                    builder: (context) => ChatScreen(),
+                  ),
+                );
                 }, icon: Icon(Icons.chat_outlined),
                 style: IconButton.styleFrom(
                   foregroundColor: Colors.white,

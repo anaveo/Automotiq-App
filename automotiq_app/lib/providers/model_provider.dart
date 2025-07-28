@@ -114,7 +114,7 @@ class ModelProvider extends ChangeNotifier {
       _globalAgent = await _modelService.createChat(
         temperature: _modelService.modelConfig.temperature,
         topK: _modelService.modelConfig.topK,
-        supportImage: false, // No multimodal TODO
+        supportImage: true,
         supportsFunctionCalls: _modelService.modelConfig.supportsFunctionCalls,
       );
 

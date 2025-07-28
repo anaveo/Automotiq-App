@@ -31,7 +31,7 @@ dependencies:
   flutter:
     sdk: flutter
 
-  image_picker: ^1.0.4 
+  image_picker: ^1.1.2 
   flutter_markdown: ^0.7.1
   large_file_handler: ^0.3.1
 

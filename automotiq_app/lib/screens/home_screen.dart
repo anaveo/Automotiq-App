@@ -101,7 +101,6 @@ class _HomeScreenState extends State<HomeScreen> {
     return AppBar(
       title: VehicleDropdown(),
       actions: [
-        // VehicleDropdown(),
         IconButton(
           icon: const Icon(Icons.account_circle_rounded),
           onPressed: () {

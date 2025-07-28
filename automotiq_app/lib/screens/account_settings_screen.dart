@@ -11,7 +11,7 @@ class AccountSettingsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final auth = FirebaseAuth.instance;
     final user = auth.currentUser;
-    final userProvider = context.watch<UserProvider?>();
+    final userProvider = context.watch<UserProvider>();
     final vehicleProvider = context.watch<VehicleProvider>();
 
     return Scaffold(
@@ -19,18 +19,19 @@ class AccountSettingsScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-
           /// Demo mode
           _card(
             title: 'Demo Mode',
             child: Column(
               children: [
-                Text("Enable demo mode to simulate vehicle data without a physical OBD-II device.",
-                    style: Theme.of(context).textTheme.bodySmall),
+                Text(
+                  "Enable demo mode to simulate vehicle data without a physical OBD-II device.",
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
                 SwitchListTile(
                   title: const Text("Enable Demo Mode"),
-                  value: userProvider?.user?.demoMode ?? false,
-                  onChanged: (value) => userProvider?.setDemoMode(value),
+                  value: userProvider.user?.demoMode ?? false,
+                  onChanged: (value) => userProvider.setDemoMode(value),
                 ),
               ],
             ),
@@ -76,9 +77,9 @@ class AccountSettingsScreen extends StatelessWidget {
                           );
                           if (confirm == true) {
                             // await vehicleProvider.deleteVehicle(vehicle.id);
-                            // ScaffoldMessenger.of(context).showSnackBar(
-                            //   SnackBar(content: Text('${vehicle.name} deleted')),
-                            // );
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('${vehicle.name} deleted')),
+                            );
                           }
                         },
                       ),
@@ -87,7 +88,6 @@ class AccountSettingsScreen extends StatelessWidget {
                   const SizedBox(height: 12),
                   ElevatedButton.icon(
                     onPressed: () {
-                      // You can navigate to an AddVehicle screen or show a form dialog
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(content: Text('Add Vehicle tapped')),
                       );
@@ -104,12 +104,12 @@ class AccountSettingsScreen extends StatelessWidget {
             ElevatedButton.icon(
               onPressed: () async {
                 late final confirm;
-                if (user.isAnonymous){
+                if (user.isAnonymous) {
                   confirm = await showDialog<bool>(
                     context: context,
                     builder: (context) => AlertDialog(
                       title: const Text('Exit without creating an account?'),
-                      content: Text('All vehicles and settings will be lost.'),
+                      content: const Text('All vehicles and settings will be lost.'),
                       actions: [
                         TextButton(
                           onPressed: () => Navigator.pop(context, false),
@@ -122,8 +122,7 @@ class AccountSettingsScreen extends StatelessWidget {
                       ],
                     ),
                   );
-                }
-                else {
+                } else {
                   confirm = true;
                 }
                 if (confirm == true) {
@@ -173,7 +172,6 @@ class _AnonymousLinkFormState extends State<_AnonymousLinkForm> {
   final _formKey = GlobalKey<FormState>();
   String? _error;
 
-  // TODO: Check functionality, add input validation
   Future<void> _linkAccount() async {
     if (!_formKey.currentState!.validate()) return;
     try {
@@ -209,10 +207,12 @@ class _AnonymousLinkFormState extends State<_AnonymousLinkForm> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text("Create an account to save your data and settings.",
-              style: Theme.of(context).textTheme.bodySmall),
+          Text(
+            "Create an account to save your data and settings.",
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
           Padding(
-            padding: EdgeInsets.symmetric(vertical: 12),
+            padding: const EdgeInsets.symmetric(vertical: 12),
             child: TextFormField(
               controller: _emailController,
               decoration: _inputDecoration('Email'),
@@ -229,7 +229,8 @@ class _AnonymousLinkFormState extends State<_AnonymousLinkForm> {
               },
             ),
           ),
-          Padding(padding: EdgeInsets.symmetric(vertical: 6),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6),
             child: TextFormField(
               controller: _passwordController,
               decoration: _inputDecoration('Password'),
@@ -300,13 +301,15 @@ class _EmailPasswordSettingsState extends State<_EmailPasswordSettings> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(padding: EdgeInsets.symmetric(vertical: 6),
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6),
           child: TextField(
             controller: _emailController,
             decoration: _inputDecoration('New Email'),
           ),
         ),
-        Padding(padding: EdgeInsets.symmetric(vertical: 6),
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6),
           child: TextField(
             controller: _passwordController,
             obscureText: true,

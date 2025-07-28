@@ -115,7 +115,6 @@ class ModelService {
       );
 
       _isModelInitialized = true;
-      AppLogger.logInfo('Model initialized successfully', 'ModelService.initializeModel');
     } catch (e, stackTrace) {
       AppLogger.logError(e, stackTrace, 'ModelService.initializeModel');
       _isModelInitialized = false;
@@ -151,7 +150,6 @@ class ModelService {
         tools: tools ?? [],
         supportsFunctionCalls: supportsFunctionCalls,
       );
-      AppLogger.logInfo('Chat instance created', 'ModelService.createChat');
       return chat;
     } catch (e, stackTrace) {
       AppLogger.logError(e, stackTrace, 'ModelService.createChat');
