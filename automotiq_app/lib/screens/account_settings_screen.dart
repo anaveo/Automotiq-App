@@ -1,6 +1,9 @@
+import 'package:automotiq_app/utils/logger.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:automotiq_app/providers/model_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/user_provider.dart';
 import '../providers/vehicle_provider.dart';
 
@@ -34,6 +37,74 @@ class AccountSettingsScreen extends StatelessWidget {
                   onChanged: (value) => userProvider.setDemoMode(value),
                 ),
               ],
+            ),
+          ),
+
+          /// Clear Assistant Memory 
+          _card(
+            title: 'Clear Assistant Memory',
+            child: Consumer<ModelProvider>(
+              builder: (context, modelProvider, child) {
+                final isButtonEnabled = modelProvider.isModelDownloaded &&
+                    modelProvider.isModelInitialized &&
+                    modelProvider.isChatInitialized;
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Clear all assistant memory and reset to default settings.",
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    const SizedBox(height: 12),
+                    ElevatedButton(
+                      onPressed: isButtonEnabled
+                          ? () async {
+                              final confirm = await showDialog<bool>(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                  title: const Text('Clear Assistant Memory'),
+                                  content: const Text('Are you sure you want to clear all assistant memory? This action cannot be undone.'),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(context, false),
+                                      child: const Text('Cancel'),
+                                    ),
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(context, true),
+                                      child: const Text('Clear', style: TextStyle(color: Colors.red)),
+                                    ),
+                                  ],
+                                ),
+                              );
+                              if (confirm == true) {
+                                try {
+
+                                  // TODO: Clean this up
+                                  await modelProvider.resetChat();
+                                  final prefs = await SharedPreferences.getInstance();
+                                  await prefs.remove('chat_messages');
+
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Assistant memory cleared')),
+                                  );
+                                } catch (e, stackTrace) {
+                                  AppLogger.logError(e, stackTrace, 'AccountSettingsScreen.clearAssistantMemory');
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('Failed to clear memory: $e')),
+                                  );
+                                }
+                              }
+                            }
+                          : null,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: isButtonEnabled ? Colors.redAccent : Colors.grey.shade600,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: const Text('Clear Assistant Memory'),
+                    ),
+                  ],
+                );
+              },
             ),
           ),
 

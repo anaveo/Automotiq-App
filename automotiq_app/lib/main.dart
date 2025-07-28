@@ -31,38 +31,29 @@ class RootScreen extends StatelessWidget {
         }
 
         // Proceed to auth when model is downloaded
-        return MultiProvider(
-          providers: [
-            appAuthProvider,
-            userProvider,
-            vehicleProvider,
-            bluetoothManagerProvider,
-          ],
-          child: Consumer<AppAuthProvider>(
-            builder: (context, authProvider, child) {
+        return Consumer<AppAuthProvider>(
+          builder: (context, authProvider, child) {
+            // Show loader during auth or user loading
+            if (authProvider.isLoading || Provider.of<UserProvider>(context).isLoading) {
+              return const LoaderScreen();
+            }
 
-              // Show loader during auth or user loading
-              if (authProvider.isLoading || Provider.of<UserProvider>(context).isLoading) {
-                return const LoaderScreen();
-              }
+            // Show error screen if auth fails
+            if (authProvider.authError != null) {
+              return ErrorApp(errorMessage: authProvider.authError!);
+            }
 
-              // Show error screen if auth fails
-              if (authProvider.authError != null) {
-                return ErrorApp(errorMessage: authProvider.authError!);
-              }
+            // Access UserProvider
+            final userProvider = Provider.of<UserProvider>(context);
 
-              // Access UserProvider
-              final userProvider = Provider.of<UserProvider>(context);
+            // Show home screen if authenticated and user initialized
+            if (authProvider.user != null && userProvider.user != null) {
+              return const HomeScreen();
+            }
 
-              // Show home screen if authenticated and user initialized
-              if (authProvider.user != null && userProvider.user != null) {
-                return const HomeScreen();
-              }
-
-              // Default to login screen
-              return const LoginScreen();
-            },
-          ),
+            // Default to login screen
+            return const LoginScreen();
+          },
         );
       },
     );
@@ -145,11 +136,24 @@ void main() async {
 
   AppLogger.logInfo('Running MyApp', 'main');
   runApp(
-    ChangeNotifierProvider(
-      create: (_) => ModelProvider(
-        variant: dotenv.env['GEMMA_MODEL_CONFIG'] ?? 'gemma3nGpu_2B',
-      ),
-      lazy: false,
+    MultiProvider(
+      providers: [
+        // ModelProvider starts model download immediately (non-lazy)
+        ChangeNotifierProvider(
+          create: (_) => ModelProvider(
+            variant: dotenv.env['GEMMA_MODEL_CONFIG'] ?? 'gemma3nGpu_2B',
+          ),
+          lazy: false,
+        ),
+        // AppAuthProvider waits for ModelProvider.isModelDownloaded
+        appAuthProvider,
+        // UserProvider waits for AppAuthProvider.user
+        userProvider,
+        // VehicleProvider waits for AppAuthProvider.user
+        vehicleProvider,
+        // BluetoothManager waits for AppAuthProvider.user
+        bluetoothManagerProvider,
+      ],
       child: const MyApp(),
     ),
   );

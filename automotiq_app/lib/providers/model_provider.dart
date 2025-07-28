@@ -148,6 +148,11 @@ class ModelProvider extends ChangeNotifier {
     );
   }
 
+  // TODO: Add selective delete! the function contains a usable replayHistory argument
+  Future<void> resetChat() async {
+    await globalAgent?.clearHistory();
+  }
+
   Future<void> closeModel() async {
     try {
       if (_globalAgent != null) {
