@@ -7,7 +7,7 @@ import 'package:provider/provider.dart';
 import '../models/vehicle_model.dart';
 import '../services/bluetooth_manager.dart';
 import '../utils/logger.dart';
-import '../models/gemma_model.dart';
+import '../models/model_config_object.dart';
 
 class VehicleInfoCard extends StatefulWidget {
   final VehicleModel vehicle;
@@ -130,7 +130,7 @@ class VehicleDetailsCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             spacing: 30,
             children: [
-              IconButton(onPressed: () {AppLogger.logInfo("Refresh button pressed");/* TODO: Implement ai camera functionality*/}, icon: Icon(Icons.refresh_rounded),
+              IconButton(onPressed: () {AppLogger.logInfo("Refresh button pressed");/* TODO: Implement refresh functionality*/}, icon: Icon(Icons.refresh_rounded),
                 style: IconButton.styleFrom(
                   foregroundColor: Colors.white,
                   iconSize: 30,
@@ -140,16 +140,15 @@ class VehicleDetailsCard extends StatelessWidget {
                 ),
               ),
               IconButton(onPressed: () {
-                // AppLogger.logInfo("Diagnose button pressed");/* TODO: Implement ai camera functionality*/
-                Navigator.push(
-                  context,
-                  MaterialPageRoute<void>(
-                    builder: (context) => DiagnosisScreen(
-                      model: chosenModel,
-                      dtcs: vehicle.diagnosticTroubleCodes ?? []
-                    ),
-                  ),
-                );
+                AppLogger.logInfo("Diagnose button pressed");
+                // Navigator.push(
+                //   context,
+                //   MaterialPageRoute<void>(
+                //     builder: (context) => DiagnosisScreen(
+                //       dtcs: vehicle.diagnosticTroubleCodes ?? []
+                //     ),
+                //   ),
+                // );
                 }, icon: Icon(Icons.build_circle_outlined),
                 style: IconButton.styleFrom(
                   foregroundColor: Colors.white,
@@ -160,16 +159,13 @@ class VehicleDetailsCard extends StatelessWidget {
                 ),
               ),
               IconButton(onPressed: () {
-                AppLogger.logInfo("C button pressed");
-                Navigator.push(
-                  context,
-                  MaterialPageRoute<void>(
-                    builder: (context) => ChatScreen(
-                      model: chosenModel
-                    ),
-                  ),
-                );
-              /* TODO: Implement ai camera functionality*/
+                AppLogger.logInfo("Chat button pressed");
+                // Navigator.push(
+                //   context,
+                //   MaterialPageRoute<void>(
+                //     builder: (context) => ChatScreen(),
+                //   ),
+                // );
                 }, icon: Icon(Icons.chat_outlined),
                 style: IconButton.styleFrom(
                   foregroundColor: Colors.white,

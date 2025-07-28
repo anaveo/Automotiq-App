@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:automotiq_app/providers/model_provider.dart';
-import 'package:automotiq_app/providers/auth_provider.dart';
 
 class SplashScreen extends StatelessWidget {
   const SplashScreen({super.key});
@@ -13,7 +12,7 @@ class SplashScreen extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Consumer<GemmaProvider>(
+            Consumer<ModelProvider>(
               builder: (context, modelProvider, _) {
                 if (modelProvider.downloadError != null) {
                   return Text(
@@ -31,7 +30,7 @@ class SplashScreen extends StatelessWidget {
                     Padding(
                       padding: EdgeInsets.fromLTRB(80, 0, 80, 0),
                       child: LinearProgressIndicator(
-                        value: modelProvider.isDownloading ? modelProvider.downloadProgress : null,
+                        value: modelProvider.isModelDownloading ? modelProvider.modelDownloadProgress : null,
                         backgroundColor: Theme.of(context).colorScheme.surfaceContainer,
                         valueColor: AlwaysStoppedAnimation<Color>(
                           Theme.of(context).colorScheme.primary,
@@ -40,39 +39,14 @@ class SplashScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      modelProvider.isDownloading
-                          ? 'Downloading model: ${(modelProvider.downloadProgress * 100).toStringAsFixed(1)}%'
+                      modelProvider.isModelDownloading
+                          ? 'Downloading model: ${(modelProvider.modelDownloadProgress * 100).toStringAsFixed(1)}%'
                           : 'Model downloaded',
                       style: Theme.of(context).textTheme.bodySmall,
                       textAlign: TextAlign.center,
                     ),
                   ],
                 );
-              },
-            ),
-            Consumer<AppAuthProvider>(
-              builder: (context, authProvider, _) {
-                if (authProvider.authError != null) {
-                  return Padding(
-                    padding: const EdgeInsets.only(top: 16),
-                    child: Text(
-                      'Error: ${authProvider.authError}',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.red),
-                      textAlign: TextAlign.center,
-                    ),
-                  );
-                }
-                if (authProvider.isLoading) {
-                  return Padding(
-                    padding: const EdgeInsets.only(top: 16),
-                    child: Text(
-                      'Initializing authentication...',
-                      style: Theme.of(context).textTheme.bodyMedium,
-                      textAlign: TextAlign.center,
-                    ),
-                  );
-                }
-                return const SizedBox.shrink();
               },
             ),
           ],

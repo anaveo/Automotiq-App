@@ -10,14 +10,14 @@ class UserProvider with ChangeNotifier {
   UserModel? _user;
   UserModel? get user => _user;
 
-  bool _isLoading = true;
+  bool _isLoading = false; // Default to false for null UID
   bool get isLoading => _isLoading;
 
   UserProvider({required this.repository, required this.uid}) {
     if (uid != null) {
+      _isLoading = true; // Set loading only if UID exists
       _initializeUser();
     } else {
-      _isLoading = false;
       notifyListeners();
     }
   }
@@ -82,6 +82,7 @@ class UserProvider with ChangeNotifier {
       AppLogger.logError(e, stackTrace, 'UserProvider.setDemoMode');
       // Revert optimistic update here if needed
       _user = _user!.copyWith(demoMode: !value);
+    } finally {
       notifyListeners();
     }
   }
