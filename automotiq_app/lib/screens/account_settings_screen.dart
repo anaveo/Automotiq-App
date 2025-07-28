@@ -52,7 +52,7 @@ class AccountSettingsScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      "Clear all assistant memory and reset to default settings.",
+                      "Reset integrated assistant to default settings.",
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                     const SizedBox(height: 12),
@@ -62,8 +62,8 @@ class AccountSettingsScreen extends StatelessWidget {
                               final confirm = await showDialog<bool>(
                                 context: context,
                                 builder: (context) => AlertDialog(
-                                  title: const Text('Clear Assistant Memory'),
-                                  content: const Text('Are you sure you want to clear all assistant memory? This action cannot be undone.'),
+                                  title: const Text('Clear Assistant Memory?'),
+                                  content: const Text('All assistant chats and vehicle data will be deleted. This action cannot be undone.'),
                                   actions: [
                                     TextButton(
                                       onPressed: () => Navigator.pop(context, false),
@@ -96,10 +96,6 @@ class AccountSettingsScreen extends StatelessWidget {
                               }
                             }
                           : null,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: isButtonEnabled ? Colors.redAccent : Colors.grey.shade600,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
                       child: const Text('Clear Assistant Memory'),
                     ),
                   ],

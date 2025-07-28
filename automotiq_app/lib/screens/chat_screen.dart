@@ -207,19 +207,19 @@ class _ChatScreenState extends State<ChatScreen> {
         title: const Text('Vehicle Assistant'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.delete),
-            tooltip: 'Clear chat',
+            icon: const Icon(Icons.edit_square),
+            tooltip: 'Create new chat',
             onPressed: _isLoading
                 ? null
                 : () async {
                     final confirmed = await showDialog<bool>(
                       context: context,
                       builder: (context) => AlertDialog(
-                        title: const Text('Clear Chat History?'),
-                        content: const Text('This will permanently delete all messages.'),
+                        title: const Text('Create New Chat?'),
+                        content: const Text('Previous messages will no longer be visible.'),
                         actions: [
                           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-                          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Clear')),
+                          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Create')),
                         ],
                       ),
                     );

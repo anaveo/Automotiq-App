@@ -151,6 +151,7 @@ class _VehicleDetailsCardState extends State<VehicleDetailsCard> {
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
+            spacing: 30,
             children: [
               IconButton(
                 onPressed: () {
