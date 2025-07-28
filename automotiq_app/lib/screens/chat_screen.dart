@@ -27,24 +27,23 @@ class _ChatScreenState extends State<ChatScreen> {
     _loadMessages();
   }
 
- Future<void> _loadMessages() async {
-  final prefs = await SharedPreferences.getInstance();
-  final data = prefs.getStringList('chat_messages') ?? [];
+  Future<void> _loadMessages() async {
+    final prefs = await SharedPreferences.getInstance();
+    final data = prefs.getStringList('chat_messages') ?? [];
 
-  final loadedMessages = data.map((msgJson) {
-    final dynamic decoded = json.decode(msgJson);
-    final map = Map<String, dynamic>.from(decoded);
-    if (map['image'] != null) {
-      map['image'] = base64Decode(map['image']);
-    }
-    return map;
-  });
+    final loadedMessages = data.map((msgJson) {
+      final dynamic decoded = json.decode(msgJson);
+      final map = Map<String, dynamic>.from(decoded);
+      if (map['image'] != null) {
+        map['image'] = base64Decode(map['image']);
+      }
+      return map;
+    });
 
-  setState(() {
-    _messages.addAll(loadedMessages);
-  });
-}
-
+    setState(() {
+      _messages.addAll(loadedMessages);
+    });
+  }
 
   Future<void> _saveMessages() async {
     final prefs = await SharedPreferences.getInstance();
@@ -58,6 +57,14 @@ class _ChatScreenState extends State<ChatScreen> {
     }).toList();
 
     await prefs.setStringList('chat_messages', encoded);
+  }
+
+  Future<void> _clearMessages() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('chat_messages');
+    setState(() {
+      _messages.clear();
+    });
   }
 
   Future<void> _pickImage() async {
@@ -196,7 +203,33 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Vehicle Assistant')),
+      appBar: AppBar(
+        title: const Text('Vehicle Assistant'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.delete),
+            tooltip: 'Clear chat',
+            onPressed: _isLoading
+                ? null
+                : () async {
+                    final confirmed = await showDialog<bool>(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: const Text('Clear Chat History?'),
+                        content: const Text('This will permanently delete all messages.'),
+                        actions: [
+                          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+                          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Clear')),
+                        ],
+                      ),
+                    );
+                    if (confirmed == true) {
+                      await _clearMessages();
+                    }
+                  },
+          ),
+        ],
+      ),
       body: Consumer<ModelProvider>(
         builder: (context, modelProvider, child) {
           if (!modelProvider.isChatInitialized) {
