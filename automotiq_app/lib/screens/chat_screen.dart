@@ -194,6 +194,36 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     }
   }
 
+  // Helper method to clean LLM output (same as DiagnosisScreen)
+  String _cleanLlmOutput(String output) {
+    String cleaned = output;
+    
+    // Remove various forms of end_of_turn tags (case insensitive)
+    cleaned = cleaned.replaceAll(RegExp(r'</?end_of_turn>', caseSensitive: false), '');
+    cleaned = cleaned.replaceAll(RegExp(r'<end_of_turn/?>', caseSensitive: false), '');
+    cleaned = cleaned.replaceAll(RegExp(r'</end_of_turn>', caseSensitive: false), '');
+    cleaned = cleaned.replaceAll(RegExp(r'<end_of_turn>', caseSensitive: false), '');
+    
+    // Remove other common LLM artifacts
+    cleaned = cleaned.replaceAll(RegExp(r'<\|im_end\|>', caseSensitive: false), '');
+    cleaned = cleaned.replaceAll(RegExp(r'<\|im_start\|>', caseSensitive: false), '');
+    cleaned = cleaned.replaceAll(RegExp(r'<\|endoftext\|>', caseSensitive: false), '');
+    cleaned = cleaned.replaceAll(RegExp(r'<\|end\|>', caseSensitive: false), '');
+    cleaned = cleaned.replaceAll(RegExp(r'<\|start\|>', caseSensitive: false), '');
+    
+    // Remove any remaining angle bracket patterns that look like tags
+    cleaned = cleaned.replaceAll(RegExp(r'<[^>]*end[^>]*>', caseSensitive: false), '');
+    
+    // Clean up multiple whitespaces and newlines
+    cleaned = cleaned.replaceAll(RegExp(r'\n\s*\n\s*\n'), '\n\n'); // Replace multiple newlines with double newline
+    cleaned = cleaned.replaceAll(RegExp(r'[ \t]+'), ' '); // Replace multiple spaces/tabs with single space
+    
+    // Trim whitespace
+    cleaned = cleaned.trim();
+    
+    return cleaned;
+  }
+
   InputDecoration _inputDecoration(String hintText) {
     return InputDecoration(
       hintText: hintText,
@@ -206,8 +236,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     final isUser = message.sender == 'user';
     final hasImage = message.image != null;
 
-    // Strip LLM tokens (like </end_of_turn>) and trim whitespace
-    final cleanText = message.text.replaceAll(RegExp(r'<[^>]*>'), '').trim();
+    // Use the comprehensive cleaning function instead of basic regex
+    final cleanText = _cleanLlmOutput(message.text);
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0),
@@ -244,8 +274,40 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                         )
                       : MarkdownBody(
                           data: cleanText,
-                          styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(
+                          styleSheet: MarkdownStyleSheet(
                             p: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.white70),
+                            h1: Theme.of(context).textTheme.headlineLarge?.copyWith(color: Colors.white, fontWeight: FontWeight.bold),
+                            h2: Theme.of(context).textTheme.headlineMedium?.copyWith(color: Colors.white, fontWeight: FontWeight.bold),
+                            h3: Theme.of(context).textTheme.headlineSmall?.copyWith(color: Colors.white, fontWeight: FontWeight.bold),
+                            strong: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+                            em: const TextStyle(fontStyle: FontStyle.italic, color: Colors.white70),
+                            code: TextStyle(
+                              backgroundColor: Colors.grey[800],
+                              color: Colors.greenAccent[100],
+                              fontFamily: 'monospace',
+                              fontSize: 14,
+                            ),
+                            codeblockDecoration: BoxDecoration(
+                              color: Colors.grey[850],
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.grey[700]!),
+                            ),
+                            codeblockPadding: const EdgeInsets.all(12),
+                            blockquote: TextStyle(
+                              color: Colors.grey[400],
+                              fontStyle: FontStyle.italic,
+                            ),
+                            blockquoteDecoration: BoxDecoration(
+                              color: Colors.grey[850],
+                              border: Border(
+                                left: BorderSide(
+                                  color: Colors.grey[600]!,
+                                  width: 4,
+                                ),
+                              ),
+                            ),
+                            blockquotePadding: const EdgeInsets.all(12),
+                            listBullet: const TextStyle(fontSize: 16, color: Colors.white70),
                           ),
                         ),
                 ),
