@@ -180,11 +180,27 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
+        backgroundColor: Colors.grey[900],
+        titleTextStyle: const TextStyle(
+          color: Colors.white,
+          fontSize: 18,
+          fontWeight: FontWeight.w600,
+        ),
+        contentTextStyle: TextStyle(
+          color: Colors.grey[300],
+          fontSize: 14,
+        ),
         title: const Text('Create New Chat?'),
         content: const Text('Previous messages will no longer be visible and any ongoing inference will be stopped.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Create')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Cancel', style: TextStyle(color: Colors.grey[400])),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text('Create', style: TextStyle(color: Colors.cyan[400])),
+          ),
         ],
       ),
     );
@@ -227,7 +243,21 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   InputDecoration _inputDecoration(String hintText) {
     return InputDecoration(
       hintText: hintText,
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.0)),
+      hintStyle: TextStyle(color: Colors.grey[500]),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12.0),
+        borderSide: BorderSide(color: Colors.grey[700]!),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12.0),
+        borderSide: BorderSide(color: Colors.grey[700]!),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12.0),
+        borderSide: BorderSide(color: Colors.cyan[400]!, width: 2),
+      ),
+      filled: true,
+      fillColor: Colors.grey[900],
       contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
     );
   }
@@ -251,6 +281,10 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
               if (hasImage)
                 Container(
                   margin: const EdgeInsets.only(bottom: 8.0),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12.0),
+                    border: Border.all(color: Colors.grey[700]!, width: 1),
+                  ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(12.0),
                     child: Image.memory(
@@ -262,52 +296,64 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                 ),
               if (cleanText.isNotEmpty)
                 Container(
-                  padding: const EdgeInsets.all(12.0),
+                  padding: const EdgeInsets.all(16.0),
                   decoration: BoxDecoration(
-                    color: isUser ? Colors.deepPurpleAccent : Colors.grey.shade900,
-                    borderRadius: BorderRadius.circular(12.0),
+                    color: isUser ? Colors.cyan[600] : Colors.grey[900],
+                    borderRadius: BorderRadius.circular(16.0),
+                    border: Border.all(
+                      color: isUser ? Colors.cyan.withOpacity(0.3) : Colors.grey[700]!,
+                      width: 1,
+                    ),
                   ),
                   child: isUser
                       ? Text(
                           cleanText,
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.white),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            height: 1.4,
+                          ),
                         )
                       : MarkdownBody(
                           data: cleanText,
                           styleSheet: MarkdownStyleSheet(
-                            p: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.white70),
-                            h1: Theme.of(context).textTheme.headlineLarge?.copyWith(color: Colors.white, fontWeight: FontWeight.bold),
-                            h2: Theme.of(context).textTheme.headlineMedium?.copyWith(color: Colors.white, fontWeight: FontWeight.bold),
-                            h3: Theme.of(context).textTheme.headlineSmall?.copyWith(color: Colors.white, fontWeight: FontWeight.bold),
+                            p: const TextStyle(fontSize: 16, height: 1.6, color: Colors.white),
+                            h1: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.cyan[300]),
+                            h2: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.cyan[400]),
+                            h3: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.cyan[400]),
+                            h4: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                            h5: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
+                            h6: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
                             strong: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
-                            em: const TextStyle(fontStyle: FontStyle.italic, color: Colors.white70),
+                            em: TextStyle(fontStyle: FontStyle.italic, color: Colors.grey[300]),
                             code: TextStyle(
                               backgroundColor: Colors.grey[800],
-                              color: Colors.greenAccent[100],
+                              color: Colors.cyan[300],
                               fontFamily: 'monospace',
                               fontSize: 14,
                             ),
                             codeblockDecoration: BoxDecoration(
                               color: Colors.grey[850],
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: Colors.grey[700]!),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.grey[600]!),
                             ),
-                            codeblockPadding: const EdgeInsets.all(12),
+                            codeblockPadding: const EdgeInsets.all(16),
                             blockquote: TextStyle(
                               color: Colors.grey[400],
                               fontStyle: FontStyle.italic,
                             ),
                             blockquoteDecoration: BoxDecoration(
                               color: Colors.grey[850],
+                              borderRadius: BorderRadius.circular(8),
                               border: Border(
                                 left: BorderSide(
-                                  color: Colors.grey[600]!,
+                                  color: Colors.cyan.withOpacity(0.6),
                                   width: 4,
                                 ),
                               ),
                             ),
-                            blockquotePadding: const EdgeInsets.all(12),
-                            listBullet: const TextStyle(fontSize: 16, color: Colors.white70),
+                            blockquotePadding: const EdgeInsets.all(16),
+                            listBullet: TextStyle(fontSize: 16, color: Colors.cyan[400]),
                           ),
                         ),
                 ),
@@ -325,20 +371,48 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
 
     if (!hasChatInference && !isAgentBusy && queueLength == 0) return const SizedBox.shrink();
 
-    String statusText = hasChatInference
-        ? 'Processing...'
-        : isAgentBusy
-            ? 'In queue...'
-            : 'Queued ($queueLength)';
+    String statusText;
+    Color? statusColor;
+    
+    if (hasChatInference) {
+      statusText = 'Processing...';
+      statusColor = Colors.cyan[400];
+    } else if (isAgentBusy) {
+      statusText = 'In queue...';
+      statusColor = Colors.amber[400];
+    } else {
+      statusText = 'Queued ($queueLength)';
+      statusColor = Colors.grey[400];
+    }
 
     return Container(
       margin: const EdgeInsets.only(right: 8.0),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: statusColor?.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: statusColor?.withOpacity(0.3) ?? Colors.grey),
+      ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
-          const SizedBox(width: 4),
-          Text(statusText, style: Theme.of(context).textTheme.bodySmall),
+          SizedBox(
+            width: 14,
+            height: 14,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation<Color>(statusColor ?? Colors.grey),
+            ),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            statusText,
+            style: TextStyle(
+              color: statusColor,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ],
       ),
     );
@@ -347,8 +421,18 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.black,
       appBar: AppBar(
-        title: const Text('Vehicle Assistant'),
+        backgroundColor: Colors.grey[900],
+        foregroundColor: Colors.white,
+        elevation: 0,
+        title: const Text(
+          'Vehicle Assistant',
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 20,
+          ),
+        ),
         actions: [
           Consumer<UnifiedBackgroundService>(
             builder: (context, backgroundService, child) {
@@ -358,109 +442,241 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
           Consumer<UnifiedBackgroundService>(
             builder: (context, backgroundService, child) {
               final isAnyInferenceActive = backgroundService.hasActiveInference || backgroundService.isAgentBusy;
-              return IconButton(
-                icon: Icon(Icons.edit_square, color: isAnyInferenceActive ? Colors.grey : null),
-                tooltip: isAnyInferenceActive ? 'Wait for operations to complete' : 'Create new chat',
-                onPressed: isAnyInferenceActive ? null : _clearMessages,
+              return Container(
+                margin: const EdgeInsets.only(right: 8),
+                child: IconButton(
+                  icon: Icon(
+                    Icons.edit_square,
+                    color: isAnyInferenceActive ? Colors.grey[600] : Colors.white,
+                    size: 24,
+                  ),
+                  tooltip: isAnyInferenceActive ? 'Wait for operations to complete' : 'Create new chat',
+                  onPressed: isAnyInferenceActive ? null : _clearMessages,
+                  style: IconButton.styleFrom(
+                    backgroundColor: isAnyInferenceActive 
+                        ? Colors.transparent 
+                        : Colors.grey[800],
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
               );
             },
           ),
         ],
       ),
-      body: Consumer<ModelProvider>(
-        builder: (context, modelProvider, child) {
-          if (!modelProvider.isChatInitialized) return const Center(child: CircularProgressIndicator());
-
-          return Column(
-            children: [
-              Expanded(
-                child: Consumer<UnifiedBackgroundService>(
-                  builder: (context, backgroundService, child) {
-                    final isInferenceRunning = backgroundService.hasChatInference;
-                    if (_wasInferenceRunning && !isInferenceRunning) {
-                      WidgetsBinding.instance.addPostFrameCallback((_) {
-                        if (!_isDisposed && mounted) {
-                          _scrollToBottom();
-                        }
-                      });
-                    }
-                    _wasInferenceRunning = isInferenceRunning;
-
-                    final messages = backgroundService.messages;
-                    if (messages.isEmpty) {
-                      return const Center(
-                        child: Text('Start a conversation!', style: TextStyle(fontSize: 16, color: Colors.grey)),
-                      );
-                    }
-
-                    return ListView.builder(
-                      controller: _scrollController,
-                      padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
-                      itemCount: messages.length,
-                      itemBuilder: (context, index) => _buildMessage(messages[index]),
-                    );
-                  },
+      body: Container(
+        color: Colors.black,
+        child: Consumer<ModelProvider>(
+          builder: (context, modelProvider, child) {
+            if (!modelProvider.isChatInitialized) {
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[900],
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.cyan.withOpacity(0.3), width: 2),
+                      ),
+                      child: const CircularProgressIndicator(
+                        strokeWidth: 3,
+                        color: Colors.cyan,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    const Text(
+                      'Initializing AI Assistant...',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Please wait while the chat system starts up.',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[400],
+                        height: 1.4,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
                 ),
-              ),
-              if (_selectedImage != null)
-                Container(
-                  margin: const EdgeInsets.all(8.0),
-                  child: Stack(
-                    children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(8.0),
-                        child: Image.memory(_selectedImage!, height: 100, fit: BoxFit.cover),
-                      ),
-                      Positioned(
-                        top: 4,
-                        right: 4,
-                        child: GestureDetector(
-                          onTap: () => setState(() => _selectedImage = null),
+              );
+            }
+
+            return Column(
+              children: [
+                Expanded(
+                  child: Consumer<UnifiedBackgroundService>(
+                    builder: (context, backgroundService, child) {
+                      final isInferenceRunning = backgroundService.hasChatInference;
+                      if (_wasInferenceRunning && !isInferenceRunning) {
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          if (!_isDisposed && mounted) {
+                            _scrollToBottom();
+                          }
+                        });
+                      }
+                      _wasInferenceRunning = isInferenceRunning;
+
+                      final messages = backgroundService.messages;
+                      if (messages.isEmpty) {
+                        return Center(
                           child: Container(
-                            decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
-                            child: const Icon(Icons.close, color: Colors.white, size: 20),
+                            padding: const EdgeInsets.all(32.0),
+                            decoration: BoxDecoration(
+                              color: Colors.grey[900],
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: Colors.grey[700]!, width: 1),
+                            ),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.chat_outlined,
+                                  size: 48,
+                                  color: Colors.cyan[400],
+                                ),
+                                const SizedBox(height: 16),
+                                const Text(
+                                  'Start a conversation!',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Ask me anything about your vehicle or automotive issues.',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.grey[400],
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                      ),
-                    ],
+                        );
+                      }
+
+                      return ListView.builder(
+                        controller: _scrollController,
+                        padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+                        itemCount: messages.length,
+                        itemBuilder: (context, index) => _buildMessage(messages[index]),
+                      );
+                    },
                   ),
                 ),
-              Container(
-                padding: const EdgeInsets.all(8.0),
-                child: Consumer<UnifiedBackgroundService>(
-                  builder: (context, backgroundService, child) {
-                    final isLoading = backgroundService.hasChatInference || backgroundService.isAgentBusy;
-                    return Row(
+                if (_selectedImage != null)
+                  Container(
+                    margin: const EdgeInsets.all(8.0),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12.0),
+                      border: Border.all(color: Colors.grey[700]!, width: 1),
+                    ),
+                    child: Stack(
                       children: [
-                        IconButton(
-                          icon: const Icon(Icons.image, color: Colors.deepPurpleAccent),
-                          onPressed: isLoading ? null : _pickImage,
-                          tooltip: 'Pick image',
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(12.0),
+                          child: Image.memory(_selectedImage!, height: 100, fit: BoxFit.cover),
                         ),
-                        Expanded(
-                          child: TextField(
-                            controller: _controller,
-                            decoration: _inputDecoration('How can I help?'),
-                            onSubmitted: isLoading ? null : _sendMessage,
-                            enabled: !isLoading,
+                        Positioned(
+                          top: 8,
+                          right: 8,
+                          child: GestureDetector(
+                            onTap: () => setState(() => _selectedImage = null),
+                            child: Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withOpacity(0.7),
+                                shape: BoxShape.circle,
+                                border: Border.all(color: Colors.grey[600]!, width: 1),
+                              ),
+                              child: const Icon(Icons.close, color: Colors.white, size: 16),
+                            ),
                           ),
                         ),
-                        const SizedBox(width: 8.0),
-                        IconButton(
-                          icon: isLoading
-                              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                              : const Icon(Icons.send, color: Colors.deepPurpleAccent),
-                          onPressed: isLoading ? null : () => _sendMessage(_controller.text),
-                          tooltip: 'Send message',
-                        ),
                       ],
-                    );
-                  },
+                    ),
+                  ),
+                Container(
+                  padding: const EdgeInsets.all(16.0),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[900],
+                    border: Border(top: BorderSide(color: Colors.grey[700]!, width: 1)),
+                  ),
+                  child: Consumer<UnifiedBackgroundService>(
+                    builder: (context, backgroundService, child) {
+                      final isLoading = backgroundService.hasChatInference || backgroundService.isAgentBusy;
+                      return Row(
+                        children: [
+                          Container(
+                            decoration: BoxDecoration(
+                              color: Colors.grey[800],
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: IconButton(
+                              icon: Icon(
+                                Icons.image,
+                                color: isLoading ? Colors.grey[600] : Colors.cyan[400],
+                                size: 22,
+                              ),
+                              onPressed: isLoading ? null : _pickImage,
+                              tooltip: 'Pick image',
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: TextField(
+                              controller: _controller,
+                              style: const TextStyle(color: Colors.white),
+                              decoration: _inputDecoration('How can I help?'),
+                              onSubmitted: isLoading ? null : _sendMessage,
+                              enabled: !isLoading,
+                              maxLines: null,
+                            ),
+                          ),
+                          const SizedBox(width: 12.0),
+                          Container(
+                            decoration: BoxDecoration(
+                              color: isLoading ? Colors.grey[800] : Colors.cyan[600],
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: IconButton(
+                              icon: isLoading
+                                  ? SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.grey[400],
+                                      ),
+                                    )
+                                  : const Icon(Icons.send, color: Colors.white, size: 22),
+                              onPressed: isLoading ? null : () => _sendMessage(_controller.text),
+                              tooltip: 'Send message',
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
                 ),
-              ),
-            ],
-          );
-        },
+              ],
+            );
+          },
+        ),
       ),
     );
   }
