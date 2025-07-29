@@ -12,6 +12,7 @@ import 'package:automotiq_app/screens/login_screen.dart';
 import 'package:automotiq_app/screens/new_device_setup_screen.dart';
 import 'package:automotiq_app/providers/model_provider.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import '../services/unified_background_service.dart'; // Add this import
 
 class RootScreen extends StatelessWidget {
   const RootScreen({super.key});
@@ -145,6 +146,8 @@ void main() async {
           ),
           lazy: false,
         ),
+        // Add the unified background service as a singleton
+        ChangeNotifierProvider.value(value: UnifiedBackgroundService()),
         // AppAuthProvider waits for ModelProvider.isModelDownloaded
         appAuthProvider,
         // UserProvider waits for AppAuthProvider.user

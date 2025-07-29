@@ -20,6 +20,10 @@ class ModelProvider extends ChangeNotifier {
   bool _chatInitializing = false;
   bool _chatInitialized = false;
 
+  // Inference state
+  bool _isResponding = false;
+  bool get isResponding => _isResponding;
+
   String? _downloadError;
   String? _initializeError;
 
@@ -130,6 +134,42 @@ class ModelProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> handleUserMessage(
+    Message message,
+    List<Map<String, dynamic>> messages,
+    Function(String) onToken,
+  ) async {
+    if (_globalAgent == null) return;
+
+    _isResponding = true;
+    notifyListeners();
+
+    final chat = _globalAgent!;
+    await chat.addQueryChunk(message);
+    final responseStream = chat.generateChatResponseAsync();
+
+    String fullResponse = '';
+
+    try {
+      await for (final response in responseStream) {
+        if (response is TextResponse) {
+          fullResponse += response.token;
+          onToken(fullResponse);
+        } else if (response is FunctionCallResponse) {
+          final finalResponse = await chat.generateChatResponse();
+          fullResponse = finalResponse.toString();
+          onToken(fullResponse);
+        }
+      }
+    } catch (e, stackTrace) {
+      AppLogger.logError(e, stackTrace, 'ModelProvider.handleUserMessage');
+      onToken('Error: $e');
+    } finally {
+      _isResponding = false;
+      notifyListeners();
+    }
+  }
+
   Future<InferenceChat> createChat({
     double? temperature,
     int? randomSeed,
@@ -148,15 +188,14 @@ class ModelProvider extends ChangeNotifier {
     );
   }
 
-  // TODO: Add selective delete! the function contains a usable replayHistory argument
   Future<void> resetChat() async {
-    await globalAgent?.clearHistory();
+    await _globalAgent?.clearHistory();
   }
 
   Future<void> closeModel() async {
     try {
       if (_globalAgent != null) {
-        _globalAgent = null; // Chat closed by inferenceModel.close()
+        _globalAgent = null;
         _chatInitialized = false;
         AppLogger.logInfo('Global chat closed', 'ModelProvider.closeModel');
       }

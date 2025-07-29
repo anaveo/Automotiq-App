@@ -1,12 +1,10 @@
 import 'dart:typed_data';
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:automotiq_app/providers/model_provider.dart';
 import 'package:automotiq_app/utils/logger.dart';
-import 'package:flutter_gemma/flutter_gemma.dart';
+import '../services/unified_background_service.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -15,59 +13,79 @@ class ChatScreen extends StatefulWidget {
   State<ChatScreen> createState() => _ChatScreenState();
 }
 
-class _ChatScreenState extends State<ChatScreen> {
-  final List<Map<String, dynamic>> _messages = [];
+class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   final TextEditingController _controller = TextEditingController();
-  bool _isLoading = false;
+  final ScrollController _scrollController = ScrollController();
+  late UnifiedBackgroundService _backgroundService;
   Uint8List? _selectedImage;
+  bool _isDisposed = false;
 
   @override
   void initState() {
     super.initState();
-    _loadMessages();
+    WidgetsBinding.instance.addObserver(this);
+    _backgroundService = UnifiedBackgroundService();
+    _initializeChat();
   }
 
-  Future<void> _loadMessages() async {
-    final prefs = await SharedPreferences.getInstance();
-    final data = prefs.getStringList('chat_messages') ?? [];
-
-    final loadedMessages = data.map((msgJson) {
-      final dynamic decoded = json.decode(msgJson);
-      final map = Map<String, dynamic>.from(decoded);
-      if (map['image'] != null) {
-        map['image'] = base64Decode(map['image']);
-      }
-      return map;
-    });
-
-    setState(() {
-      _messages.addAll(loadedMessages);
-    });
+  @override
+  void dispose() {
+    _isDisposed = true;
+    WidgetsBinding.instance.removeObserver(this);
+    _controller.dispose();
+    _scrollController.dispose();
+    // Don't dispose the background service since it's a singleton
+    // _backgroundService.dispose(); // Remove this line
+    super.dispose();
   }
 
-  Future<void> _saveMessages() async {
-    final prefs = await SharedPreferences.getInstance();
-
-    final encoded = _messages.map((msg) {
-      final newMsg = Map<String, dynamic>.from(msg);
-      if (newMsg['image'] != null) {
-        newMsg['image'] = base64Encode(newMsg['image']);
-      }
-      return json.encode(newMsg);
-    }).toList();
-
-    await prefs.setStringList('chat_messages', encoded);
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    
+    if (_isDisposed) return;
+    
+    switch (state) {
+      case AppLifecycleState.resumed:
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!_isDisposed && mounted && _scrollController.hasClients) {
+            _scrollToBottom();
+          }
+        });
+        break;
+      case AppLifecycleState.paused:
+        AppLogger.logInfo('App backgrounded, chat inference continues', 'ChatScreen.didChangeAppLifecycleState');
+        break;
+      default:
+        break;
+    }
   }
 
-  Future<void> _clearMessages() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('chat_messages');
-    setState(() {
-      _messages.clear();
-    });
+  Future<void> _initializeChat() async {
+    if (_isDisposed) return;
+    await _backgroundService.initialize();
+    if (!_isDisposed && mounted) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!_isDisposed && mounted && _scrollController.hasClients && _backgroundService.messages.isNotEmpty) {
+          _scrollToBottom();
+        }
+      });
+    }
+  }
+
+  void _scrollToBottom() {
+    if (!_isDisposed && mounted && _scrollController.hasClients) {
+      _scrollController.animateTo(
+        _scrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    }
   }
 
   Future<void> _pickImage() async {
+    if (_isDisposed) return;
+    
     try {
       final picker = ImagePicker();
       final pickedFile = await picker.pickImage(
@@ -79,12 +97,14 @@ class _ChatScreenState extends State<ChatScreen> {
       if (pickedFile != null) {
         final imageBytes = await pickedFile.readAsBytes();
         AppLogger.logInfo('Image picked: ${imageBytes.length} bytes', 'ChatScreen._pickImage');
+        if (_isDisposed || !mounted) return;
         setState(() {
           _selectedImage = imageBytes;
         });
       }
     } catch (e, stackTrace) {
       AppLogger.logError(e, stackTrace, 'ChatScreen._pickImage');
+      if (_isDisposed || !mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to pick image: $e')),
       );
@@ -92,100 +112,73 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _sendMessage(String text) async {
-    if (text.trim().isEmpty && _selectedImage == null) return;
+    if (_isDisposed || (text.trim().isEmpty && _selectedImage == null)) return;
 
     final modelProvider = Provider.of<ModelProvider>(context, listen: false);
     if (!modelProvider.isChatInitialized || modelProvider.globalAgent == null) {
       AppLogger.logError('Global chat not initialized', null, 'ChatScreen._sendMessage');
+      if (_isDisposed || !mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Chat not initialized. Please try again.')),
       );
       return;
     }
 
-    final messageData = {
-      'text': text,
-      'sender': 'user',
-      'image': _selectedImage,
-    };
-    setState(() {
-      _messages.add(messageData);
-      _isLoading = true;
-    });
-    await _saveMessages();
-
     _controller.clear();
     final tempImage = _selectedImage;
-    _selectedImage = null;
+    
+    // Check disposed and mounted before setState
+    if (_isDisposed || !mounted) return;
+    setState(() {
+      _selectedImage = null;
+    });
 
     try {
-      final chat = modelProvider.globalAgent!;
-      final message = tempImage != null
-          ? Message.withImage(
-              text: text.isEmpty ? 'Analyze this image' : text,
-              imageBytes: tempImage,
-              isUser: true,
-            )
-          : Message.text(text: text, isUser: true);
-
-      AppLogger.logInfo(
-        'Sending message: type=${message.hasImage ? "image+text" : "text"}, text="$text", imageSize=${tempImage?.length ?? 0}',
-        'ChatScreen._sendMessage',
+      await _backgroundService.sendChatMessage(
+        text: text,
+        image: tempImage,
+        chat: modelProvider.globalAgent!,
       );
 
-      final tokenCount = await chat.maxTokens;
-      AppLogger.logInfo('Prompt token count: $tokenCount', 'ChatScreen._sendMessage');
-
-      await chat.addQueryChunk(message);
-      final responseStream = chat.generateChatResponseAsync();
-      String fullResponse = '';
-
-      await for (final response in responseStream) {
-        if (response is TextResponse) {
-          setState(() {
-            fullResponse += response.token;
-            if (_messages.isNotEmpty && _messages.last['sender'] == 'bot') {
-              _messages.last['text'] = fullResponse;
-            } else {
-              _messages.add({
-                'text': fullResponse,
-                'sender': 'bot',
-                'image': null,
-              });
-            }
-          });
-          await _saveMessages();
-        } else if (response is FunctionCallResponse) {
-          final finalResponse = await chat.generateChatResponse();
-          setState(() {
-            _messages.add({
-              'text': finalResponse.toString(),
-              'sender': 'bot',
-              'image': null,
-            });
-          });
-          await _saveMessages();
+      // Check disposed and mounted after async operation
+      if (_isDisposed || !mounted) return;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!_isDisposed && mounted) {
+          _scrollToBottom();
         }
-      }
-
-      AppLogger.logInfo('Response received: $fullResponse', 'ChatScreen._sendMessage');
+      });
     } catch (e, stackTrace) {
       AppLogger.logError(e, stackTrace, 'ChatScreen._sendMessage');
-      setState(() {
-        _messages.add({
-          'text': 'Error: $e',
-          'sender': 'bot',
-          'image': null,
-        });
-      });
-      await _saveMessages();
+      if (_isDisposed || !mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to send message: $e')),
       );
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
+    }
+  }
+
+  Future<void> _clearMessages() async {
+    if (_isDisposed || !mounted) return;
+    
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Create New Chat?'),
+        content: const Text('Previous messages will no longer be visible and any ongoing inference will be stopped.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Create'),
+          ),
+        ],
+      ),
+    );
+    
+    if (confirmed == true && !_isDisposed && mounted) {
+      await _backgroundService.clearChatMessages();
     }
   }
 
@@ -200,33 +193,94 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
+  Widget _buildMessage(ChatMessage message) {
+    final isUser = message.sender == 'user';
+    final hasImage = message.image != null;
+    
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      child: Align(
+        alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxWidth: MediaQuery.of(context).size.width * 0.75,
+          ),
+          child: Column(
+            crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+            children: [
+              if (hasImage)
+                Container(
+                  margin: const EdgeInsets.only(bottom: 8.0),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12.0),
+                    child: Image.memory(
+                      message.image!,
+                      width: 200,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        AppLogger.logError(error, stackTrace, 'ChatScreen.Image.memory');
+                        return const Text('Failed to load image');
+                      },
+                    ),
+                  ),
+                ),
+              if (message.text.isNotEmpty)
+                Container(
+                  padding: const EdgeInsets.all(12.0),
+                  decoration: BoxDecoration(
+                    color: isUser ? Colors.deepPurpleAccent : Colors.grey.shade900,
+                    borderRadius: BorderRadius.circular(12.0),
+                  ),
+                  child: Text(
+                    message.text,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: isUser ? Colors.white : Colors.white70,
+                        ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Vehicle Assistant'),
         actions: [
+          // Show indicator if there's background inference
+          Consumer<UnifiedBackgroundService>(
+            builder: (context, backgroundService, child) {
+              if (backgroundService.hasChatInference) {
+                return Container(
+                  margin: const EdgeInsets.only(right: 8.0),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Processing...',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
+                  ),
+                );
+              }
+              return const SizedBox.shrink();
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.edit_square),
             tooltip: 'Create new chat',
-            onPressed: _isLoading
-                ? null
-                : () async {
-                    final confirmed = await showDialog<bool>(
-                      context: context,
-                      builder: (context) => AlertDialog(
-                        title: const Text('Create New Chat?'),
-                        content: const Text('Previous messages will no longer be visible.'),
-                        actions: [
-                          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-                          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Create')),
-                        ],
-                      ),
-                    );
-                    if (confirmed == true) {
-                      await _clearMessages();
-                    }
-                  },
+            onPressed: _clearMessages,
           ),
         ],
       ),
@@ -235,91 +289,110 @@ class _ChatScreenState extends State<ChatScreen> {
           if (!modelProvider.isChatInitialized) {
             return const Center(child: CircularProgressIndicator());
           }
+          
           return Column(
             children: [
               Expanded(
-                child: ListView.builder(
-                  padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
-                  itemCount: _messages.length,
-                  itemBuilder: (context, index) {
-                    final message = _messages[index];
-                    final isUser = message['sender'] == 'user';
-                    final hasImage = message['image'] != null;
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4.0),
-                      child: Align(
-                        alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-                        child: ConstrainedBox(
-                          constraints: BoxConstraints(
-                            maxWidth: MediaQuery.of(context).size.width * 0.75,
-                          ),
-                          child: Column(
-                            crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-                            children: [
-                              if (hasImage)
-                                Container(
-                                  margin: const EdgeInsets.only(bottom: 8.0),
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(12.0),
-                                    child: Image.memory(
-                                      message['image'] as Uint8List,
-                                      width: 200,
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (context, error, stackTrace) {
-                                        AppLogger.logError(error, stackTrace, 'ChatScreen.Image.memory');
-                                        return const Text('Failed to load image');
-                                      },
-                                    ),
-                                  ),
-                                ),
-                              if (message['text'] != null && message['text'].isNotEmpty)
-                                Container(
-                                  padding: const EdgeInsets.all(12.0),
-                                  decoration: BoxDecoration(
-                                    color: isUser ? Colors.deepPurpleAccent : Colors.grey.shade900,
-                                    borderRadius: BorderRadius.circular(12.0),
-                                  ),
-                                  child: Text(
-                                    message['text']!,
-                                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                          color: isUser ? Colors.white : Colors.white70,
-                                        ),
-                                  ),
-                                ),
-                            ],
-                          ),
+                child: Consumer<UnifiedBackgroundService>(
+                  builder: (context, backgroundService, child) {
+                    final messages = backgroundService.messages;
+                    
+                    if (messages.isEmpty) {
+                      return const Center(
+                        child: Text(
+                          'Start a conversation!',
+                          style: TextStyle(fontSize: 16, color: Colors.grey),
                         ),
-                      ),
+                      );
+                    }
+                    
+                    return ListView.builder(
+                      controller: _scrollController,
+                      padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+                      itemCount: messages.length,
+                      itemBuilder: (context, index) {
+                        return _buildMessage(messages[index]);
+                      },
                     );
                   },
                 ),
               ),
+              // Image preview
+              if (_selectedImage != null)
+                Container(
+                  margin: const EdgeInsets.all(8.0),
+                  child: Stack(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8.0),
+                        child: Image.memory(
+                          _selectedImage!,
+                          height: 100,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                      Positioned(
+                        top: 4,
+                        right: 4,
+                        child: GestureDetector(
+                          onTap: () {
+                            if (!_isDisposed && mounted) {
+                              setState(() => _selectedImage = null);
+                            }
+                          },
+                          child: Container(
+                            decoration: const BoxDecoration(
+                              color: Colors.black54,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.close,
+                              color: Colors.white,
+                              size: 20,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              // Input area
               Container(
                 padding: const EdgeInsets.all(8.0),
-                child: Row(
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.image, color: Colors.deepPurpleAccent),
-                      onPressed: _isLoading ? null : _pickImage,
-                      tooltip: 'Pick image',
-                    ),
-                    Expanded(
-                      child: TextField(
-                        controller: _controller,
-                        decoration: _inputDecoration('How can I help?'),
-                        onSubmitted: _isLoading ? null : _sendMessage,
-                        enabled: !_isLoading,
-                      ),
-                    ),
-                    const SizedBox(width: 8.0),
-                    IconButton(
-                      icon: _isLoading
-                          ? const CircularProgressIndicator()
-                          : const Icon(Icons.send, color: Colors.deepPurpleAccent),
-                      onPressed: _isLoading ? null : () => _sendMessage(_controller.text),
-                      tooltip: 'Send message',
-                    ),
-                  ],
+                child: Consumer<UnifiedBackgroundService>(
+                  builder: (context, backgroundService, child) {
+                    final isLoading = backgroundService.hasChatInference;
+                    
+                    return Row(
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.image, color: Colors.deepPurpleAccent),
+                          onPressed: isLoading ? null : _pickImage,
+                          tooltip: 'Pick image',
+                        ),
+                        Expanded(
+                          child: TextField(
+                            controller: _controller,
+                            decoration: _inputDecoration('How can I help?'),
+                            onSubmitted: isLoading ? null : _sendMessage,
+                            enabled: !isLoading,
+                          ),
+                        ),
+                        const SizedBox(width: 8.0),
+                        IconButton(
+                          icon: isLoading
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : const Icon(Icons.send, color: Colors.deepPurpleAccent),
+                          onPressed: isLoading ? null : () => _sendMessage(_controller.text),
+                          tooltip: 'Send message',
+                        ),
+                      ],
+                    );
+                  },
                 ),
               ),
             ],
