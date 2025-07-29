@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:automotiq_app/providers/model_provider.dart';
 import 'package:automotiq_app/utils/logger.dart';
 import '../services/unified_background_service.dart';
@@ -306,6 +307,25 @@ class DiagnosisScreenState extends State<DiagnosisScreen> with WidgetsBindingObs
     }
   }
 
+  // Helper method to clean LLM output
+  String _cleanLlmOutput(String output) {
+    String cleaned = output;
+    
+    // Remove </end_of_turn> tags
+    cleaned = cleaned.replaceAll('</end_of_turn>', '');
+    cleaned = cleaned.replaceAll('<end_of_turn>', '');
+    
+    // Remove any other common LLM artifacts
+    cleaned = cleaned.replaceAll('<|im_end|>', '');
+    cleaned = cleaned.replaceAll('<|im_start|>', '');
+    cleaned = cleaned.replaceAll('<|endoftext|>', '');
+    
+    // Trim whitespace
+    cleaned = cleaned.trim();
+    
+    return cleaned;
+  }
+
   Widget _buildDiagnosisContent(DiagnosisResult? diagnosis, UnifiedBackgroundService backgroundService) {
     if (diagnosis == null) {
       if (widget.dtcs.isEmpty) {
@@ -565,9 +585,45 @@ class DiagnosisScreenState extends State<DiagnosisScreen> with WidgetsBindingObs
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     if (diagnosis.output.isNotEmpty)
-                      Text(
-                        diagnosis.output,
-                        style: const TextStyle(fontSize: 16),
+                      MarkdownBody(
+                        data: _cleanLlmOutput(diagnosis.output),
+                        styleSheet: MarkdownStyleSheet(
+                          p: const TextStyle(fontSize: 16, height: 1.5),
+                          h1: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                          h2: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                          h3: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          h4: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                          h5: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                          h6: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                          strong: const TextStyle(fontWeight: FontWeight.bold),
+                          em: const TextStyle(fontStyle: FontStyle.italic),
+                          code: TextStyle(
+                            backgroundColor: Colors.grey[200],
+                            fontFamily: 'monospace',
+                            fontSize: 14,
+                          ),
+                          codeblockDecoration: BoxDecoration(
+                            color: Colors.grey[100],
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.grey[300]!),
+                          ),
+                          codeblockPadding: const EdgeInsets.all(12),
+                          blockquote: TextStyle(
+                            color: Colors.grey[600],
+                            fontStyle: FontStyle.italic,
+                          ),
+                          blockquoteDecoration: BoxDecoration(
+                            color: Colors.grey[50],
+                            border: Border(
+                              left: BorderSide(
+                                color: Colors.grey[400]!,
+                                width: 4,
+                              ),
+                            ),
+                          ),
+                          blockquotePadding: const EdgeInsets.all(12),
+                          listBullet: const TextStyle(fontSize: 16),
+                        ),
                       ),
                     
                     // Enhanced loading indicator with queue info
