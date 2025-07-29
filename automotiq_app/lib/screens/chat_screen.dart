@@ -35,8 +35,6 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     WidgetsBinding.instance.removeObserver(this);
     _controller.dispose();
     _scrollController.dispose();
-    // Don't dispose the background service since it's a singleton
-    // _backgroundService.dispose(); // Remove this line
     super.dispose();
   }
 
@@ -53,7 +51,6 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
           if (!_isDisposed && mounted && _scrollController.hasClients) {
             _scrollToBottom();
           }
-          // Check if we need to resume any pending inference
           _checkAndResumeChatIfNeeded();
         });
         break;
@@ -84,15 +81,11 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     if (messages.isNotEmpty) {
       final lastMessage = messages.last;
       
-      // If the last message is from user, check if there should be an assistant response
       if (lastMessage.sender == 'user') {
-        // Check if there's a follow-up assistant message or if one is being generated
         bool hasAssistantResponse = false;
         
-        // Look through messages to see if the last user message has a response
         for (int i = messages.length - 1; i >= 0; i--) {
           if (messages[i].sender == 'user' && messages[i] == lastMessage) {
-            // Found the last user message, check if there's an assistant response after it
             if (i < messages.length - 1) {
               for (int j = i + 1; j < messages.length; j++) {
                 if (messages[j].sender == 'assistant') {
@@ -105,14 +98,11 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
           }
         }
         
-        // Only resume if there's no assistant response AND no inference running
         if (!hasAssistantResponse && !_backgroundService.hasChatInference) {
           AppLogger.logInfo('Found orphaned user message without response and no running inference, resuming', 'ChatScreen._checkAndResumeChatIfNeeded');
           
-          // Add a small delay to ensure UI is stable before resuming
           await Future.delayed(const Duration(milliseconds: 500));
           
-          // Double-check that inference still isn't running after delay
           if (!_backgroundService.hasChatInference && mounted && !_isDisposed) {
             try {
               await _backgroundService.sendChatMessage(
@@ -195,7 +185,6 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     _controller.clear();
     final tempImage = _selectedImage;
     
-    // Check disposed and mounted before setState
     if (_isDisposed || !mounted) return;
     setState(() {
       _selectedImage = null;
@@ -208,7 +197,6 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
         chat: modelProvider.globalAgent!,
       );
 
-      // Check disposed and mounted after async operation
       if (_isDisposed || !mounted) return;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!_isDisposed && mounted) {
@@ -313,52 +301,70 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     );
   }
 
+  Widget _buildStatusIndicator(UnifiedBackgroundService backgroundService) {
+    final hasChatInference = backgroundService.hasChatInference;
+    final isAgentBusy = backgroundService.isAgentBusy;
+    final queueLength = backgroundService.queueLength;
+    
+    if (!hasChatInference && !isAgentBusy && queueLength == 0) {
+      return const SizedBox.shrink();
+    }
+    
+    String statusText;
+    if (hasChatInference) {
+      statusText = 'Processing...';
+    } else if (isAgentBusy) {
+      statusText = 'In queue...';
+    } else {
+      statusText = 'Queued ($queueLength)';
+    }
+    
+    return Container(
+      margin: const EdgeInsets.only(right: 8.0),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(
+            width: 16,
+            height: 16,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            statusText,
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Vehicle Assistant'),
         actions: [
-          // Show indicator if there's background inference
+          // Show processing/queue status
           Consumer<UnifiedBackgroundService>(
             builder: (context, backgroundService, child) {
-              if (backgroundService.hasChatInference) {
-                return Container(
-                  margin: const EdgeInsets.only(right: 8.0),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Processing...',
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                    ],
-                  ),
-                );
-              }
-              return const SizedBox.shrink();
+              return _buildStatusIndicator(backgroundService);
             },
           ),
-          // Wrap the IconButton in Consumer to check inference state
+          // Clear button with improved state checking
           Consumer<UnifiedBackgroundService>(
             builder: (context, backgroundService, child) {
-              final isInferenceActive = backgroundService.hasChatInference;
+              final isAnyInferenceActive = backgroundService.hasActiveInference || backgroundService.isAgentBusy;
               
               return IconButton(
                 icon: Icon(
                   Icons.edit_square,
-                  color: isInferenceActive ? Colors.grey : null,
+                  color: isAnyInferenceActive ? Colors.grey : null,
                 ),
-                tooltip: isInferenceActive 
-                    ? 'Wait for inference to complete' 
+                tooltip: isAnyInferenceActive 
+                    ? 'Wait for operations to complete' 
                     : 'Create new chat',
-                onPressed: isInferenceActive ? null : _clearMessages,
+                onPressed: isAnyInferenceActive ? null : _clearMessages,
               );
             },
           ),
@@ -375,10 +381,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
               Expanded(
                 child: Consumer<UnifiedBackgroundService>(
                   builder: (context, backgroundService, child) {
-                    // Check if inference just completed and we need to scroll
                     final isInferenceRunning = backgroundService.hasChatInference;
                     if (_wasInferenceRunning && !isInferenceRunning) {
-                      // Inference just completed, scroll to bottom
                       WidgetsBinding.instance.addPostFrameCallback((_) {
                         if (!_isDisposed && mounted) {
                           _scrollToBottom();
@@ -453,7 +457,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                 padding: const EdgeInsets.all(8.0),
                 child: Consumer<UnifiedBackgroundService>(
                   builder: (context, backgroundService, child) {
-                    final isLoading = backgroundService.hasChatInference;
+                    final isLoading = backgroundService.hasChatInference || backgroundService.isAgentBusy;
                     
                     return Row(
                       children: [
