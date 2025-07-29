@@ -159,7 +159,7 @@ class AccountSettingsScreen extends StatelessWidget {
           if (user != null)
             ElevatedButton.icon(
               onPressed: () async {
-                late final confirm;
+                late final bool? confirm;
                 if (user.isAnonymous) {
                   confirm = await showDialog<bool>(
                     context: context,

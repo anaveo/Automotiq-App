@@ -28,10 +28,21 @@ android {
     }
 
     buildTypes {
-        release {
-            signingConfig = signingConfigs.getByName("debug") // TODO: Update with release signing config
+        getByName("release") {
+            signingConfig = signingConfigs.getByName("debug") // or your release config
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                file("proguard-rules.pro")
+            )
+        }
+
+        getByName("debug") {
+            isMinifyEnabled = false
         }
     }
+
 }
 
 flutter {

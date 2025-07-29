@@ -10,7 +10,6 @@ class AppTheme {
         primary: Colors.deepPurple,
         secondary: Colors.white70,
         surface: Colors.black,
-        background: Colors.black,
       ),
       appBarTheme: const AppBarTheme(
         backgroundColor: Colors.black,

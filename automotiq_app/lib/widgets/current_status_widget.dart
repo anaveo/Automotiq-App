@@ -1,5 +1,4 @@
 import 'package:automotiq_app/screens/dtc_detail_screen.dart';
-import 'package:automotiq_app/utils/logger.dart';
 import 'package:automotiq_app/widgets/summary_status_box.dart';
 import 'package:flutter/material.dart';
 import '../services/dtc_database_service.dart';
