@@ -346,35 +346,65 @@ class DiagnosisScreenState extends State<DiagnosisScreen> with WidgetsBindingObs
     }
   }
 
-  // Helper method to clean LLM output
-  String _cleanLlmOutput(String output) {
-    String cleaned = output;
+  // // Helper method to clean LLM output
+String _cleanLlmOutput(String output) {
+  String cleaned = output;
+
+  // Remove all LLM-style tags including malformed or attribute-laden tags
+  cleaned = cleaned.replaceAll(RegExp(r'<[^>\n]*>', caseSensitive: false), '');
+  cleaned = cleaned.replaceAll(RegExp(r'</[^>\n]*', caseSensitive: false), ''); // Catch tags like </endaboration role="assistant"
+
+  // Remove standalone pipe-style delimiters (e.g., <|end|>)
+  cleaned = cleaned.replaceAll(RegExp(r'<\|[^|>]+\|>', caseSensitive: false), '');
+
+  // Collapse repeated newlines and spaces
+  cleaned = cleaned.replaceAll(RegExp(r'\n\s*\n+'), '\n\n');
+  cleaned = cleaned.replaceAll(RegExp(r'[ \t]+'), ' ');
+
+  return cleaned.trim();
+}
+
+
+  // String _cleanLlmOutput(String output) {
+  //   String cleaned = output;
     
-    // Remove various forms of end_of_turn tags (case insensitive)
-    cleaned = cleaned.replaceAll(RegExp(r'</?end_of_turn>', caseSensitive: false), '');
-    cleaned = cleaned.replaceAll(RegExp(r'<end_of_turn/?>', caseSensitive: false), '');
-    cleaned = cleaned.replaceAll(RegExp(r'</end_of_turn>', caseSensitive: false), '');
-    cleaned = cleaned.replaceAll(RegExp(r'<end_of_turn>', caseSensitive: false), '');
+  //   // Remove various forms of end_of_turn tags (case insensitive)
+  //   cleaned = cleaned.replaceAll(RegExp(r'</?end_of_turn>', caseSensitive: false), '');
+  //   cleaned = cleaned.replaceAll(RegExp(r'<end_of_turn/?>', caseSensitive: false), '');
+  //   cleaned = cleaned.replaceAll(RegExp(r'</end_of_turn>', caseSensitive: false), '');
+  //   cleaned = cleaned.replaceAll(RegExp(r'<end_of_turn>', caseSensitive: false), '');
+  //   cleaned = cleaned.replaceAll(RegExp(r'</end_of_turn', caseSensitive: false), '');
+
+  //   // Remove various forms of start_turn tags (case insensitive)
+  //   cleaned = cleaned.replaceAll(RegExp(r'</?start_turn>', caseSensitive: false), '');
+  //   cleaned = cleaned.replaceAll(RegExp(r'<start_turn/?>', caseSensitive: false), '');
+  //   cleaned = cleaned.replaceAll(RegExp(r'</start_turn>', caseSensitive: false), '');
+  //   cleaned = cleaned.replaceAll(RegExp(r'<start_turn>', caseSensitive: false), '');
     
-    // Remove other common LLM artifacts
-    cleaned = cleaned.replaceAll(RegExp(r'<\|im_end\|>', caseSensitive: false), '');
-    cleaned = cleaned.replaceAll(RegExp(r'<\|im_start\|>', caseSensitive: false), '');
-    cleaned = cleaned.replaceAll(RegExp(r'<\|endoftext\|>', caseSensitive: false), '');
-    cleaned = cleaned.replaceAll(RegExp(r'<\|end\|>', caseSensitive: false), '');
-    cleaned = cleaned.replaceAll(RegExp(r'<\|start\|>', caseSensitive: false), '');
+  //   // Remove other common LLM artifacts
+  //   cleaned = cleaned.replaceAll(RegExp(r'<\|im_end\|>', caseSensitive: false), '');
+  //   cleaned = cleaned.replaceAll(RegExp(r'<\|im_start\|>', caseSensitive: false), '');
+  //   cleaned = cleaned.replaceAll(RegExp(r'<\|endoftext\|>', caseSensitive: false), '');
+  //   cleaned = cleaned.replaceAll(RegExp(r'<\|end\|>', caseSensitive: false), '');
+  //   cleaned = cleaned.replaceAll(RegExp(r'<\|start\|>', caseSensitive: false), '');
     
-    // Remove any remaining angle bracket patterns that look like tags
-    cleaned = cleaned.replaceAll(RegExp(r'<[^>]*end[^>]*>', caseSensitive: false), '');
+  //   // Remove any remaining angle bracket patterns that look like tags
+  //   cleaned = cleaned.replaceAll(RegExp(r'<[^>]*end[^>]*>', caseSensitive: false), '');
+  //   cleaned = cleaned.replaceAll(RegExp(r'<[^>]*start[^>]*>', caseSensitive: false), '');
+
+  //   // Clean up multiple whitespaces and newlines
+  //   cleaned = cleaned.replaceAll(RegExp(r'\n\s*\n\s*\n'), '\n\n'); // Replace multiple newlines with double newline
+  //   cleaned = cleaned.replaceAll(RegExp(r'[ \t]+'), ' '); // Replace multiple spaces/tabs with single space
     
-    // Clean up multiple whitespaces and newlines
-    cleaned = cleaned.replaceAll(RegExp(r'\n\s*\n\s*\n'), '\n\n'); // Replace multiple newlines with double newline
-    cleaned = cleaned.replaceAll(RegExp(r'[ \t]+'), ' '); // Replace multiple spaces/tabs with single space
+  //   // Clean up multiple whitespaces and newlines
+  //   cleaned = cleaned.replaceAll(RegExp(r'\n\s*\n\s*\n'), '\n\n'); // Replace multiple newlines with double newline
+  //   cleaned = cleaned.replaceAll(RegExp(r'[ \t]+'), ' '); // Replace multiple spaces/tabs with single space
     
-    // Trim whitespace
-    cleaned = cleaned.trim();
+  //   // Trim whitespace
+  //   cleaned = cleaned.trim();
     
-    return cleaned;
-  }
+  //   return cleaned;
+  // }
 
   Widget _buildDiagnosisContent(DiagnosisResult? diagnosis, UnifiedBackgroundService backgroundService) {
     if (diagnosis == null) {
