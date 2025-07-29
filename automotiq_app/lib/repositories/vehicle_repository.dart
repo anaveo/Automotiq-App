@@ -10,8 +10,13 @@ class VehicleRepository {
   VehicleRepository({FirebaseFirestore? firestoreInstance})
       : firestore = firestoreInstance ?? FirebaseFirestore.instance;
 
-Future<List<VehicleModel>> getVehicles(String uid) async {
-    if (uid.isEmpty) throw ArgumentError('UID cannot be empty');
+  /// Fetches vehicles from the Firestore database.
+  ///
+  /// Throws [ArgumentError] if [uid] is empty.
+  /// Throws an [Exception] if fetching fails and no data is available in the offline cache.
+  Future<List<VehicleModel>> getVehicles(String uid) async {
+    if (uid.isEmpty) throw ArgumentError('User ID cannot be empty.');
+
     try {
       final snapshot = await firestore
           .collection('users')
@@ -20,124 +25,94 @@ Future<List<VehicleModel>> getVehicles(String uid) async {
           .get();
 
       if (snapshot.metadata.isFromCache) {
-        AppLogger.logWarning('Using cached data due to offline mode');
+        AppLogger.logWarning('getVehicles: Using cached vehicle data due to being offline or for performance.');
       }
 
+      // Retrieve data and return
       return snapshot.docs
           .map((doc) => VehicleModel.fromMap(doc.id, doc.data()))
           .toList();
+
     } catch (e) {
-      if (e is FirebaseException && e.code == 'unavailable') {
-        AppLogger.logWarning('Offline mode, using cached data');
-        // Firestore automatically uses cache, so no need to rethrow if data is available
-        final snapshot = await firestore
-            .collection('users')
-            .doc(uid)
-            .collection('vehicles')
-            .get(const GetOptions(source: Source.cache));
-        return snapshot.docs
-            .map((doc) => VehicleModel.fromMap(doc.id, doc.data()))
-            .toList();
-      }
       rethrow;
     }
   }
 
+  /// Adds a vehicle from the Firestore database.
+  ///
+  /// Throws [ArgumentError] if required IDs are empty.
+  /// Returns the ID of the vehicle being added.
   Future<String> addVehicle(String uid, VehicleModel newVehicle) async {
-    if (uid.isEmpty) throw ArgumentError('User ID cannot be empty');
-    if (newVehicle.deviceId.isEmpty) throw ArgumentError('Device ID is required');
-    if (newVehicle.id.isEmpty) throw ArgumentError('Vehicle ID cannot be empty');
+    if (uid.isEmpty) throw ArgumentError('User ID cannot be empty.');
+    if (newVehicle.id.isEmpty) throw ArgumentError('Vehicle ID cannot be empty.');
+    if (newVehicle.deviceId.isEmpty) throw ArgumentError('Device ID is required.');
+
+    final docRef = firestore
+        .collection('users')
+        .doc(uid)
+        .collection('vehicles')
+        .doc(newVehicle.id);
 
     try {
-      final docRef = firestore
-          .collection('users')
-          .doc(uid)
-          .collection('vehicles')
-          .doc(newVehicle.id);
+      // Perform the add operation
+      unawaited(docRef.set(newVehicle.toMap()).then((_) {
+        AppLogger.logInfo('Vehicle add/update for ${newVehicle.id} was successfully queued or completed.');
+      }).catchError((error) {
+          // If the set Future fails, it's due to a non-network issue
+          // like permissions, not because the device is offline.
+          AppLogger.logError('Error during background vehicle set operation: $error');
+      }));
 
-      // Check for ID collision
-      final existingDoc = await docRef.get();
-      if (existingDoc.exists) {
-        throw Exception('Vehicle ID ${newVehicle.id} already exists');
-      }
-
-      await docRef.set(newVehicle.toMap());
-
-      // Check if operation was queued offline
-      final docSnapshot = await docRef.get();
-      if (docSnapshot.metadata.isFromCache) {
-        AppLogger.logWarning('Operation queued for sync due to offline mode');
-      }
-
+      // Return vehicle id (actual addition will be done in the background based on offline state)
       return newVehicle.id;
+
     } catch (e) {
-      if (e is FirebaseException && e.code == 'unavailable') {
-        AppLogger.logWarning('Operation queued for sync due to offline mode');
-        // Firestore automatically queues the operation, so no retry needed
-        return newVehicle.id;
-      }
-      throw Exception('Failed to add vehicle: $e');
+      rethrow;
     }
   }
 
+
+  /// Removes a vehicle from the Firestore database.
+  ///
+  /// Throws [ArgumentError] if [uid] or [vehicleId] are empty, or if the
+  /// vehicle does not exist in the cache.
+  /// Throws an [Exception] for other failures.
   Future<void> removeVehicle(String uid, String vehicleId) async {
-    if (uid.isEmpty || vehicleId.isEmpty) {
-      throw ArgumentError('User ID and Vehicle ID cannot be empty');
-    }
+    if (uid.isEmpty) throw ArgumentError('User ID cannot be empty.');
+    if (vehicleId.isEmpty) throw ArgumentError('Vehicle ID cannot be empty.');
+
+    final docRef = firestore
+        .collection('users')
+        .doc(uid)
+        .collection('vehicles')
+        .doc(vehicleId);
 
     try {
-      final docRef = firestore
-          .collection('users')
-          .doc(uid)
-          .collection('vehicles')
-          .doc(vehicleId);
-
-      // Check existence using cache-first strategy
+      // Ensure vehicle exists
       final docSnap = await docRef.get(const GetOptions(source: Source.cache));
       if (!docSnap.exists) {
         throw ArgumentError('Vehicle $vehicleId does not exist for user $uid');
       }
 
-      // Perform non-blocking delete
-      docRef.delete().then((_) {
-        AppLogger.logInfo('removeVehicle: Deletion queued or completed');
-        // Optionally check sync status
-        docRef.get().then((postDeleteSnap) {
-          if (postDeleteSnap.metadata.isFromCache) {
-            AppLogger.logWarning('removeVehicle: Deletion queued for sync due to offline mode');
-          } else {
-            AppLogger.logInfo('removeVehicle: Deletion synced with server');
-          }
-        });
-      }).catchError((e, StackTrace stackTrace) {
-        if (e is FirebaseException && e.code == 'unavailable') {
-          AppLogger.logWarning('removeVehicle: Deletion queued due to network unavailability');
-        } else {
-          AppLogger.logError(e, stackTrace, 'VehicleRepository.removeVehicle.async');
-        }
-      });
+      // Perform the delete operation.
+      unawaited(docRef.delete().then((_) {
+          AppLogger.logInfo('Vehicle deletion for $vehicleId successfully queued or completed.');
+      }).catchError((e) {
+          // If the delete Future fails, it's due to a non-network issue
+          // like permissions, not because the device is offline.
+          AppLogger.logError(e);
+      }));
 
-    } catch (e, stackTrace) {
-      if (e is FirebaseException && e.code == 'unavailable') {
-        AppLogger.logWarning('removeVehicle: Offline mode, checking cache for existence');
-        // Retry existence check with cache
-        final docRef = firestore
-            .collection('users')
-            .doc(uid)
-            .collection('vehicles')
-            .doc(vehicleId);
-        final docSnap = await docRef.get(const GetOptions(source: Source.cache));
-        if (!docSnap.exists) {
-          throw ArgumentError('Vehicle $vehicleId does not exist for user $uid');
-        }
-        // Queue deletion non-blocking
-        docRef.delete().then((_) {
-          AppLogger.logWarning('removeVehicle: Deletion queued for sync due to offline mode');
-        });
-        return;
+    } on FirebaseException catch (e) {
+      // This catches errors from the initial docRef.get() call.
+      if (e.code == 'unavailable') {
+        AppLogger.logWarning('Offline mode detected during vehicle existence check. Deletion will be queued.');
+        unawaited(docRef.delete());
+      } else {
+        throw Exception('Failed to remove vehicle due to a Firebase error: ${e.message}');
       }
-      AppLogger.logError(e, stackTrace, 'VehicleRepository.removeVehicle');
-      throw Exception('Failed to remove vehicle: $e');
+    } catch (e) {
+      rethrow;
     }
   }
 }

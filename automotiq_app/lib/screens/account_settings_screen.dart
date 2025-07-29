@@ -54,9 +54,6 @@ class AccountSettingsScreen extends StatelessWidget {
                           );
                           if (confirm == true) {
                             await vehicleProvider.removeVehicle(vehicle.id);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('${vehicle.name} deleted')),
-                            );
                           }
                         },
                       ),
