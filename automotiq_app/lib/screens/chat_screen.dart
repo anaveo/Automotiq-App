@@ -19,6 +19,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   late UnifiedBackgroundService _backgroundService;
   Uint8List? _selectedImage;
   bool _isDisposed = false;
+  bool _wasInferenceRunning = false;
 
   @override
   void initState() {
@@ -47,10 +48,13 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     
     switch (state) {
       case AppLifecycleState.resumed:
+        AppLogger.logInfo('App resumed, checking chat inference status', 'ChatScreen.didChangeAppLifecycleState');
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!_isDisposed && mounted && _scrollController.hasClients) {
             _scrollToBottom();
           }
+          // Check if we need to resume any pending inference
+          _checkAndResumeChatIfNeeded();
         });
         break;
       case AppLifecycleState.paused:
@@ -58,6 +62,70 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
         break;
       default:
         break;
+    }
+  }
+
+  Future<void> _checkAndResumeChatIfNeeded() async {
+    if (_isDisposed || !mounted) return;
+    
+    final modelProvider = Provider.of<ModelProvider>(context, listen: false);
+    if (!modelProvider.isChatInitialized || modelProvider.globalAgent == null) {
+      return;
+    }
+
+    // Only check for resume if there's NO inference currently running
+    if (_backgroundService.hasChatInference) {
+      AppLogger.logInfo('Chat inference is running, no need to resume', 'ChatScreen._checkAndResumeChatIfNeeded');
+      return;
+    }
+
+    // Check if there are messages that might need processing
+    final messages = _backgroundService.messages;
+    if (messages.isNotEmpty) {
+      final lastMessage = messages.last;
+      
+      // If the last message is from user, check if there should be an assistant response
+      if (lastMessage.sender == 'user') {
+        // Check if there's a follow-up assistant message or if one is being generated
+        bool hasAssistantResponse = false;
+        
+        // Look through messages to see if the last user message has a response
+        for (int i = messages.length - 1; i >= 0; i--) {
+          if (messages[i].sender == 'user' && messages[i] == lastMessage) {
+            // Found the last user message, check if there's an assistant response after it
+            if (i < messages.length - 1) {
+              for (int j = i + 1; j < messages.length; j++) {
+                if (messages[j].sender == 'assistant') {
+                  hasAssistantResponse = true;
+                  break;
+                }
+              }
+            }
+            break;
+          }
+        }
+        
+        // Only resume if there's no assistant response AND no inference running
+        if (!hasAssistantResponse && !_backgroundService.hasChatInference) {
+          AppLogger.logInfo('Found orphaned user message without response and no running inference, resuming', 'ChatScreen._checkAndResumeChatIfNeeded');
+          
+          // Add a small delay to ensure UI is stable before resuming
+          await Future.delayed(const Duration(milliseconds: 500));
+          
+          // Double-check that inference still isn't running after delay
+          if (!_backgroundService.hasChatInference && mounted && !_isDisposed) {
+            try {
+              await _backgroundService.sendChatMessage(
+                text: lastMessage.text,
+                image: lastMessage.image,
+                chat: modelProvider.globalAgent!,
+              );
+            } catch (e, stackTrace) {
+              AppLogger.logError(e, stackTrace, 'ChatScreen._checkAndResumeChatIfNeeded');
+            }
+          }
+        }
+      }
     }
   }
 
@@ -307,6 +375,18 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
               Expanded(
                 child: Consumer<UnifiedBackgroundService>(
                   builder: (context, backgroundService, child) {
+                    // Check if inference just completed and we need to scroll
+                    final isInferenceRunning = backgroundService.hasChatInference;
+                    if (_wasInferenceRunning && !isInferenceRunning) {
+                      // Inference just completed, scroll to bottom
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (!_isDisposed && mounted) {
+                          _scrollToBottom();
+                        }
+                      });
+                    }
+                    _wasInferenceRunning = isInferenceRunning;
+                    
                     final messages = backgroundService.messages;
                     
                     if (messages.isEmpty) {
