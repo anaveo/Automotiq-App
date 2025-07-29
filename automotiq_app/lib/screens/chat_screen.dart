@@ -2,6 +2,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:automotiq_app/providers/model_provider.dart';
 import 'package:automotiq_app/utils/logger.dart';
 import '../services/unified_background_service.dart';
@@ -40,22 +41,15 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    super.didChangeAppLifecycleState(state);
-    
     if (_isDisposed) return;
-    
     switch (state) {
       case AppLifecycleState.resumed:
-        AppLogger.logInfo('App resumed, checking chat inference status', 'ChatScreen.didChangeAppLifecycleState');
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!_isDisposed && mounted && _scrollController.hasClients) {
             _scrollToBottom();
           }
           _checkAndResumeChatIfNeeded();
         });
-        break;
-      case AppLifecycleState.paused:
-        AppLogger.logInfo('App backgrounded, chat inference continues', 'ChatScreen.didChangeAppLifecycleState');
         break;
       default:
         break;
@@ -64,26 +58,15 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
 
   Future<void> _checkAndResumeChatIfNeeded() async {
     if (_isDisposed || !mounted) return;
-    
     final modelProvider = Provider.of<ModelProvider>(context, listen: false);
-    if (!modelProvider.isChatInitialized || modelProvider.globalAgent == null) {
-      return;
-    }
+    if (!modelProvider.isChatInitialized || modelProvider.globalAgent == null) return;
+    if (_backgroundService.hasChatInference) return;
 
-    // Only check for resume if there's NO inference currently running
-    if (_backgroundService.hasChatInference) {
-      AppLogger.logInfo('Chat inference is running, no need to resume', 'ChatScreen._checkAndResumeChatIfNeeded');
-      return;
-    }
-
-    // Check if there are messages that might need processing
     final messages = _backgroundService.messages;
     if (messages.isNotEmpty) {
       final lastMessage = messages.last;
-      
       if (lastMessage.sender == 'user') {
         bool hasAssistantResponse = false;
-        
         for (int i = messages.length - 1; i >= 0; i--) {
           if (messages[i].sender == 'user' && messages[i] == lastMessage) {
             if (i < messages.length - 1) {
@@ -97,12 +80,9 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
             break;
           }
         }
-        
+
         if (!hasAssistantResponse && !_backgroundService.hasChatInference) {
-          AppLogger.logInfo('Found orphaned user message without response and no running inference, resuming', 'ChatScreen._checkAndResumeChatIfNeeded');
-          
           await Future.delayed(const Duration(milliseconds: 500));
-          
           if (!_backgroundService.hasChatInference && mounted && !_isDisposed) {
             try {
               await _backgroundService.sendChatMessage(
@@ -124,7 +104,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     await _backgroundService.initialize();
     if (!_isDisposed && mounted) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!_isDisposed && mounted && _scrollController.hasClients && _backgroundService.messages.isNotEmpty) {
+        if (_scrollController.hasClients && _backgroundService.messages.isNotEmpty) {
           _scrollToBottom();
         }
       });
@@ -143,7 +123,6 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
 
   Future<void> _pickImage() async {
     if (_isDisposed) return;
-    
     try {
       final picker = ImagePicker();
       final pickedFile = await picker.pickImage(
@@ -154,41 +133,29 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
       );
       if (pickedFile != null) {
         final imageBytes = await pickedFile.readAsBytes();
-        AppLogger.logInfo('Image picked: ${imageBytes.length} bytes', 'ChatScreen._pickImage');
-        if (_isDisposed || !mounted) return;
-        setState(() {
-          _selectedImage = imageBytes;
-        });
+        if (!_isDisposed && mounted) {
+          setState(() => _selectedImage = imageBytes);
+        }
       }
     } catch (e, stackTrace) {
       AppLogger.logError(e, stackTrace, 'ChatScreen._pickImage');
-      if (_isDisposed || !mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to pick image: $e')),
-      );
+      if (!_isDisposed || !mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to pick image: $e')));
     }
   }
 
   Future<void> _sendMessage(String text) async {
     if (_isDisposed || (text.trim().isEmpty && _selectedImage == null)) return;
-
     final modelProvider = Provider.of<ModelProvider>(context, listen: false);
     if (!modelProvider.isChatInitialized || modelProvider.globalAgent == null) {
-      AppLogger.logError('Global chat not initialized', null, 'ChatScreen._sendMessage');
-      if (_isDisposed || !mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Chat not initialized. Please try again.')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Chat not initialized. Please try again.')));
       return;
     }
 
     _controller.clear();
     final tempImage = _selectedImage;
-    
     if (_isDisposed || !mounted) return;
-    setState(() {
-      _selectedImage = null;
-    });
+    setState(() => _selectedImage = null);
 
     try {
       await _backgroundService.sendChatMessage(
@@ -196,8 +163,6 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
         image: tempImage,
         chat: modelProvider.globalAgent!,
       );
-
-      if (_isDisposed || !mounted) return;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!_isDisposed && mounted) {
           _scrollToBottom();
@@ -206,33 +171,24 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     } catch (e, stackTrace) {
       AppLogger.logError(e, stackTrace, 'ChatScreen._sendMessage');
       if (_isDisposed || !mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to send message: $e')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to send message: $e')));
     }
   }
 
   Future<void> _clearMessages() async {
     if (_isDisposed || !mounted) return;
-    
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Create New Chat?'),
         content: const Text('Previous messages will no longer be visible and any ongoing inference will be stopped.'),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Create'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Create')),
         ],
       ),
     );
-    
+
     if (confirmed == true && !_isDisposed && mounted) {
       await _backgroundService.clearChatMessages();
     }
@@ -241,10 +197,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   InputDecoration _inputDecoration(String hintText) {
     return InputDecoration(
       hintText: hintText,
-      hintStyle: Theme.of(context).textTheme.bodyMedium,
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12.0),
-      ),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.0)),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
     );
   }
@@ -252,15 +205,16 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   Widget _buildMessage(ChatMessage message) {
     final isUser = message.sender == 'user';
     final hasImage = message.image != null;
-    
+
+    // Strip LLM tokens (like </end_of_turn>) and trim whitespace
+    final cleanText = message.text.replaceAll(RegExp(r'<[^>]*>'), '').trim();
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0),
       child: Align(
         alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
         child: ConstrainedBox(
-          constraints: BoxConstraints(
-            maxWidth: MediaQuery.of(context).size.width * 0.75,
-          ),
+          constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
           child: Column(
             crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
             children: [
@@ -273,26 +227,27 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                       message.image!,
                       width: 200,
                       fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        AppLogger.logError(error, stackTrace, 'ChatScreen.Image.memory');
-                        return const Text('Failed to load image');
-                      },
                     ),
                   ),
                 ),
-              if (message.text.isNotEmpty)
+              if (cleanText.isNotEmpty)
                 Container(
                   padding: const EdgeInsets.all(12.0),
                   decoration: BoxDecoration(
                     color: isUser ? Colors.deepPurpleAccent : Colors.grey.shade900,
                     borderRadius: BorderRadius.circular(12.0),
                   ),
-                  child: Text(
-                    message.text,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: isUser ? Colors.white : Colors.white70,
+                  child: isUser
+                      ? Text(
+                          cleanText,
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.white),
+                        )
+                      : MarkdownBody(
+                          data: cleanText,
+                          styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(
+                            p: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.white70),
+                          ),
                         ),
-                  ),
                 ),
             ],
           ),
@@ -305,35 +260,23 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     final hasChatInference = backgroundService.hasChatInference;
     final isAgentBusy = backgroundService.isAgentBusy;
     final queueLength = backgroundService.queueLength;
-    
-    if (!hasChatInference && !isAgentBusy && queueLength == 0) {
-      return const SizedBox.shrink();
-    }
-    
-    String statusText;
-    if (hasChatInference) {
-      statusText = 'Processing...';
-    } else if (isAgentBusy) {
-      statusText = 'In queue...';
-    } else {
-      statusText = 'Queued ($queueLength)';
-    }
-    
+
+    if (!hasChatInference && !isAgentBusy && queueLength == 0) return const SizedBox.shrink();
+
+    String statusText = hasChatInference
+        ? 'Processing...'
+        : isAgentBusy
+            ? 'In queue...'
+            : 'Queued ($queueLength)';
+
     return Container(
       margin: const EdgeInsets.only(right: 8.0),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const SizedBox(
-            width: 16,
-            height: 16,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          ),
+          const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
           const SizedBox(width: 4),
-          Text(
-            statusText,
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
+          Text(statusText, style: Theme.of(context).textTheme.bodySmall),
         ],
       ),
     );
@@ -345,25 +288,17 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
       appBar: AppBar(
         title: const Text('Vehicle Assistant'),
         actions: [
-          // Show processing/queue status
           Consumer<UnifiedBackgroundService>(
             builder: (context, backgroundService, child) {
               return _buildStatusIndicator(backgroundService);
             },
           ),
-          // Clear button with improved state checking
           Consumer<UnifiedBackgroundService>(
             builder: (context, backgroundService, child) {
               final isAnyInferenceActive = backgroundService.hasActiveInference || backgroundService.isAgentBusy;
-              
               return IconButton(
-                icon: Icon(
-                  Icons.edit_square,
-                  color: isAnyInferenceActive ? Colors.grey : null,
-                ),
-                tooltip: isAnyInferenceActive 
-                    ? 'Wait for operations to complete' 
-                    : 'Create new chat',
+                icon: Icon(Icons.edit_square, color: isAnyInferenceActive ? Colors.grey : null),
+                tooltip: isAnyInferenceActive ? 'Wait for operations to complete' : 'Create new chat',
                 onPressed: isAnyInferenceActive ? null : _clearMessages,
               );
             },
@@ -372,10 +307,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
       ),
       body: Consumer<ModelProvider>(
         builder: (context, modelProvider, child) {
-          if (!modelProvider.isChatInitialized) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          
+          if (!modelProvider.isChatInitialized) return const Center(child: CircularProgressIndicator());
+
           return Column(
             children: [
               Expanded(
@@ -390,30 +323,23 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                       });
                     }
                     _wasInferenceRunning = isInferenceRunning;
-                    
+
                     final messages = backgroundService.messages;
-                    
                     if (messages.isEmpty) {
                       return const Center(
-                        child: Text(
-                          'Start a conversation!',
-                          style: TextStyle(fontSize: 16, color: Colors.grey),
-                        ),
+                        child: Text('Start a conversation!', style: TextStyle(fontSize: 16, color: Colors.grey)),
                       );
                     }
-                    
+
                     return ListView.builder(
                       controller: _scrollController,
                       padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
                       itemCount: messages.length,
-                      itemBuilder: (context, index) {
-                        return _buildMessage(messages[index]);
-                      },
+                      itemBuilder: (context, index) => _buildMessage(messages[index]),
                     );
                   },
                 ),
               ),
-              // Image preview
               if (_selectedImage != null)
                 Container(
                   margin: const EdgeInsets.all(8.0),
@@ -421,44 +347,27 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                     children: [
                       ClipRRect(
                         borderRadius: BorderRadius.circular(8.0),
-                        child: Image.memory(
-                          _selectedImage!,
-                          height: 100,
-                          fit: BoxFit.cover,
-                        ),
+                        child: Image.memory(_selectedImage!, height: 100, fit: BoxFit.cover),
                       ),
                       Positioned(
                         top: 4,
                         right: 4,
                         child: GestureDetector(
-                          onTap: () {
-                            if (!_isDisposed && mounted) {
-                              setState(() => _selectedImage = null);
-                            }
-                          },
+                          onTap: () => setState(() => _selectedImage = null),
                           child: Container(
-                            decoration: const BoxDecoration(
-                              color: Colors.black54,
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.close,
-                              color: Colors.white,
-                              size: 20,
-                            ),
+                            decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
+                            child: const Icon(Icons.close, color: Colors.white, size: 20),
                           ),
                         ),
                       ),
                     ],
                   ),
                 ),
-              // Input area
               Container(
                 padding: const EdgeInsets.all(8.0),
                 child: Consumer<UnifiedBackgroundService>(
                   builder: (context, backgroundService, child) {
                     final isLoading = backgroundService.hasChatInference || backgroundService.isAgentBusy;
-                    
                     return Row(
                       children: [
                         IconButton(
@@ -477,11 +386,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                         const SizedBox(width: 8.0),
                         IconButton(
                           icon: isLoading
-                              ? const SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(strokeWidth: 2),
-                                )
+                              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
                               : const Icon(Icons.send, color: Colors.deepPurpleAccent),
                           onPressed: isLoading ? null : () => _sendMessage(_controller.text),
                           tooltip: 'Send message',
