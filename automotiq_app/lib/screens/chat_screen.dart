@@ -277,10 +277,22 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
               return const SizedBox.shrink();
             },
           ),
-          IconButton(
-            icon: const Icon(Icons.edit_square),
-            tooltip: 'Create new chat',
-            onPressed: _clearMessages,
+          // Wrap the IconButton in Consumer to check inference state
+          Consumer<UnifiedBackgroundService>(
+            builder: (context, backgroundService, child) {
+              final isInferenceActive = backgroundService.hasChatInference;
+              
+              return IconButton(
+                icon: Icon(
+                  Icons.edit_square,
+                  color: isInferenceActive ? Colors.grey : null,
+                ),
+                tooltip: isInferenceActive 
+                    ? 'Wait for inference to complete' 
+                    : 'Create new chat',
+                onPressed: isInferenceActive ? null : _clearMessages,
+              );
+            },
           ),
         ],
       ),
