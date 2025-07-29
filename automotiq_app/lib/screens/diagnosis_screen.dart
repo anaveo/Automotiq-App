@@ -311,14 +311,25 @@ class DiagnosisScreenState extends State<DiagnosisScreen> with WidgetsBindingObs
   String _cleanLlmOutput(String output) {
     String cleaned = output;
     
-    // Remove </end_of_turn> tags
-    cleaned = cleaned.replaceAll('</end_of_turn>', '');
-    cleaned = cleaned.replaceAll('<end_of_turn>', '');
+    // Remove various forms of end_of_turn tags (case insensitive)
+    cleaned = cleaned.replaceAll(RegExp(r'</?end_of_turn>', caseSensitive: false), '');
+    cleaned = cleaned.replaceAll(RegExp(r'<end_of_turn/?>', caseSensitive: false), '');
+    cleaned = cleaned.replaceAll(RegExp(r'</end_of_turn>', caseSensitive: false), '');
+    cleaned = cleaned.replaceAll(RegExp(r'<end_of_turn>', caseSensitive: false), '');
     
-    // Remove any other common LLM artifacts
-    cleaned = cleaned.replaceAll('<|im_end|>', '');
-    cleaned = cleaned.replaceAll('<|im_start|>', '');
-    cleaned = cleaned.replaceAll('<|endoftext|>', '');
+    // Remove other common LLM artifacts
+    cleaned = cleaned.replaceAll(RegExp(r'<\|im_end\|>', caseSensitive: false), '');
+    cleaned = cleaned.replaceAll(RegExp(r'<\|im_start\|>', caseSensitive: false), '');
+    cleaned = cleaned.replaceAll(RegExp(r'<\|endoftext\|>', caseSensitive: false), '');
+    cleaned = cleaned.replaceAll(RegExp(r'<\|end\|>', caseSensitive: false), '');
+    cleaned = cleaned.replaceAll(RegExp(r'<\|start\|>', caseSensitive: false), '');
+    
+    // Remove any remaining angle bracket patterns that look like tags
+    cleaned = cleaned.replaceAll(RegExp(r'<[^>]*end[^>]*>', caseSensitive: false), '');
+    
+    // Clean up multiple whitespaces and newlines
+    cleaned = cleaned.replaceAll(RegExp(r'\n\s*\n\s*\n'), '\n\n'); // Replace multiple newlines with double newline
+    cleaned = cleaned.replaceAll(RegExp(r'[ \t]+'), ' '); // Replace multiple spaces/tabs with single space
     
     // Trim whitespace
     cleaned = cleaned.trim();

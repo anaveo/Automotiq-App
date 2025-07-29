@@ -563,7 +563,7 @@ class UnifiedBackgroundService extends ChangeNotifier {
   }
 
   String _createDiagnosisPrompt(List<String> dtcs) {
-    return "You are an AI mechanic. Your role is to diagnose the health of a vehicle, given its diagnostic trouble codes and recommend further action. The vehicle has the following diagnostic trouble codes: ${dtcs.join(', ')}";
+    return "You are an AI mechanic. Your role is to diagnose the health of a vehicle, given its diagnostic trouble codes and recommend further action. The vehicle has the following diagnostic trouble codes: ${dtcs.join(', ')}. Give a concise repsponse.";
   }
 
   Future<String> runDiagnosis({
