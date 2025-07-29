@@ -7,6 +7,7 @@ import 'package:path_provider/path_provider.dart';
 class CustomFileOutput extends LogOutput {
   File? _file;
 
+  @override
   Future<void> init() async {
     final directory = await getApplicationDocumentsDirectory();
     _file = File('${directory.path}/app.log');

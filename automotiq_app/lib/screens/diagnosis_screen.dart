@@ -268,7 +268,7 @@ class DiagnosisScreenState extends State<DiagnosisScreen> with WidgetsBindingObs
   Future<void> _handleDtcChange() async {
     if (!mounted) return;
 
-    AppLogger.logInfo('Handling DTC change from ${_lastProcessedDtcs} to ${widget.dtcs}', 'DiagnosisScreen._handleDtcChange');
+    AppLogger.logInfo('Handling DTC change from $_lastProcessedDtcs to ${widget.dtcs}', 'DiagnosisScreen._handleDtcChange');
     
     _lastProcessedDtcs = List.from(widget.dtcs);
     _currentDiagnosisId = null;
@@ -512,18 +512,18 @@ String _cleanLlmOutput(String output) {
                   color: Colors.white,
                 ),
               ),
-              if (subMessage != null) ...[
-                const SizedBox(height: 12),
-                Text(
-                  subMessage,
-                  style: TextStyle(
-                    fontSize: 14, 
-                    color: Colors.grey[400],
-                    height: 1.4,
-                  ),
-                  textAlign: TextAlign.center,
+              ...[
+              const SizedBox(height: 12),
+              Text(
+                subMessage,
+                style: TextStyle(
+                  fontSize: 14, 
+                  color: Colors.grey[400],
+                  height: 1.4,
                 ),
-              ],
+                textAlign: TextAlign.center,
+              ),
+            ],
               const SizedBox(height: 32),
               // Show current DTCs being processed
               Container(
@@ -637,18 +637,18 @@ String _cleanLlmOutput(String output) {
                   color: Colors.white,
                 ),
               ),
-              if (subMessage != null) ...[
-                const SizedBox(height: 12),
-                Text(
-                  subMessage,
-                  style: TextStyle(
-                    fontSize: 14, 
-                    color: Colors.grey[400],
-                    height: 1.4,
-                  ),
-                  textAlign: TextAlign.center,
+              ...[
+              const SizedBox(height: 12),
+              Text(
+                subMessage,
+                style: TextStyle(
+                  fontSize: 14, 
+                  color: Colors.grey[400],
+                  height: 1.4,
                 ),
-              ],
+                textAlign: TextAlign.center,
+              ),
+            ],
               const SizedBox(height: 32),
               // Show current DTCs being processed
               Container(
