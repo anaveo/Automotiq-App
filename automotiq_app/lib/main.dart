@@ -1,6 +1,7 @@
 import 'package:automotiq_app/providers/auth_provider.dart';
 import 'package:automotiq_app/providers/user_provider.dart';
 import 'package:automotiq_app/theme/theme.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
@@ -128,6 +129,7 @@ void main() async {
   try {
     AppLogger.logInfo('Initializing Firebase...', 'main');
     await Firebase.initializeApp();
+    FirebaseFirestore.instance.settings = const Settings(persistenceEnabled: true);
     AppLogger.logInfo('Firebase initialized successfully', 'main');
   } catch (e, stackTrace) {
     AppLogger.logError(e, stackTrace, 'main');

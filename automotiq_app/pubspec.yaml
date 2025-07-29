@@ -54,6 +54,9 @@ dependencies:
   # State management
   provider: 6.1.2
 
+  # UUIDs
+  uuid: ^4.5.0
+  
   # Logging
   logger: ^2.4.0
   rxdart: ^0.28.0

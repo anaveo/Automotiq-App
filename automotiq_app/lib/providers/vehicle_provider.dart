@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:uuid/uuid.dart';
 import '../models/vehicle_model.dart';
 import '../repositories/vehicle_repository.dart';
 import '../utils/logger.dart';
@@ -9,7 +10,8 @@ class VehicleProvider extends ChangeNotifier {
   late FirebaseAuth _firebaseAuth;
   List<VehicleModel> _vehicles = [];
   VehicleModel? _selected;
-
+  final Uuid _uuid = const Uuid();
+  
   // Demo vehicle for testing purposes
   final VehicleModel? demoVehicle = VehicleModel(
     id: 'demo',
@@ -90,9 +92,12 @@ class VehicleProvider extends ChangeNotifier {
       _isLoading = true;
       notifyListeners();
 
-      // Add vehicle to Firestore, get document ID
-      final vehicleId = await _vehicleRepository.addVehicle(user.uid, newVehicle);
+      // Generate client-side ID and include it in the VehicleModel
+      final vehicleId = _uuid.v4();
       final newVehicleWithId = newVehicle.copyWith(id: vehicleId);
+
+      // Add vehicle to Firestore
+      await _vehicleRepository.addVehicle(user.uid, newVehicleWithId);
 
       // Prioritize new vehicle
       _vehicles.insert(0, newVehicleWithId);
