@@ -1,14 +1,16 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:automotiq_app/models/vehicle_model.dart';
 import 'package:automotiq_app/utils/logger.dart';
 
 class VehicleRepository {
   final FirebaseFirestore firestore;
-  
+
   VehicleRepository({FirebaseFirestore? firestoreInstance})
       : firestore = firestoreInstance ?? FirebaseFirestore.instance;
 
-  Future<List<VehicleModel>> getVehicles(String uid) async {
+Future<List<VehicleModel>> getVehicles(String uid) async {
     if (uid.isEmpty) throw ArgumentError('UID cannot be empty');
     try {
       final snapshot = await firestore
@@ -90,31 +92,51 @@ class VehicleRepository {
           .collection('vehicles')
           .doc(vehicleId);
 
+      // Check existence using cache-first strategy
       final docSnap = await docRef.get(const GetOptions(source: Source.cache));
       if (!docSnap.exists) {
         throw ArgumentError('Vehicle $vehicleId does not exist for user $uid');
       }
 
-      await docRef.delete();
-      // Check if deletion was queued offline
-      final postDeleteSnap = await docRef.get();
-      if (postDeleteSnap.metadata.isFromCache) {
-        AppLogger.logWarning('Deletion queued for sync due to offline mode');
-      }
-    } on ArgumentError {
-      rethrow;
-    } catch (e) {
+      // Perform non-blocking delete
+      docRef.delete().then((_) {
+        AppLogger.logInfo('removeVehicle: Deletion queued or completed');
+        // Optionally check sync status
+        docRef.get().then((postDeleteSnap) {
+          if (postDeleteSnap.metadata.isFromCache) {
+            AppLogger.logWarning('removeVehicle: Deletion queued for sync due to offline mode');
+          } else {
+            AppLogger.logInfo('removeVehicle: Deletion synced with server');
+          }
+        });
+      }).catchError((e, StackTrace stackTrace) {
+        if (e is FirebaseException && e.code == 'unavailable') {
+          AppLogger.logWarning('removeVehicle: Deletion queued due to network unavailability');
+        } else {
+          AppLogger.logError(e, stackTrace, 'VehicleRepository.removeVehicle.async');
+        }
+      });
+
+    } catch (e, stackTrace) {
       if (e is FirebaseException && e.code == 'unavailable') {
-        AppLogger.logWarning('Deletion queued for sync due to offline mode');
-        // Deletion is queued by Firestore, so allow it to proceed
+        AppLogger.logWarning('removeVehicle: Offline mode, checking cache for existence');
+        // Retry existence check with cache
         final docRef = firestore
             .collection('users')
             .doc(uid)
             .collection('vehicles')
             .doc(vehicleId);
-        await docRef.delete();
+        final docSnap = await docRef.get(const GetOptions(source: Source.cache));
+        if (!docSnap.exists) {
+          throw ArgumentError('Vehicle $vehicleId does not exist for user $uid');
+        }
+        // Queue deletion non-blocking
+        docRef.delete().then((_) {
+          AppLogger.logWarning('removeVehicle: Deletion queued for sync due to offline mode');
+        });
         return;
       }
+      AppLogger.logError(e, stackTrace, 'VehicleRepository.removeVehicle');
       throw Exception('Failed to remove vehicle: $e');
     }
   }
