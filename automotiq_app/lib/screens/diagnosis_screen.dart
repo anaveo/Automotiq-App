@@ -379,10 +379,34 @@ class DiagnosisScreenState extends State<DiagnosisScreen> with WidgetsBindingObs
   Widget _buildDiagnosisContent(DiagnosisResult? diagnosis, UnifiedBackgroundService backgroundService) {
     if (diagnosis == null) {
       if (widget.dtcs.isEmpty) {
-        return const Center(
-          child: Text(
-            'No diagnostic trouble codes provided.',
-            style: TextStyle(fontSize: 16, color: Colors.grey),
+        return Center(
+          child: Container(
+            padding: const EdgeInsets.all(32.0),
+            decoration: BoxDecoration(
+              color: Colors.grey[900],
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.grey[700]!, width: 1),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.info_outline,
+                  size: 48,
+                  color: Colors.grey[500],
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'No diagnostic trouble codes provided.',
+                  style: TextStyle(
+                    fontSize: 16, 
+                    color: Colors.grey[400],
+                    fontWeight: FontWeight.w500,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
           ),
         );
       }
@@ -436,9 +460,17 @@ class DiagnosisScreenState extends State<DiagnosisScreen> with WidgetsBindingObs
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const CircularProgressIndicator(
-                strokeWidth: 3,
-                color: Colors.deepPurpleAccent,
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.grey[900],
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.cyan.withOpacity(0.3), width: 2),
+                ),
+                child: const CircularProgressIndicator(
+                  strokeWidth: 3,
+                  color: Colors.cyan,
+                ),
               ),
               const SizedBox(height: 24),
               Text(
@@ -446,7 +478,8 @@ class DiagnosisScreenState extends State<DiagnosisScreen> with WidgetsBindingObs
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   fontSize: 18,
-                  fontWeight: FontWeight.w500,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
                 ),
               ),
               if (subMessage != null) ...[
@@ -455,31 +488,62 @@ class DiagnosisScreenState extends State<DiagnosisScreen> with WidgetsBindingObs
                   subMessage,
                   style: TextStyle(
                     fontSize: 14, 
-                    color: Colors.grey[600],
+                    color: Colors.grey[400],
                     height: 1.4,
                   ),
                   textAlign: TextAlign.center,
                 ),
               ],
-              const SizedBox(height: 24),
+              const SizedBox(height: 32),
               // Show current DTCs being processed
-              Card(
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.grey[900],
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.grey[700]!, width: 1),
+                ),
                 child: Padding(
-                  padding: const EdgeInsets.all(16.0),
+                  padding: const EdgeInsets.all(20.0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Diagnostic Trouble Codes:',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.error_outline,
+                            color: Colors.amber[400],
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                          const Text(
+                            'Diagnostic Trouble Codes',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold, 
+                              fontSize: 16,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 12),
                       Wrap(
                         spacing: 8,
-                        runSpacing: 4,
-                        children: widget.dtcs.map((dtc) => Chip(
-                          label: Text(dtc),
-                          backgroundColor: Colors.orange.withOpacity(0.2),
+                        runSpacing: 8,
+                        children: widget.dtcs.map((dtc) => Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.amber.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: Colors.amber.withOpacity(0.3)),
+                          ),
+                          child: Text(
+                            dtc,
+                            style: TextStyle(
+                              color: Colors.amber[300],
+                              fontWeight: FontWeight.w500,
+                              fontSize: 13,
+                            ),
+                          ),
                         )).toList(),
                       ),
                     ],
@@ -521,9 +585,17 @@ class DiagnosisScreenState extends State<DiagnosisScreen> with WidgetsBindingObs
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const CircularProgressIndicator(
-                strokeWidth: 3,
-                color: Colors.deepPurpleAccent,
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.grey[900],
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.cyan.withOpacity(0.3), width: 2),
+                ),
+                child: const CircularProgressIndicator(
+                  strokeWidth: 3,
+                  color: Colors.cyan,
+                ),
               ),
               const SizedBox(height: 24),
               Text(
@@ -531,7 +603,8 @@ class DiagnosisScreenState extends State<DiagnosisScreen> with WidgetsBindingObs
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   fontSize: 18,
-                  fontWeight: FontWeight.w500,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
                 ),
               ),
               if (subMessage != null) ...[
@@ -540,31 +613,62 @@ class DiagnosisScreenState extends State<DiagnosisScreen> with WidgetsBindingObs
                   subMessage,
                   style: TextStyle(
                     fontSize: 14, 
-                    color: Colors.grey[600],
+                    color: Colors.grey[400],
                     height: 1.4,
                   ),
                   textAlign: TextAlign.center,
                 ),
               ],
-              const SizedBox(height: 24),
+              const SizedBox(height: 32),
               // Show current DTCs being processed
-              Card(
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.grey[900],
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.grey[700]!, width: 1),
+                ),
                 child: Padding(
-                  padding: const EdgeInsets.all(16.0),
+                  padding: const EdgeInsets.all(20.0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Diagnostic Trouble Codes:',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.error_outline,
+                            color: Colors.amber[400],
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                          const Text(
+                            'Diagnostic Trouble Codes',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold, 
+                              fontSize: 16,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 12),
                       Wrap(
                         spacing: 8,
-                        runSpacing: 4,
-                        children: diagnosis.dtcs.map((dtc) => Chip(
-                          label: Text(dtc),
-                          backgroundColor: Colors.orange.withOpacity(0.2),
+                        runSpacing: 8,
+                        children: diagnosis.dtcs.map((dtc) => Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.amber.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: Colors.amber.withOpacity(0.3)),
+                          ),
+                          child: Text(
+                            dtc,
+                            style: TextStyle(
+                              color: Colors.amber[300],
+                              fontWeight: FontWeight.w500,
+                              fontSize: 13,
+                            ),
+                          ),
                         )).toList(),
                       ),
                     ],
@@ -582,23 +686,55 @@ class DiagnosisScreenState extends State<DiagnosisScreen> with WidgetsBindingObs
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // DTCs Section
-          Card(
+          Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: Colors.grey[900],
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.grey[700]!, width: 1),
+            ),
             child: Padding(
-              padding: const EdgeInsets.all(16.0),
+              padding: const EdgeInsets.all(20.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Diagnostic Trouble Codes:',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.error_outline,
+                        color: Colors.amber[400],
+                        size: 22,
+                      ),
+                      const SizedBox(width: 10),
+                      const Text(
+                        'Diagnostic Trouble Codes',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold, 
+                          fontSize: 18,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 16),
                   Wrap(
-                    spacing: 8,
-                    runSpacing: 4,
-                    children: diagnosis.dtcs.map((dtc) => Chip(
-                      label: Text(dtc),
-                      backgroundColor: Colors.orange.withOpacity(0.2),
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: diagnosis.dtcs.map((dtc) => Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.amber.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(color: Colors.amber.withOpacity(0.3)),
+                      ),
+                      child: Text(
+                        dtc,
+                        style: TextStyle(
+                          color: Colors.amber[300],
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                      ),
                     )).toList(),
                   ),
                 ],
@@ -606,18 +742,38 @@ class DiagnosisScreenState extends State<DiagnosisScreen> with WidgetsBindingObs
             ),
           ),
           
+          const SizedBox(height: 24),
+          
+          // Output Section Header
+          Row(
+            children: [
+              Icon(
+                Icons.auto_fix_high,
+                color: Colors.cyan[400],
+                size: 24,
+              ),
+              const SizedBox(width: 10),
+              const Text(
+                'AI Diagnosis',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold, 
+                  fontSize: 20,
+                  color: Colors.white,
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 16),
           
-          // Output Section
-          const Text(
-            'Diagnosis:',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-          ),
-          const SizedBox(height: 8),
-          
-          Card(
+          Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: Colors.grey[900],
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.grey[700]!, width: 1),
+            ),
             child: Padding(
-              padding: const EdgeInsets.all(16.0),
+              padding: const EdgeInsets.all(20.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -625,90 +781,104 @@ class DiagnosisScreenState extends State<DiagnosisScreen> with WidgetsBindingObs
                     MarkdownBody(
                       data: _cleanLlmOutput(diagnosis.output),
                       styleSheet: MarkdownStyleSheet(
-                        p: const TextStyle(fontSize: 16, height: 1.5),
-                        h1: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                        h2: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                        h3: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                        h4: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                        h5: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-                        h6: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                        strong: const TextStyle(fontWeight: FontWeight.bold),
-                        em: const TextStyle(fontStyle: FontStyle.italic),
+                        p: const TextStyle(fontSize: 16, height: 1.6, color: Colors.white),
+                        h1: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.cyan[300]),
+                        h2: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.cyan[400]),
+                        h3: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.cyan[400]),
+                        h4: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                        h5: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
+                        h6: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
+                        strong: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+                        em: TextStyle(fontStyle: FontStyle.italic, color: Colors.grey[300]),
                         code: TextStyle(
-                          backgroundColor: Colors.grey[200],
+                          backgroundColor: Colors.grey[800],
+                          color: Colors.cyan[300],
                           fontFamily: 'monospace',
                           fontSize: 14,
                         ),
                         codeblockDecoration: BoxDecoration(
-                          color: Colors.grey[100],
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.grey[300]!),
+                          color: Colors.grey[850],
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.grey[600]!),
                         ),
-                        codeblockPadding: const EdgeInsets.all(12),
+                        codeblockPadding: const EdgeInsets.all(16),
                         blockquote: TextStyle(
-                          color: Colors.grey[600],
+                          color: Colors.grey[400],
                           fontStyle: FontStyle.italic,
                         ),
                         blockquoteDecoration: BoxDecoration(
-                          color: Colors.grey[50],
+                          color: Colors.grey[850],
+                          borderRadius: BorderRadius.circular(8),
                           border: Border(
                             left: BorderSide(
-                              color: Colors.grey[400]!,
+                              color: Colors.cyan.withOpacity(0.6),
                               width: 4,
                             ),
                           ),
                         ),
-                        blockquotePadding: const EdgeInsets.all(12),
-                        listBullet: const TextStyle(fontSize: 16),
+                        blockquotePadding: const EdgeInsets.all(16),
+                        listBullet: TextStyle(fontSize: 16, color: Colors.cyan[400]),
                       ),
                     ),
                   
                   // Enhanced loading indicator with queue info
                   if (!diagnosis.isComplete && diagnosis.error == null)
                     Padding(
-                      padding: const EdgeInsets.only(top: 16.0),
+                      padding: const EdgeInsets.only(top: 20.0),
                       child: _buildProgressIndicator(backgroundService, widget.dtcs),
                     ),
                   
                   // Show error if exists (but only non-queue errors)
                   if (diagnosis.error != null && !_isQueueRelatedError(diagnosis.error!))
                     Padding(
-                      padding: const EdgeInsets.only(top: 16.0),
+                      padding: const EdgeInsets.only(top: 20.0),
                       child: Container(
-                        padding: const EdgeInsets.all(12.0),
+                        padding: const EdgeInsets.all(16.0),
                         decoration: BoxDecoration(
                           color: Colors.red.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8.0),
+                          borderRadius: BorderRadius.circular(12.0),
                           border: Border.all(color: Colors.red.withOpacity(0.3)),
                         ),
                         child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Icon(Icons.error_outline, color: Colors.red),
-                            const SizedBox(width: 8),
+                            Icon(Icons.error_outline, color: Colors.red[400], size: 24),
+                            const SizedBox(width: 12),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Text(
+                                  Text(
                                     'Analysis Error',
                                     style: TextStyle(
-                                      color: Colors.red,
+                                      color: Colors.red[300],
                                       fontWeight: FontWeight.bold,
+                                      fontSize: 16,
                                     ),
                                   ),
-                                  const SizedBox(height: 4),
+                                  const SizedBox(height: 8),
                                   Text(
                                     diagnosis.error!,
-                                    style: const TextStyle(color: Colors.red),
+                                    style: TextStyle(
+                                      color: Colors.red[200],
+                                      fontSize: 14,
+                                    ),
                                   ),
-                                  const SizedBox(height: 8),
+                                  const SizedBox(height: 16),
                                   ElevatedButton(
                                     onPressed: () => _runInference(forceRerun: true),
                                     style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.red,
+                                      backgroundColor: Colors.red[600],
                                       foregroundColor: Colors.white,
+                                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
                                     ),
-                                    child: const Text('Retry Analysis'),
+                                    child: const Text(
+                                      'Retry Analysis',
+                                      style: TextStyle(fontWeight: FontWeight.w600),
+                                    ),
                                   ),
                                 ],
                               ),
@@ -768,43 +938,56 @@ class DiagnosisScreenState extends State<DiagnosisScreen> with WidgetsBindingObs
       }
     }
     
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            const SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey[850],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.cyan.withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.cyan[400],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  statusText,
+                  style: TextStyle(
+                    color: Colors.cyan[300],
+                    fontStyle: FontStyle.italic,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 15,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (detailText != null) ...[
+            const SizedBox(height: 10),
+            Padding(
+              padding: const EdgeInsets.only(left: 32),
               child: Text(
-                statusText,
+                detailText,
                 style: TextStyle(
-                  color: Colors.grey[600],
-                  fontStyle: FontStyle.italic,
-                  fontWeight: FontWeight.w500,
+                  color: Colors.grey[400],
+                  fontSize: 13,
+                  height: 1.3,
                 ),
               ),
             ),
           ],
-        ),
-        if (detailText != null) ...[
-          const SizedBox(height: 8),
-          Padding(
-            padding: const EdgeInsets.only(left: 32),
-            child: Text(
-              detailText,
-              style: TextStyle(
-                color: Colors.grey[500],
-                fontSize: 12,
-              ),
-            ),
-          ),
         ],
-      ],
+      ),
     );
   }
 
@@ -824,39 +1007,47 @@ class DiagnosisScreenState extends State<DiagnosisScreen> with WidgetsBindingObs
     
     if (hasDiagnosisInference && isActiveForCurrentDtcs) {
       statusText = 'Analyzing...';
-      statusColor = Colors.green;
+      statusColor = Colors.cyan[400];
     } else if (isActiveForCurrentDtcs) {
       statusText = 'Queued...';
-      statusColor = Colors.orange;
+      statusColor = Colors.amber[400];
     } else if (isAgentBusy && hasChatInference) {
       statusText = 'Chat active...';
-      statusColor = Colors.blue;
+      statusColor = Colors.blue[400];
     } else if (isAgentBusy) {
       statusText = 'Agent busy...';
-      statusColor = Colors.amber;
+      statusColor = Colors.amber[600];
     } else {
       statusText = 'Queue ($queueLength)';
-      statusColor = Colors.grey;
+      statusColor = Colors.grey[400];
     }
     
     return Container(
       margin: const EdgeInsets.only(right: 8.0),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: statusColor?.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: statusColor?.withOpacity(0.3) ?? Colors.grey),
+      ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           SizedBox(
-            width: 16,
-            height: 16,
+            width: 14,
+            height: 14,
             child: CircularProgressIndicator(
               strokeWidth: 2,
               valueColor: AlwaysStoppedAnimation<Color>(statusColor ?? Colors.grey),
             ),
           ),
-          const SizedBox(width: 4),
+          const SizedBox(width: 6),
           Text(
             statusText,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            style: TextStyle(
               color: statusColor,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],
@@ -867,8 +1058,18 @@ class DiagnosisScreenState extends State<DiagnosisScreen> with WidgetsBindingObs
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.black,
       appBar: AppBar(
-        title: const Text('Vehicle Diagnosis'),
+        backgroundColor: Colors.grey[900],
+        foregroundColor: Colors.white,
+        elevation: 0,
+        title: const Text(
+          'Vehicle Diagnosis',
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 20,
+          ),
+        ),
         actions: [
           // Show processing/queue status
           Consumer<UnifiedBackgroundService>(
@@ -882,39 +1083,54 @@ class DiagnosisScreenState extends State<DiagnosisScreen> with WidgetsBindingObs
             builder: (context, backgroundService, child) {
               final isAnyInferenceActive = backgroundService.hasActiveInference || backgroundService.isAgentBusy;
               
-              return IconButton(
-                icon: Icon(
-                  Icons.refresh,
-                  color: isAnyInferenceActive ? Colors.grey : null,
+              return Container(
+                margin: const EdgeInsets.only(right: 8),
+                child: IconButton(
+                  icon: Icon(
+                    Icons.refresh,
+                    color: isAnyInferenceActive ? Colors.grey[600] : Colors.white,
+                    size: 24,
+                  ),
+                  tooltip: isAnyInferenceActive 
+                      ? 'Wait for operations to complete' 
+                      : 'Re-run diagnosis',
+                  onPressed: (widget.dtcs.isEmpty || isAnyInferenceActive) ? null : _clearAndRerun,
+                  style: IconButton.styleFrom(
+                    backgroundColor: isAnyInferenceActive 
+                        ? Colors.transparent 
+                        : Colors.grey[800],
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
                 ),
-                tooltip: isAnyInferenceActive 
-                    ? 'Wait for operations to complete' 
-                    : 'Re-run diagnosis',
-                onPressed: (widget.dtcs.isEmpty || isAnyInferenceActive) ? null : _clearAndRerun,
               );
             },
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Consumer<UnifiedBackgroundService>(
-          builder: (context, backgroundService, child) {
-            final isInferenceRunning = backgroundService.hasDiagnosisInference;
-            if (_wasInferenceRunning && !isInferenceRunning) {
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                _checkAndStartInferenceIfNeeded();
-              });
-            }
-            _wasInferenceRunning = isInferenceRunning;
-            
-            final diagnosis = _currentDiagnosisId != null
-                ? backgroundService.getDiagnosisById(_currentDiagnosisId!) ??
-                  backgroundService.getDiagnosisForDtcs(widget.dtcs)
-                : backgroundService.getDiagnosisForDtcs(widget.dtcs);
-            
-            return _buildDiagnosisContent(diagnosis, backgroundService);
-          },
+      body: Container(
+        color: Colors.black,
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Consumer<UnifiedBackgroundService>(
+            builder: (context, backgroundService, child) {
+              final isInferenceRunning = backgroundService.hasDiagnosisInference;
+              if (_wasInferenceRunning && !isInferenceRunning) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  _checkAndStartInferenceIfNeeded();
+                });
+              }
+              _wasInferenceRunning = isInferenceRunning;
+              
+              final diagnosis = _currentDiagnosisId != null
+                  ? backgroundService.getDiagnosisById(_currentDiagnosisId!) ??
+                    backgroundService.getDiagnosisForDtcs(widget.dtcs)
+                  : backgroundService.getDiagnosisForDtcs(widget.dtcs);
+              
+              return _buildDiagnosisContent(diagnosis, backgroundService);
+            },
+          ),
         ),
       ),
     );
