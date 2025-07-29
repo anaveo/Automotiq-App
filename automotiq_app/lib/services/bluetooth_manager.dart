@@ -39,7 +39,6 @@ class BluetoothManager {
   Future<List<DiscoveredDevice>> scanForNewDevices({
     Duration timeout = const Duration(seconds: 5),
   }) async {
-    const method = 'BluetoothManager.scanForNewDevices';
 
     try {
       final devices = await _bleService.scanForDevices(timeout: timeout);
@@ -50,13 +49,11 @@ class BluetoothManager {
       }).toList();
 
       AppLogger.logInfo(
-        'Found ${obdDevices.length} OBD devices: ${obdDevices.map((d) => d.name).toList()}',
-        method,
-      );
+        'Found ${obdDevices.length} OBD devices: ${obdDevices.map((d) => d.name).toList()}');
 
       return obdDevices;
-    } catch (e, stackTrace) {
-      AppLogger.logError(e, stackTrace, method);
+    } catch (e) {
+      AppLogger.logError(e);
       rethrow;
     }
   }
@@ -64,7 +61,7 @@ class BluetoothManager {
   Future<void> connectToDevice(String deviceId, {bool autoReconnect = false}) async {
     try {
       if (_deviceId == deviceId && _bleService.getDeviceState() == DeviceConnectionState.connected) {
-        AppLogger.logInfo('Already connected to device: $deviceId', 'BluetoothManager.connectToDevice');
+        AppLogger.logInfo('Already connected to device: $deviceId');
         return;
       }
 
@@ -73,7 +70,7 @@ class BluetoothManager {
 
       _deviceId = deviceId;
       await _bleService.connectToDevice(deviceId, connectionTimeout: const Duration(seconds: 10));
-      AppLogger.logInfo('Connected to device: $deviceId', 'BluetoothManager.connectToDevice');
+      AppLogger.logInfo('Connected to device: $deviceId');
 
       // Initialize OBD connection after successful BLE connection
       await _initializeObdConnection();
@@ -83,18 +80,18 @@ class BluetoothManager {
         _connectionStateSubscription = _bleService.connectionStateStream.listen(
           (state) async {
             if (state == DeviceConnectionState.disconnected && _deviceId != null) {
-              AppLogger.logInfo('Device disconnected, attempting reconnect to $_deviceId', 'BluetoothManager.connectToDevice');
+              AppLogger.logInfo('Device disconnected, attempting reconnect to $_deviceId');
               await _attemptReconnect(deviceId);
             }
           },
-          onError: (e, stackTrace) async {
-            AppLogger.logError(e, stackTrace, 'BluetoothManager.connectToDevice');
+          onError: (e) async {
+            AppLogger.logError(e);
             await _cleanup();
           },
         );
       }
-    } catch (e, stackTrace) {
-      AppLogger.logError(e, stackTrace, 'BluetoothManager.connectToDevice');
+    } catch (e) {
+      AppLogger.logError(e);
       await _cleanup();
       throw Exception('Failed to connect to device: $e');
     }
@@ -107,16 +104,16 @@ class BluetoothManager {
 
     while (attempt < maxAttempts && _deviceId != null) {
       try {
-        AppLogger.logInfo('Reconnect attempt ${attempt + 1}/$maxAttempts to $deviceId', 'BluetoothManager._attemptReconnect');
+        AppLogger.logInfo('Reconnect attempt ${attempt + 1}/$maxAttempts to $deviceId',);
         await _bleService.connectToDevice(deviceId, connectionTimeout: const Duration(seconds: 10));
-        AppLogger.logInfo('Reconnected to device: $deviceId', 'BluetoothManager._attemptReconnect');
+        AppLogger.logInfo('Reconnected to device: $deviceId');
 
         // Reinitialize OBD connection after successful reconnect
         // await initializeObdConnection();
         return;
       } catch (e) {
         attempt++;
-        AppLogger.logWarning('Reconnect attempt $attempt/$maxAttempts failed: $e', 'BluetoothManager._attemptReconnect');
+        AppLogger.logWarning('Reconnect attempt $attempt/$maxAttempts failed: $e');
         if (attempt < maxAttempts) {
           await Future.delayed(delay);
           delay = Duration(seconds: delay.inSeconds * 2); // Exponential backoff
@@ -125,7 +122,7 @@ class BluetoothManager {
     }
 
     if (attempt >= maxAttempts) {
-      AppLogger.logError('Failed to reconnect to $deviceId after $maxAttempts attempts', null, 'BluetoothManager._attemptReconnect');
+      AppLogger.logError('Failed to reconnect to $deviceId after $maxAttempts attempts');
       await _cleanup();
     }
   }
@@ -147,9 +144,9 @@ class BluetoothManager {
     try {
       await _bleService.disconnectDevice();
       await _cleanup();
-      AppLogger.logInfo('Disconnected device', 'BluetoothManager.disconnectDevice');
-    } catch (e, stackTrace) {
-      AppLogger.logError(e, stackTrace, 'BluetoothManager.disconnectDevice');
+      AppLogger.logInfo('Disconnected device');
+    } catch (e) {
+      AppLogger.logError(e);
       await _cleanup();
       throw Exception('Failed to disconnect device: $e');
     }
@@ -159,9 +156,9 @@ class BluetoothManager {
     try {
       await disconnectDevice();
       _connectionStateSubscription?.cancel();
-      AppLogger.logInfo('BluetoothManager disposed', 'BluetoothManager.dispose');
-    } catch (e, stackTrace) {
-      AppLogger.logError(e, stackTrace, 'BluetoothManager.dispose');
+      AppLogger.logInfo('BluetoothManager disposed');
+    } catch (e) {
+      AppLogger.logError(e);
       throw Exception('Failed to dispose BluetoothManager: $e');
     }
   }
@@ -175,7 +172,7 @@ class BluetoothManager {
     }
 
     try {
-      AppLogger.logInfo('Initializing OBD2 connection for device: $_deviceId', 'BluetoothManager.initializeObdConnection');
+      AppLogger.logInfo('Initializing OBD2 connection for device: $_deviceId');
 
       // Discover OBD service and characteristics
       await _bleService.adapter.discoverAllServices(deviceId: _deviceId!);
@@ -207,7 +204,7 @@ class BluetoothManager {
             (data) {
               _notificationBuffer.addAll(data);
               final response = String.fromCharCodes(_notificationBuffer);
-              AppLogger.logInfo('Raw notification data: $data ($response)', 'BluetoothManager.initializeObdConnection');
+              AppLogger.logInfo('Raw notification data: $data ($response)');
               // Complete only if response contains '>' and is not just the command echo
               final trimmedResponse = response.trim();
               final commandEcho = trimmedResponse.startsWith('AT') && !trimmedResponse.contains('ELM327') && !trimmedResponse.contains('OK');
@@ -218,16 +215,16 @@ class BluetoothManager {
                     .replaceAll(RegExp(r'\r+'), '') // Remove extra \r
                     .replaceAll('>', '') // Remove prompt
                     .trim();
-                AppLogger.logInfo('Completing with response: $cleanResponse', 'BluetoothManager.initializeObdConnection');
+                AppLogger.logInfo('Completing with response: $cleanResponse');
                 _notificationCompleter!.complete(cleanResponse);
                 _notificationBuffer.clear();
               }
             },
-            onError: (e, stackTrace) {
-              AppLogger.logError(e, stackTrace, 'BluetoothManager.notification');
+            onError: (e) {
+              AppLogger.logError(e);
               if (!_notificationCompleter!.isCompleted) {
-                AppLogger.logInfo('Completing with error: $e', 'BluetoothManager.initializeObdConnection');
-                _notificationCompleter!.completeError(e, stackTrace);
+                AppLogger.logInfo('Completing with error: $e');
+                _notificationCompleter!.completeError(e);
               }
               _notificationBuffer.clear();
             },
@@ -235,7 +232,7 @@ class BluetoothManager {
           await Future.delayed(const Duration(milliseconds: 250)); // Wait for subscription to stabilize
           break; // Success, exit retry loop
         } catch (e){
-          AppLogger.logWarning('Attempt $attempt/$maxSubRetries to subscribe to notifications failed: $e', 'BluetoothManager.initializeObdConnection');
+          AppLogger.logWarning('Attempt $attempt/$maxSubRetries to subscribe to notifications failed: $e');
           if (attempt == maxSubRetries) {
             throw Exception('Failed to subscribe to notifications after $maxSubRetries attempts: $e');
           }
@@ -266,42 +263,39 @@ class BluetoothManager {
         for (var attempt = 1; attempt <= maxRetries; attempt++) {
           try {
             response = await _sendObdCommand(command, timeout: const Duration(seconds: 15));
-            AppLogger.logInfo('Command $command response: $response', 'BluetoothManager.initializeObdConnection');
+            AppLogger.logInfo('Command $command response: $response');
 
             // Validate response
             if (command == 'ATZ\r' || command == 'ATI\r') {
               if (!response.contains('ELM327')) {
-                AppLogger.logWarning('Validation failed for $command: Expected ELM327, got $response', 'BluetoothManager.initializeObdConnection');
+                AppLogger.logWarning('Validation failed for $command: Expected ELM327, got $response');
                 throw Exception('Invalid response for $command: $response');
               }
             } else if (command == 'ATE0\r' || command == 'ATL0\r' || command == 'ATS0\r' || command == 'ATH1\r' || command == 'ATSP0\r') {
               if (response != 'OK') {
-                AppLogger.logWarning('Validation failed for $command: Expected OK, got $response', 'BluetoothManager.initializeObdConnection');
+                AppLogger.logWarning('Validation failed for $command: Expected OK, got $response');
                 throw Exception('Invalid response for $command: $response');
               }
             } else if (command == 'ATDPN\r') {
               if (!RegExp(r'^\d+$').hasMatch(response)) {
-                AppLogger.logWarning('Validation failed for $command: Expected numeric protocol, got $response', 'BluetoothManager.initializeObdConnection');
+                AppLogger.logWarning('Validation failed for $command: Expected numeric protocol, got $response');
                 throw Exception('Invalid protocol number for $command: $response');
               }
             } else if (command == 'ATRV\r') {
               final voltageMatch = RegExp(r'^(\d+\.\d)V$').firstMatch(response);
               if (voltageMatch == null) {
-                AppLogger.logWarning('Invalid voltage response for $command: $response', 'BluetoothManager.initializeObdConnection');
+                AppLogger.logWarning('Invalid voltage response for $command: $response');
                 throw Exception('Invalid voltage response: $response');
               }
               final voltage = double.parse(voltageMatch.group(1)!);
               if (voltage < nominalVoltageRange['min']! || voltage > nominalVoltageRange['max']!) {
-                AppLogger.logWarning(
-                  'Battery voltage $voltage V is outside nominal range (${nominalVoltageRange['min']}–${nominalVoltageRange['max']} V)',
-                  'BluetoothManager.initializeObdConnection',
-                );
+                AppLogger.logWarning('Battery voltage $voltage V is outside nominal range (${nominalVoltageRange['min']}–${nominalVoltageRange['max']} V)');
               } else {
-                AppLogger.logInfo('Battery voltage: $voltage V (nominal)', 'BluetoothManager.initializeObdConnection');
+                AppLogger.logInfo('Battery voltage: $voltage V (nominal)');
               }
             } else if (command == '0100\r') {
               if (!response.startsWith('4100')) {
-                AppLogger.logWarning('Validation failed for $command: Expected 4100..., got $response', 'BluetoothManager.initializeObdConnection');
+                AppLogger.logWarning('Validation failed for $command: Expected 4100..., got $response');
                 throw Exception('Invalid PID response for $command: $response');
               }
             }
@@ -310,7 +304,7 @@ class BluetoothManager {
             _obdInitialized = true;
             break;
           } catch (e) {
-            AppLogger.logWarning('Attempt $attempt/$maxRetries for $command failed: $e', 'BluetoothManager.initializeObdConnection');
+            AppLogger.logWarning('Attempt $attempt/$maxRetries for $command failed: $e');
             if (attempt == maxRetries) {
               throw Exception('Failed to execute $command after $maxRetries attempts: $e');
             }
@@ -320,7 +314,7 @@ class BluetoothManager {
         await Future.delayed(commandDelay);
       }
 
-      AppLogger.logInfo('OBD2 connection initialized successfully for device: $_deviceId', 'BluetoothManager.initializeObdConnection');
+      AppLogger.logInfo('OBD2 connection initialized successfully for device: $_deviceId');
     } catch (e) {
       _obdInitialized = false;
       await _cleanup();
@@ -337,7 +331,7 @@ class BluetoothManager {
     _notificationCompleter = Completer<String>();
     _notificationBuffer.clear();
 
-    AppLogger.logInfo('Sending command: $command', 'BluetoothManager._sendObdCommand');
+    AppLogger.logInfo('Sending command: $command');
 
     await _bleService.writeCharacteristic(
       _obdCharacteristic!,
@@ -362,18 +356,17 @@ class BluetoothManager {
   Future<List<String>> getVehicleDTCs({bool coolOff = true}) async {
     const command = '03\r';
     const commandDelay = Duration(milliseconds: 250);
-    const method = 'BluetoothManager.getVehicleDTCs';
   
     try {
       // Ensure OBD connection is initialized
       if (!_deviceReady) throw StateError('Device not ready for OBD operations');
 
       final response = await _sendObdCommand(command, timeout: const Duration(seconds: 15));
-      AppLogger.logInfo('DTC response: $response', 'BluetoothManager.getVehicleDTCs');
+      AppLogger.logInfo('DTC response: $response');
 
       // Handle NO DATA case (no DTCs or no vehicle connection)
       if (response == 'NO DATA' || response == '?') {
-        AppLogger.logInfo('No DTCs found or no vehicle connected', 'BluetoothManager.getVehicleDTCs');
+        AppLogger.logInfo('No DTCs found or no vehicle connected');
         return [];
       }
 
@@ -415,10 +408,10 @@ class BluetoothManager {
         dtcs.add(dtc);
       }
 
-      AppLogger.logInfo('Retrieved DTCs: $dtcs', 'BluetoothManager.getVehicleDTCs');
+      AppLogger.logInfo('Retrieved DTCs: $dtcs');
       return dtcs;
-    } catch (e, stackTrace) {
-      AppLogger.logError(e, stackTrace, method);
+    } catch (e) {
+      AppLogger.logError(e);
       rethrow;
     } finally {
       if (coolOff) await Future.delayed(commandDelay);
@@ -431,7 +424,6 @@ class BluetoothManager {
     const commandDelay = Duration(milliseconds: 250);
     const nominalMin = 12.0;
     const nominalMax = 15.0;
-    const method = 'BluetoothManager.getSystemBatteryVoltage';
 
     try {
       // Ensure OBD connection is initialized
@@ -445,14 +437,14 @@ class BluetoothManager {
       final voltage = double.parse(match.group(1)!);
 
       if (voltage < nominalMin || voltage > nominalMax) {
-        AppLogger.logWarning('Voltage $voltage V out of range ($nominalMin–$nominalMax V)', method);
+        AppLogger.logWarning('Voltage $voltage V out of range ($nominalMin–$nominalMax V)');
       } else {
-        AppLogger.logInfo('Battery voltage: $voltage V', method);
+        AppLogger.logInfo('Battery voltage: $voltage V');
       }
 
       return voltage;
-    } catch (e, stackTrace) {
-      AppLogger.logError(e, stackTrace, method);
+    } catch (e) {
+      AppLogger.logError(e);
       rethrow;
     } finally {
       if (coolOff) await Future.delayed(commandDelay);
@@ -463,7 +455,6 @@ class BluetoothManager {
   Future<String> getVin({bool coolOff = true}) async {
     const command = '0902\r';
     const commandDelay = Duration(milliseconds: 250);
-    const method = 'BluetoothManager.getVin';
 
     try {
       // Ensure OBD connection is initialized
@@ -488,10 +479,10 @@ class BluetoothManager {
         ),
       );
 
-      AppLogger.logInfo('VIN: $vin', method);
+      AppLogger.logInfo('VIN: $vin');
       return vin;
-    } catch (e, stack) {
-      AppLogger.logError(e, stack, method);
+    } catch (e) {
+      AppLogger.logError(e);
       rethrow;
     } finally {
       if (coolOff) await Future.delayed(commandDelay);
@@ -502,7 +493,6 @@ class BluetoothManager {
   Future<double> getActualBatteryVoltage({bool coolOff = true}) async {
     const command = '010B\r';
     const commandDelay = Duration(milliseconds: 250);
-    const method = 'BluetoothManager.getActualBatteryVoltage';
 
     try {
       // Ensure OBD connection is initialized
@@ -522,10 +512,10 @@ class BluetoothManager {
 
       final voltage = int.parse(hexVoltage, radix: 16).toDouble();
 
-      AppLogger.logInfo('Actual battery voltage: $voltage V', method);
+      AppLogger.logInfo('Actual battery voltage: $voltage V');
       return voltage;
-    } catch (e, stack) {
-      AppLogger.logError(e, stack, method);
+    } catch (e) {
+      AppLogger.logError(e);
       rethrow;
     } finally {
       if (coolOff) await Future.delayed(commandDelay);

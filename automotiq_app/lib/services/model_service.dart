@@ -31,11 +31,11 @@ class ModelService {
       final filePath = await _getFilePath();
       final file = File(filePath);
 
-      AppLogger.logInfo('Checking model at path: $filePath', 'ModelService.checkModelExistence');
+      AppLogger.logInfo('Checking model at path: $filePath');
       return file.existsSync();
       
-    } catch (e, stackTrace) {
-      AppLogger.logError(e, stackTrace, 'ModelService.checkModelExistence');
+    } catch (e) {
+      AppLogger.logError(e);
       return false;
     }
   }
@@ -77,11 +77,11 @@ class ModelService {
       } else {
         final errorBody = await response.stream.bytesToString();
         _downloadError = 'Status code ${response.statusCode}: $errorBody';
-        AppLogger.logError(_downloadError, null, 'ModelService.downloadModel');
+        AppLogger.logError(_downloadError);
         throw HttpException(_downloadError!);
       }
-    } catch (e, stackTrace) {
-      AppLogger.logError(e, stackTrace, 'ModelService.downloadModel');
+    } catch (e) {
+      AppLogger.logError(e);
       _downloadError = 'Failed to download model: $e';
       rethrow;
     } finally {
@@ -92,7 +92,7 @@ class ModelService {
   Future<void> initializeModel() async {
     try {
       if (_isModelInitialized && _inferenceModel != null) {
-        AppLogger.logInfo('Model already initialized', 'ModelService.initializeModel');
+        AppLogger.logInfo('Model already initialized');
         return;
       }
 
@@ -115,8 +115,8 @@ class ModelService {
       );
 
       _isModelInitialized = true;
-    } catch (e, stackTrace) {
-      AppLogger.logError(e, stackTrace, 'ModelService.initializeModel');
+    } catch (e) {
+      AppLogger.logError(e);
       _isModelInitialized = false;
       _inferenceModel = null;
       rethrow;
@@ -151,8 +151,8 @@ class ModelService {
         supportsFunctionCalls: supportsFunctionCalls,
       );
       return chat;
-    } catch (e, stackTrace) {
-      AppLogger.logError(e, stackTrace, 'ModelService.createChat');
+    } catch (e) {
+      AppLogger.logError(e);
       rethrow;
     }
   }
@@ -163,9 +163,9 @@ class ModelService {
         await _inferenceModel!.close();
         _inferenceModel = null;
         _isModelInitialized = false;
-        AppLogger.logInfo('Model closed successfully', 'ModelService.closeModel');
-      } catch (e, stackTrace) {
-        AppLogger.logError(e, stackTrace, 'ModelService.closeModel');
+        AppLogger.logInfo('Model closed successfully');
+      } catch (e) {
+        AppLogger.logError(e);
         rethrow;
       }
     }

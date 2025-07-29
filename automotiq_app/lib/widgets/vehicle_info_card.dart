@@ -281,7 +281,7 @@ class ConnectionStatusWidget extends StatelessWidget {
       initialData: bluetoothManager!.getDeviceState(),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
-          AppLogger.logError(snapshot.error, null, 'ConnectionStatusWidget');
+          AppLogger.logError(snapshot.error);
           return Center(
             child: Padding(
               padding: const EdgeInsets.all(18.0),

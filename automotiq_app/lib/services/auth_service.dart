@@ -9,8 +9,8 @@ class AuthService {
   Future<UserCredential> signInAnonymously() async {
     try {
       return await _firebaseAuth.signInAnonymously();
-    } catch (e, stackTrace) {
-      AppLogger.logError(e, stackTrace, 'AuthService.signInAnonymously');
+    } catch (e) {
+      AppLogger.logError(e);
       rethrow;
     }
   }
@@ -18,8 +18,8 @@ class AuthService {
   Future<UserCredential> signInWithEmailAndPassword(String email, String password) async {
     try {
       return await _firebaseAuth.signInWithEmailAndPassword(email: email, password: password);
-    } catch (e, stackTrace) {
-      AppLogger.logError(e, stackTrace, 'AuthService.signInWithEmailAndPassword');
+    } catch (e) {
+      AppLogger.logError(e);
       rethrow;
     }
   }

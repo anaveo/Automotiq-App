@@ -12,16 +12,16 @@ import 'package:automotiq_app/repositories/vehicle_repository.dart';
 
 final appAuthProvider = ChangeNotifierProxyProvider<ModelProvider, AppAuthProvider>(
   create: (_) {
-    AppLogger.logInfo('Creating AppAuthProvider (initial)', 'providers.dart');
+    AppLogger.logInfo('Creating AppAuthProvider (initial)');
     return AppAuthProvider(firebaseAuth: FirebaseAuth.instance);
   },
   update: (_, modelProvider, previous) {
     if (!modelProvider.isModelDownloaded) {
-      AppLogger.logInfo('Returning default AppAuthProvider until model is downloaded', 'providers.dart');
+      AppLogger.logInfo('Returning default AppAuthProvider until model is downloaded');
       return previous ?? AppAuthProvider(firebaseAuth: FirebaseAuth.instance);
     }
     if (previous!.user == null && !previous.isLoading) {
-      AppLogger.logInfo('Triggering anonymous sign-in', 'providers.dart');
+      AppLogger.logInfo('Triggering anonymous sign-in');
       previous.signInAnonymously();
     }
     return previous;
@@ -31,7 +31,7 @@ final appAuthProvider = ChangeNotifierProxyProvider<ModelProvider, AppAuthProvid
 
 final userProvider = ChangeNotifierProxyProvider<AppAuthProvider, UserProvider>(
   create: (_) {
-    AppLogger.logInfo('Creating UserProvider (initial, no UID)', 'providers.dart');
+    AppLogger.logInfo('Creating UserProvider (initial, no UID)');
     return UserProvider(
       repository: UserRepository(firestoreInstance: FirebaseFirestore.instance),
       uid: null,
@@ -39,16 +39,14 @@ final userProvider = ChangeNotifierProxyProvider<AppAuthProvider, UserProvider>(
   },
   update: (_, authProvider, previous) {
     if (authProvider.user == null) {
-      AppLogger.logInfo('Returning default UserProvider until auth is ready', 'providers.dart');
+      AppLogger.logInfo('Returning default UserProvider until auth is ready');
       return previous ?? UserProvider(
         repository: UserRepository(firestoreInstance: FirebaseFirestore.instance),
         uid: null,
       );
     }
     AppLogger.logInfo(
-      'Initializing UserProvider for user: ${authProvider.user!.uid} (anonymous: ${authProvider.user!.isAnonymous})',
-      'providers.dart',
-    );
+      'Initializing UserProvider for user: ${authProvider.user!.uid} (anonymous: ${authProvider.user!.isAnonymous})');
     return UserProvider(
       repository: UserRepository(firestoreInstance: FirebaseFirestore.instance),
       uid: authProvider.user!.uid,
@@ -59,7 +57,7 @@ final userProvider = ChangeNotifierProxyProvider<AppAuthProvider, UserProvider>(
 
 final vehicleProvider = ChangeNotifierProxyProvider<AppAuthProvider, VehicleProvider>(
   create: (_) {
-    AppLogger.logInfo('Creating VehicleProvider (initial, no auth)', 'providers.dart');
+    AppLogger.logInfo('Creating VehicleProvider (initial, no auth)');
     return VehicleProvider(
       vehicleRepository: VehicleRepository(firestoreInstance: FirebaseFirestore.instance),
       firebaseAuth: FirebaseAuth.instance,
@@ -67,16 +65,14 @@ final vehicleProvider = ChangeNotifierProxyProvider<AppAuthProvider, VehicleProv
   },
   update: (_, authProvider, previous) {
     if (authProvider.user == null) {
-      AppLogger.logInfo('Returning default VehicleProvider until auth is ready', 'providers.dart');
+      AppLogger.logInfo('Returning default VehicleProvider until auth is ready');
       return previous ?? VehicleProvider(
         vehicleRepository: VehicleRepository(firestoreInstance: FirebaseFirestore.instance),
         firebaseAuth: FirebaseAuth.instance,
       );
     }
     AppLogger.logInfo(
-      'Initializing VehicleProvider for user: ${authProvider.user!.uid}',
-      'providers.dart',
-    );
+      'Initializing VehicleProvider for user: ${authProvider.user!.uid}');
     final provider = VehicleProvider(
       vehicleRepository: VehicleRepository(firestoreInstance: FirebaseFirestore.instance),
       firebaseAuth: FirebaseAuth.instance,
@@ -89,22 +85,20 @@ final vehicleProvider = ChangeNotifierProxyProvider<AppAuthProvider, VehicleProv
 
 final bluetoothManagerProvider = ProxyProvider<AppAuthProvider, BluetoothManager>(
   create: (_) {
-    AppLogger.logInfo('Creating BluetoothManager (initial, no auth)', 'providers.dart');
+    AppLogger.logInfo('Creating BluetoothManager (initial, no auth)');
     return BluetoothManager();
   },
   update: (_, authProvider, previous) {
     if (authProvider.user == null) {
-      AppLogger.logInfo('Returning default BluetoothManager until auth is ready', 'providers.dart');
+      AppLogger.logInfo('Returning default BluetoothManager until auth is ready');
       return previous ?? BluetoothManager();
     }
     AppLogger.logInfo(
-      'Initializing BluetoothManager for user: ${authProvider.user!.uid}',
-      'providers.dart',
-    );
+      'Initializing BluetoothManager for user: ${authProvider.user!.uid}');
     return BluetoothManager();
   },
   dispose: (_, manager) {
-    AppLogger.logInfo('Disposing BluetoothManager', 'providers.dart');
+    AppLogger.logInfo('Disposing BluetoothManager');
     manager.dispose();
   },
   lazy: true,

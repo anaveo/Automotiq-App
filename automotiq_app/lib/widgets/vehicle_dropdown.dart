@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/vehicle_model.dart';
 import '../providers/vehicle_provider.dart';
-import '../utils/navigation.dart';
 import '../utils/logger.dart';
 
 class VehicleDropdown extends StatelessWidget {
@@ -21,9 +20,8 @@ class VehicleDropdown extends StatelessWidget {
     final selected = vehicleProvider.selectedVehicle;
 
     void navigateToAddVehicle(BuildContext context) {
-      AppLogger.logInfo('Navigating to OBD setup from VehicleDropdown', 'VehicleDropdown');
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        navigateToObdSetup(context);
+        Navigator.pushNamed(context, '/obdSetup');
       });
     }
 
@@ -67,10 +65,7 @@ class VehicleDropdown extends StatelessWidget {
           ),
         ],
         onChanged: (value) {
-          AppLogger.logInfo(
-            'Vehicle selected: ${value?.name ?? "None"}',
-            'VehicleDropdown.onChanged',
-          );
+          AppLogger.logInfo('Vehicle selected: ${value?.name ?? "None"}');
           if (value != null) {
             vehicleProvider.selectVehicle(value);
           }

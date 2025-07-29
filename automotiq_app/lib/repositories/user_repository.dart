@@ -26,12 +26,12 @@ class UserRepository {
         // Check if operation was queued offline
         final docSnapshot = await docRef.get();
         if (docSnapshot.metadata.isFromCache) {
-          AppLogger.logWarning('createUserDocIfNotExists: Operation queued for sync due to offline mode');
+          AppLogger.logWarning('Operation queued for sync due to offline mode');
         }
       }
     } catch (e) {
       if (e is FirebaseException && e.code == 'unavailable') {
-        AppLogger.logWarning('createUserDocIfNotExists: Operation queued for sync due to offline mode');
+        AppLogger.logWarning('Operation queued for sync due to offline mode');
         // Firestore queues the set operation, so no retry needed
         final snapshot = await docRef.get(const GetOptions(source: Source.cache));
         if (!snapshot.exists) {
@@ -52,7 +52,7 @@ class UserRepository {
       final doc = await _usersRef.doc(uid).get(const GetOptions(source: Source.cache));
 
       if (doc.metadata.isFromCache) {
-        AppLogger.logWarning('getUser: Using cached data due to offline mode');
+        AppLogger.logWarning('Using cached data due to offline mode');
       }
 
       if (!doc.exists || doc.data() == null) {
@@ -62,7 +62,7 @@ class UserRepository {
       return UserModel.fromMap(doc.id, doc.data()! as Map<String, dynamic>);
     } catch (e) {
       if (e is FirebaseException && e.code == 'unavailable') {
-        AppLogger.logWarning('getUser: Offline mode, using cached data');
+        AppLogger.logWarning('Offline mode, using cached data');
         // Retry with cache explicitly
         final doc = await _usersRef.doc(uid).get(const GetOptions(source: Source.cache));
         if (!doc.exists || doc.data() == null) {
@@ -91,11 +91,11 @@ class UserRepository {
       // Check if operation was queued offline
       final docSnapshot = await docRef.get();
       if (docSnapshot.metadata.isFromCache) {
-        AppLogger.logWarning('updateField: Operation queued for sync due to offline mode');
+        AppLogger.logWarning('Operation queued for sync due to offline mode');
       }
     } catch (e) {
       if (e is FirebaseException && e.code == 'unavailable') {
-        AppLogger.logWarning('Operation queued for sync due to offline mode', 'UserRepository.updateField');
+        AppLogger.logWarning('Operation queued for sync due to offline mode');
         // Firestore queues the update, so no retry needed
         return;
       }

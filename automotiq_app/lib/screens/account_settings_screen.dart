@@ -1,5 +1,4 @@
 import 'package:automotiq_app/utils/logger.dart';
-import 'package:automotiq_app/utils/navigation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -132,8 +131,8 @@ class AccountSettingsScreen extends StatelessWidget {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(content: Text('Assistant memory cleared')),
                                   );
-                                } catch (e, stackTrace) {
-                                  AppLogger.logError(e, stackTrace, 'AccountSettingsScreen.clearAssistantMemory');
+                                } catch (e) {
+                                  AppLogger.logError(e);
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(content: Text('Failed to clear memory: $e')),
                                   );

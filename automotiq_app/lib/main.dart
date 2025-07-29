@@ -107,7 +107,7 @@ class ErrorApp extends StatelessWidget {
               const SizedBox(height: 16),
               ElevatedButton(
                 onPressed: () {
-                  AppLogger.logInfo('Retrying app initialization', 'ErrorApp');
+                  AppLogger.logInfo('Retrying app initialization');
                   Provider.of<ModelProvider>(context, listen: false).startModelDownload();
                 },
                 style: Theme.of(context).elevatedButtonTheme.style,
@@ -124,20 +124,20 @@ class ErrorApp extends StatelessWidget {
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: 'assets/.env');
-  AppLogger.logInfo('Starting app initialization', 'main');
+  AppLogger.logInfo('Starting app initialization');
 
   try {
-    AppLogger.logInfo('Initializing Firebase...', 'main');
+    AppLogger.logInfo('Initializing Firebase...');
     await Firebase.initializeApp();
     FirebaseFirestore.instance.settings = const Settings(persistenceEnabled: true);
-    AppLogger.logInfo('Firebase initialized successfully', 'main');
-  } catch (e, stackTrace) {
-    AppLogger.logError(e, stackTrace, 'main');
+    AppLogger.logInfo('Firebase initialized successfully');
+  } catch (e) {
+    AppLogger.logError(e);
     runApp(const ErrorApp(errorMessage: 'Failed to initialize Firebase'));
     return;
   }
 
-  AppLogger.logInfo('Running MyApp', 'main');
+  AppLogger.logInfo('Running MyApp');
   runApp(
     MultiProvider(
       providers: [
@@ -169,7 +169,7 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    AppLogger.logInfo('Building MyApp', 'main');
+    AppLogger.logInfo('Building MyApp');
     return MaterialApp(
       title: 'Automotiq',
       theme: AppTheme.darkTheme,
@@ -180,7 +180,7 @@ class MyApp extends StatelessWidget {
         '/obdSetup': (context) => const ObdSetupScreen(),
       },
       onUnknownRoute: (settings) {
-        AppLogger.logError('Unknown route: ${settings.name}', null, 'MyApp');
+        AppLogger.logError('Unknown route: ${settings.name}');
         return MaterialPageRoute(
           builder: (context) => Scaffold(
             body: Center(

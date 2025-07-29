@@ -18,7 +18,7 @@ class VehicleRepository {
           .get();
 
       if (snapshot.metadata.isFromCache) {
-        AppLogger.logWarning('getVehicles: Using cached data due to offline mode');
+        AppLogger.logWarning('Using cached data due to offline mode');
       }
 
       return snapshot.docs
@@ -26,7 +26,7 @@ class VehicleRepository {
           .toList();
     } catch (e) {
       if (e is FirebaseException && e.code == 'unavailable') {
-        AppLogger.logWarning('getVehicles: Offline mode, using cached data', 'VehicleRepository.getVehicles');
+        AppLogger.logWarning('Offline mode, using cached data');
         // Firestore automatically uses cache, so no need to rethrow if data is available
         final snapshot = await firestore
             .collection('users')
@@ -64,13 +64,13 @@ class VehicleRepository {
       // Check if operation was queued offline
       final docSnapshot = await docRef.get();
       if (docSnapshot.metadata.isFromCache) {
-        AppLogger.logWarning('addVehicle: Operation queued for sync due to offline mode');
+        AppLogger.logWarning('Operation queued for sync due to offline mode');
       }
 
       return newVehicle.id;
     } catch (e) {
       if (e is FirebaseException && e.code == 'unavailable') {
-        AppLogger.logWarning('addVehicle: Operation queued for sync due to offline mode', 'VehicleRepository.addVehicle');
+        AppLogger.logWarning('Operation queued for sync due to offline mode');
         // Firestore automatically queues the operation, so no retry needed
         return newVehicle.id;
       }
@@ -99,13 +99,13 @@ class VehicleRepository {
       // Check if deletion was queued offline
       final postDeleteSnap = await docRef.get();
       if (postDeleteSnap.metadata.isFromCache) {
-        AppLogger.logWarning('removeVehicle: Deletion queued for sync due to offline mode');
+        AppLogger.logWarning('Deletion queued for sync due to offline mode');
       }
     } on ArgumentError {
       rethrow;
     } catch (e) {
       if (e is FirebaseException && e.code == 'unavailable') {
-        AppLogger.logWarning('removeVehicle: Deletion queued for sync due to offline mode', 'VehicleRepository.removeVehicle');
+        AppLogger.logWarning('Deletion queued for sync due to offline mode');
         // Deletion is queued by Firestore, so allow it to proceed
         final docRef = firestore
             .collection('users')

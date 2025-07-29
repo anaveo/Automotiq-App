@@ -26,8 +26,8 @@ class BleService {
       (update) {
         _updateConnectionState(update.connectionState);
       },
-      onError: (e, stackTrace) {
-        AppLogger.logError(e, stackTrace, 'BleService.connectionStateStream');
+      onError: (e) {
+        AppLogger.logError(e);
         _updateConnectionState(DeviceConnectionState.disconnected);
       },
       onDone: () {
@@ -46,10 +46,7 @@ class BleService {
 
   void _updateConnectionState(DeviceConnectionState newState) {
     if (_currentState == newState) return;
-    AppLogger.logInfo(
-      'Connection state updated: $_currentState -> $newState',
-      'BleService._updateConnectionState',
-    );
+    AppLogger.logInfo('Connection state updated: $_currentState -> $newState');
     _currentState = newState;
     _stateSubject.add(_currentState);
   }
@@ -82,11 +79,11 @@ class BleService {
                 }
               }
             },
-            onError: (e, stackTrace) {
-              AppLogger.logError(e, stackTrace, 'BleService.connectToDevice');
+            onError: (e) {
+              AppLogger.logError(e);
               _updateConnectionState(DeviceConnectionState.disconnected);
               if (!completer.isCompleted) {
-                completer.completeError(e, stackTrace);
+                completer.completeError(e);
               }
             },
             onDone: () {
@@ -99,10 +96,10 @@ class BleService {
 
       // Wait for the connected state or timeout
       await completer.future;
-      AppLogger.logInfo('Successfully connected to device: $deviceId', 'BleService.connectToDevice');
-    } catch (e, stackTrace) {
+      AppLogger.logInfo('Successfully connected to device: $deviceId');
+    } catch (e) {
       _updateConnectionState(DeviceConnectionState.disconnected);
-      AppLogger.logError(e, stackTrace, 'BleService.connectToDevice');
+      AppLogger.logError(e);
       throw Exception('Failed to connect to device: $e');
     }
   }
@@ -112,7 +109,6 @@ class BleService {
     Duration timeout = const Duration(seconds: 5),
     List<Uuid> withServices = const [],
   }) async {
-    const method = 'BleService.scanForDevices';
 
     await requestPermissions();
     final devices = <DiscoveredDevice>[];
@@ -129,8 +125,8 @@ class BleService {
 
       await Future.delayed(timeout);
       return devices;
-    } catch (e, stackTrace) {
-      AppLogger.logError(e, stackTrace, method);
+    } catch (e) {
+      AppLogger.logError(e);
       rethrow;
     } finally {
       await scanSubscription?.cancel();
@@ -145,8 +141,8 @@ class BleService {
       await _connectionSubscription?.cancel();
       _connectionSubscription = null;
       _updateConnectionState(DeviceConnectionState.disconnected);
-    } catch (e, stackTrace) {
-      AppLogger.logError(e, stackTrace, 'BleService.disconnectDevice');
+    } catch (e) {
+      AppLogger.logError(e);
       _updateConnectionState(DeviceConnectionState.disconnected);
       throw Exception('Failed to disconnect device: $e');
     }
@@ -165,8 +161,8 @@ class BleService {
     try {
       final negotiatedMtu = await adapter.requestMtu(deviceId: deviceId, mtu: mtu);
       return negotiatedMtu;
-    } catch (e, stackTrace) {
-      AppLogger.logError(e, stackTrace, 'BleService.requestMtu');
+    } catch (e) {
+      AppLogger.logError(e);
       throw Exception('Failed to request MTU: $e');
     }
   }
@@ -175,10 +171,10 @@ class BleService {
   Future<List<int>> readCharacteristic(QualifiedCharacteristic characteristic) async {
     try {
       final value = await adapter.readCharacteristic(characteristic);
-      AppLogger.logInfo('Read characteristic ${characteristic.characteristicId}: $value', 'BleService.readCharacteristic');
+      AppLogger.logInfo('Read characteristic ${characteristic.characteristicId}: $value');
       return value;
-    } catch (e, stackTrace) {
-      AppLogger.logError(e, stackTrace, 'BleService.readCharacteristic');
+    } catch (e) {
+      AppLogger.logError(e);
       throw Exception('Failed to read characteristic: $e');
     }
   }
@@ -198,7 +194,6 @@ class BleService {
 
   /// Request required permissions for BLE operations
   Future<void> requestPermissions() async {
-    const method = 'BleService.requestPermissions';
 
     try {
       final scan = await permissionService.bluetoothScanStatus;
@@ -218,8 +213,8 @@ class BleService {
         final result = await permissionService.requestLocation();
         if (!result.isGranted) throw Exception('Location permission denied');
       }
-    } catch (e, stackTrace) {
-      AppLogger.logError(e, stackTrace, method);
+    } catch (e) {
+      AppLogger.logError(e);
       rethrow;
     }
   }
@@ -231,9 +226,9 @@ class BleService {
       await _stateSubject.close();
       await _connectionSubscription?.cancel();
       _connectionSubscription = null;
-      AppLogger.logInfo('BleService disposed', 'BleService.dispose');
-    } catch (e, stackTrace) {
-      AppLogger.logError(e, stackTrace, 'BleService.dispose');
+      AppLogger.logInfo('BleService disposed');
+    } catch (e) {
+      AppLogger.logError(e);
       throw Exception('Failed to dispose BleService: $e');
     }
   }

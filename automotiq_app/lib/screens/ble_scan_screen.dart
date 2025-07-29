@@ -4,7 +4,6 @@ import 'package:flutter_reactive_ble/flutter_reactive_ble.dart';
 import 'package:provider/provider.dart';
 import '../models/vehicle_model.dart';
 import '../providers/vehicle_provider.dart';
-import '../utils/navigation.dart';
 import '../utils/logger.dart';
 
 class BleScanScreen extends StatefulWidget {
@@ -42,7 +41,7 @@ class _BleScanScreenState extends State<BleScanScreen> {
     });
 
     try {
-      AppLogger.logInfo('Starting BLE scan', 'BleScanScreen.startScan');
+      AppLogger.logInfo('Starting BLE scan');
       final devices = await bluetoothManager.scanForNewDevices(timeout: const Duration(seconds: 10));
       setState(() {
         final uniqueDevices = <String, DiscoveredDevice>{};
@@ -53,10 +52,10 @@ class _BleScanScreenState extends State<BleScanScreen> {
         }
         _devices = uniqueDevices.values.toList();
         _isScanning = false;
-        AppLogger.logInfo('BLE scan completed, found ${_devices.length} devices', 'BleScanScreen.startScan');
+        AppLogger.logInfo('BLE scan completed, found ${_devices.length} devices');
       });
-    } catch (e, stackTrace) {
-      AppLogger.logError(e, stackTrace, 'BleScanScreen.startScan');
+    } catch (e) {
+      AppLogger.logError(e);
       setState(() {
         _errorMessage = 'Scan failed: $e';
         _isScanning = false;
@@ -82,7 +81,7 @@ class _BleScanScreenState extends State<BleScanScreen> {
     });
 
     try {
-      AppLogger.logInfo('Pairing device: ${device.name} (ID: ${device.id})', 'BleScanScreen.pairAndSaveDevice');
+      AppLogger.logInfo('Pairing device: ${device.name} (ID: ${device.id})');
       await bluetoothManager.connectToDevice(device.id);
 
       // TODO: Replace with actual vehicle values
@@ -97,11 +96,11 @@ class _BleScanScreenState extends State<BleScanScreen> {
       );
 
       await vehicleProvider.addVehicle(vehicle);
-      AppLogger.logInfo('Vehicle added: ${vehicle.name} (ID: ${vehicle.id})', 'BleScanScreen.pairAndSaveDevice');
+      AppLogger.logInfo('Vehicle added: ${vehicle.name} (ID: ${vehicle.id})');
 
-      navigateToHome(context);
-    } catch (e, stackTrace) {
-      AppLogger.logError(e, stackTrace, 'BleScanScreen.pairAndSaveDevice');
+      Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
+    } catch (e) {
+      AppLogger.logError(e);
       setState(() {
         _errorMessage = 'Failed to pair or save vehicle: $e';
         _isPairing = false;
