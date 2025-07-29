@@ -72,13 +72,52 @@ class DiagnosisScreenState extends State<DiagnosisScreen> with WidgetsBindingObs
     
     if (existingDiagnosis == null) {
       AppLogger.logInfo('No diagnosis found for current DTCs after inference completion, starting new inference', 'DiagnosisScreen._checkAndStartInferenceIfNeeded');
-      _runInferenceSafely();
+      _runInferenceSafelyWithChatCheck();
     } else if (!existingDiagnosis.isComplete && !_backgroundService.isInferenceActiveForDtcs(widget.dtcs)) {
       AppLogger.logInfo('Incomplete diagnosis found for current DTCs, restarting inference', 'DiagnosisScreen._checkAndStartInferenceIfNeeded');
-      _runInferenceSafely();
+      _runInferenceSafelyWithChatCheck();
     }
   }
 
+  // Enhanced safe inference method that never shows queue-related errors to users and waits for chat initialization
+  Future<void> _runInferenceSafelyWithChatCheck({bool forceRerun = false}) async {
+    if (widget.dtcs.isEmpty) return;
+
+    final modelProvider = Provider.of<ModelProvider>(context, listen: false);
+    
+    // If chat is not initialized, wait for it
+    if (!modelProvider.isChatInitialized || modelProvider.globalAgent == null) {
+      AppLogger.logInfo('Global chat not initialized, waiting for initialization', 'DiagnosisScreen._runInferenceSafelyWithChatCheck');
+      
+      // Set up a periodic check to wait for chat initialization
+      _scheduleRetryWhenChatInitialized();
+      return;
+    }
+
+    // Chat is initialized, proceed with normal inference
+    return _runInferenceSafely(forceRerun: forceRerun);
+  }
+
+  // Schedule periodic retries when chat becomes initialized
+  void _scheduleRetryWhenChatInitialized() async {
+    // Wait a bit before checking again
+    await Future.delayed(const Duration(seconds: 1));
+    
+    if (!mounted || widget.dtcs.isEmpty) return;
+    
+    final modelProvider = Provider.of<ModelProvider>(context, listen: false);
+    
+    // Check if chat is still not initialized
+    if (!modelProvider.isChatInitialized || modelProvider.globalAgent == null) {
+      // Chat still not ready, schedule another check
+      _scheduleRetryWhenChatInitialized();
+      return;
+    }
+    
+    // Chat is now initialized, proceed with diagnosis
+    AppLogger.logInfo('Global chat became initialized, starting diagnosis for DTCs: ${widget.dtcs.join(', ')}', 'DiagnosisScreen._scheduleRetryWhenChatInitialized');
+    _runInferenceSafely();
+  }
   // Enhanced safe inference method that never shows queue-related errors to users
   Future<void> _runInferenceSafely({bool forceRerun = false}) async {
     if (widget.dtcs.isEmpty) return;
@@ -258,11 +297,11 @@ class DiagnosisScreenState extends State<DiagnosisScreen> with WidgetsBindingObs
         }
         
         if (!existingDiagnosis.isComplete && !_backgroundService.isInferenceActiveForDtcs(widget.dtcs)) {
-          _runInferenceSafely();
+          _runInferenceSafelyWithChatCheck();
         }
       } else {
         // For fresh DTCs, always use safe inference to handle queue gracefully
-        _runInferenceSafely();
+        _runInferenceSafelyWithChatCheck();
       }
     } else {
       if (mounted) {
@@ -355,10 +394,17 @@ class DiagnosisScreenState extends State<DiagnosisScreen> with WidgetsBindingObs
       final hasChatInference = backgroundService.hasChatInference;
       final hasDiagnosisInference = backgroundService.hasDiagnosisInference;
       
+      // Check if chat is initialized
+      final modelProvider = Provider.of<ModelProvider>(context, listen: false);
+      final isChatInitialized = modelProvider.isChatInitialized && modelProvider.globalAgent != null;
+      
       String statusMessage;
       String? subMessage;
       
-      if (isActiveForCurrentDtcs && hasDiagnosisInference) {
+      if (!isChatInitialized) {
+        statusMessage = 'Initializing AI assistant...';
+        subMessage = 'Please wait while the chat system starts up.';
+      } else if (isActiveForCurrentDtcs && hasDiagnosisInference) {
         statusMessage = 'Analyzing diagnostic codes...';
         subMessage = 'AI is processing your vehicle\'s diagnostic trouble codes.';
       } else if (isActiveForCurrentDtcs && !hasDiagnosisInference) {
