@@ -16,6 +16,9 @@ class DiagnosisScreen extends StatefulWidget {
 class DiagnosisScreenState extends State<DiagnosisScreen> with WidgetsBindingObserver {
   late UnifiedBackgroundService _backgroundService;
   String? _currentDiagnosisId;
+  List<String> _lastProcessedDtcs = [];
+  bool _isInitialized = false;
+  bool _wasInferenceRunning = false;
 
   @override
   void initState() {
@@ -23,6 +26,17 @@ class DiagnosisScreenState extends State<DiagnosisScreen> with WidgetsBindingObs
     WidgetsBinding.instance.addObserver(this);
     _backgroundService = UnifiedBackgroundService();
     _initializeDiagnosis();
+  }
+
+  @override
+  void didUpdateWidget(DiagnosisScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    
+    // Check if DTCs have changed
+    if (!_listEquals(oldWidget.dtcs, widget.dtcs)) {
+      AppLogger.logInfo('DTCs changed from ${oldWidget.dtcs} to ${widget.dtcs}', 'DiagnosisScreen.didUpdateWidget');
+      _handleDtcChange();
+    }
   }
 
   @override
@@ -38,6 +52,11 @@ class DiagnosisScreenState extends State<DiagnosisScreen> with WidgetsBindingObs
     switch (state) {
       case AppLifecycleState.resumed:
         AppLogger.logInfo('App resumed, checking diagnosis status', 'DiagnosisScreen.didChangeAppLifecycleState');
+        // Check if DTCs have changed while app was in background
+        if (_isInitialized && !_listEquals(_lastProcessedDtcs, widget.dtcs)) {
+          AppLogger.logInfo('DTCs changed while app was backgrounded', 'DiagnosisScreen.didChangeAppLifecycleState');
+          _handleDtcChange();
+        }
         break;
       case AppLifecycleState.paused:
         AppLogger.logInfo('App backgrounded, diagnosis inference continues', 'DiagnosisScreen.didChangeAppLifecycleState');
@@ -47,29 +66,94 @@ class DiagnosisScreenState extends State<DiagnosisScreen> with WidgetsBindingObs
     }
   }
 
+  Future<void> _checkAndStartInferenceIfNeeded() async {
+    if (!mounted || widget.dtcs.isEmpty) return;
+    
+    // Check if we have a diagnosis for current DTCs
+    final existingDiagnosis = _backgroundService.getDiagnosisForDtcs(widget.dtcs);
+    
+    if (existingDiagnosis == null) {
+      // No diagnosis exists for current DTCs, start one
+      AppLogger.logInfo('No diagnosis found for current DTCs after inference completion, starting new inference', 'DiagnosisScreen._checkAndStartInferenceIfNeeded');
+      _runInference();
+    } else if (!existingDiagnosis.isComplete && !_backgroundService.isInferenceActiveForDtcs(widget.dtcs)) {
+      // Diagnosis exists but is incomplete and not running, restart it
+      AppLogger.logInfo('Incomplete diagnosis found for current DTCs, restarting inference', 'DiagnosisScreen._checkAndStartInferenceIfNeeded');
+      _runInference();
+    }
+  }
+
+  bool _listEquals(List<String> a, List<String> b) {
+    if (a.length != b.length) return false;
+    for (int i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
+  }
+
+  Future<void> _handleDtcChange() async {
+    if (!mounted) return;
+
+    AppLogger.logInfo('Handling DTC change from ${_lastProcessedDtcs} to ${widget.dtcs}', 'DiagnosisScreen._handleDtcChange');
+    
+    // Update the processed DTCs and clear current diagnosis ID
+    _lastProcessedDtcs = List.from(widget.dtcs);
+    _currentDiagnosisId = null;
+    
+    // Force a check for new inference after a brief delay to let any UI updates settle
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await Future.delayed(const Duration(milliseconds: 100));
+      if (mounted) {
+        await _checkAndStartInferenceIfNeeded();
+      }
+    });
+  }
+
   Future<void> _initializeDiagnosis() async {
     await _backgroundService.initialize();
     
     if (widget.dtcs.isNotEmpty) {
-      // Check if we already have a diagnosis for these DTCs
+      // Update last processed DTCs
+      _lastProcessedDtcs = List.from(widget.dtcs);
+      
+      // Check if we already have a diagnosis for these exact DTCs
       final existingDiagnosis = _backgroundService.getDiagnosisForDtcs(widget.dtcs);
       
       if (existingDiagnosis != null) {
-        _currentDiagnosisId = existingDiagnosis.id;
+        if (mounted) {
+          setState(() {
+            _currentDiagnosisId = existingDiagnosis.id;
+          });
+        }
         
-        // If diagnosis is not complete and not currently running, start it
+        // If diagnosis is not complete and not currently running for these DTCs, start it
         if (!existingDiagnosis.isComplete && !_backgroundService.isInferenceActiveForDtcs(widget.dtcs)) {
           _runInference();
         }
       } else {
-        // No existing diagnosis, start new one
+        // No existing diagnosis for these DTCs, start new one
         _runInference();
       }
+    } else {
+      // No DTCs, clear current diagnosis ID
+      if (mounted) {
+        setState(() {
+          _currentDiagnosisId = null;
+        });
+      }
     }
+    
+    _isInitialized = true;
   }
 
   Future<void> _runInference({bool forceRerun = false}) async {
     if (widget.dtcs.isEmpty) return;
+
+    // Only check for conflicts if not forcing a rerun
+    if (!forceRerun && _backgroundService.hasDiagnosisInference) {
+      AppLogger.logInfo('Diagnosis inference already running, skipping new request', 'DiagnosisScreen._runInference');
+      return;
+    }
 
     final modelProvider = Provider.of<ModelProvider>(context, listen: false);
     if (!modelProvider.isChatInitialized || modelProvider.globalAgent == null) {
@@ -136,6 +220,41 @@ class DiagnosisScreenState extends State<DiagnosisScreen> with WidgetsBindingObs
             style: TextStyle(fontSize: 16, color: Colors.grey),
           ),
         );
+      }
+      
+      // Check if we're waiting for a diagnosis that doesn't exist yet
+      // or if there's an active inference for different DTCs
+      if (_backgroundService.hasDiagnosisInference) {
+        final activeForCurrentDtcs = _backgroundService.isInferenceActiveForDtcs(widget.dtcs);
+        if (activeForCurrentDtcs) {
+          return const Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(height: 16),
+                Text('Initializing diagnosis...'),
+              ],
+            ),
+          );
+        } else {
+          return const Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.hourglass_empty, size: 48, color: Colors.grey),
+                SizedBox(height: 16),
+                Text('Waiting for current diagnosis to complete...'),
+                SizedBox(height: 8),
+                Text(
+                  'Your diagnosis will start once the current one finishes.',
+                  style: TextStyle(fontSize: 14, color: Colors.grey),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          );
+        }
       }
       
       return const Center(
@@ -311,11 +430,22 @@ class DiagnosisScreenState extends State<DiagnosisScreen> with WidgetsBindingObs
             },
           ),
           
-          // Re-run button
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Re-run diagnosis',
-            onPressed: widget.dtcs.isEmpty ? null : _clearAndRerun,
+          // Re-run button - disable during active inference
+          Consumer<UnifiedBackgroundService>(
+            builder: (context, backgroundService, child) {
+              final isInferenceActive = backgroundService.hasDiagnosisInference;
+              
+              return IconButton(
+                icon: Icon(
+                  Icons.refresh,
+                  color: isInferenceActive ? Colors.grey : null,
+                ),
+                tooltip: isInferenceActive 
+                    ? 'Wait for diagnosis to complete' 
+                    : 'Re-run diagnosis',
+                onPressed: (widget.dtcs.isEmpty || isInferenceActive) ? null : _clearAndRerun,
+              );
+            },
           ),
         ],
       ),
@@ -323,6 +453,16 @@ class DiagnosisScreenState extends State<DiagnosisScreen> with WidgetsBindingObs
         padding: const EdgeInsets.all(16.0),
         child: Consumer<UnifiedBackgroundService>(
           builder: (context, backgroundService, child) {
+            // Check if inference just completed and we need to start new one
+            final isInferenceRunning = backgroundService.hasDiagnosisInference;
+            if (_wasInferenceRunning && !isInferenceRunning) {
+              // Inference just completed, check if we need to start new one
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                _checkAndStartInferenceIfNeeded();
+              });
+            }
+            _wasInferenceRunning = isInferenceRunning;
+            
             final diagnosis = _currentDiagnosisId != null
                 ? backgroundService.getDiagnosisById(_currentDiagnosisId!) ??
                   backgroundService.getDiagnosisForDtcs(widget.dtcs)
