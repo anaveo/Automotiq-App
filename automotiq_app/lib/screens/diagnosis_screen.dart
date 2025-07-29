@@ -577,173 +577,152 @@ class DiagnosisScreenState extends State<DiagnosisScreen> with WidgetsBindingObs
       );
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // DTCs Section
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Diagnostic Trouble Codes:',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-                ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 4,
-                  children: diagnosis.dtcs.map((dtc) => Chip(
-                    label: Text(dtc),
-                    backgroundColor: Colors.orange.withOpacity(0.2),
-                  )).toList(),
-                ),
-              ],
-            ),
-          ),
-        ),
-        
-        const SizedBox(height: 16),
-        
-        // Prompt Section (collapsible)
-        ExpansionTile(
-          title: const Text(
-            'AI Prompt',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-          ),
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Text(
-                diagnosis.prompt,
-                style: const TextStyle(fontSize: 14, fontStyle: FontStyle.italic),
-              ),
-            ),
-          ],
-        ),
-        
-        const SizedBox(height: 8),
-        
-        // Output Section
-        const Text(
-          'Diagnosis:',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-        ),
-        const SizedBox(height: 8),
-        
-        Expanded(
-          child: Card(
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // DTCs Section
+          Card(
             child: Padding(
               padding: const EdgeInsets.all(16.0),
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (diagnosis.output.isNotEmpty)
-                      MarkdownBody(
-                        data: _cleanLlmOutput(diagnosis.output),
-                        styleSheet: MarkdownStyleSheet(
-                          p: const TextStyle(fontSize: 16, height: 1.5),
-                          h1: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                          h2: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                          h3: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                          h4: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                          h5: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-                          h6: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                          strong: const TextStyle(fontWeight: FontWeight.bold),
-                          em: const TextStyle(fontStyle: FontStyle.italic),
-                          code: TextStyle(
-                            backgroundColor: Colors.grey[200],
-                            fontFamily: 'monospace',
-                            fontSize: 14,
-                          ),
-                          codeblockDecoration: BoxDecoration(
-                            color: Colors.grey[100],
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.grey[300]!),
-                          ),
-                          codeblockPadding: const EdgeInsets.all(12),
-                          blockquote: TextStyle(
-                            color: Colors.grey[600],
-                            fontStyle: FontStyle.italic,
-                          ),
-                          blockquoteDecoration: BoxDecoration(
-                            color: Colors.grey[50],
-                            border: Border(
-                              left: BorderSide(
-                                color: Colors.grey[400]!,
-                                width: 4,
-                              ),
-                            ),
-                          ),
-                          blockquotePadding: const EdgeInsets.all(12),
-                          listBullet: const TextStyle(fontSize: 16),
-                        ),
-                      ),
-                    
-                    // Enhanced loading indicator with queue info
-                    if (!diagnosis.isComplete && diagnosis.error == null)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 16.0),
-                        child: _buildProgressIndicator(backgroundService, widget.dtcs),
-                      ),
-                    
-                    // Show error if exists (but only non-queue errors)
-                    if (diagnosis.error != null && !_isQueueRelatedError(diagnosis.error!))
-                      Padding(
-                        padding: const EdgeInsets.only(top: 16.0),
-                        child: Container(
-                          padding: const EdgeInsets.all(12.0),
-                          decoration: BoxDecoration(
-                            color: Colors.red.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(8.0),
-                            border: Border.all(color: Colors.red.withOpacity(0.3)),
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.error_outline, color: Colors.red),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Text(
-                                      'Analysis Error',
-                                      style: TextStyle(
-                                        color: Colors.red,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      diagnosis.error!,
-                                      style: const TextStyle(color: Colors.red),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    ElevatedButton(
-                                      onPressed: () => _runInference(forceRerun: true),
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.red,
-                                        foregroundColor: Colors.white,
-                                      ),
-                                      child: const Text('Retry Analysis'),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Diagnostic Trouble Codes:',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 4,
+                    children: diagnosis.dtcs.map((dtc) => Chip(
+                      label: Text(dtc),
+                      backgroundColor: Colors.orange.withOpacity(0.2),
+                    )).toList(),
+                  ),
+                ],
               ),
             ),
           ),
-        ),
-      ],
+          
+          const SizedBox(height: 16),
+          
+          // Output Section
+          const Text(
+            'Diagnosis:',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+          ),
+          const SizedBox(height: 8),
+          
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (diagnosis.output.isNotEmpty)
+                    MarkdownBody(
+                      data: _cleanLlmOutput(diagnosis.output),
+                      styleSheet: MarkdownStyleSheet(
+                        p: const TextStyle(fontSize: 16, height: 1.5),
+                        h1: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                        h2: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                        h3: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        h4: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        h5: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                        h6: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                        strong: const TextStyle(fontWeight: FontWeight.bold),
+                        em: const TextStyle(fontStyle: FontStyle.italic),
+                        code: TextStyle(
+                          backgroundColor: Colors.grey[200],
+                          fontFamily: 'monospace',
+                          fontSize: 14,
+                        ),
+                        codeblockDecoration: BoxDecoration(
+                          color: Colors.grey[100],
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.grey[300]!),
+                        ),
+                        codeblockPadding: const EdgeInsets.all(12),
+                        blockquote: TextStyle(
+                          color: Colors.grey[600],
+                          fontStyle: FontStyle.italic,
+                        ),
+                        blockquoteDecoration: BoxDecoration(
+                          color: Colors.grey[50],
+                          border: Border(
+                            left: BorderSide(
+                              color: Colors.grey[400]!,
+                              width: 4,
+                            ),
+                          ),
+                        ),
+                        blockquotePadding: const EdgeInsets.all(12),
+                        listBullet: const TextStyle(fontSize: 16),
+                      ),
+                    ),
+                  
+                  // Enhanced loading indicator with queue info
+                  if (!diagnosis.isComplete && diagnosis.error == null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 16.0),
+                      child: _buildProgressIndicator(backgroundService, widget.dtcs),
+                    ),
+                  
+                  // Show error if exists (but only non-queue errors)
+                  if (diagnosis.error != null && !_isQueueRelatedError(diagnosis.error!))
+                    Padding(
+                      padding: const EdgeInsets.only(top: 16.0),
+                      child: Container(
+                        padding: const EdgeInsets.all(12.0),
+                        decoration: BoxDecoration(
+                          color: Colors.red.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8.0),
+                          border: Border.all(color: Colors.red.withOpacity(0.3)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.error_outline, color: Colors.red),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Analysis Error',
+                                    style: TextStyle(
+                                      color: Colors.red,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    diagnosis.error!,
+                                    style: const TextStyle(color: Colors.red),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  ElevatedButton(
+                                    onPressed: () => _runInference(forceRerun: true),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.red,
+                                      foregroundColor: Colors.white,
+                                    ),
+                                    child: const Text('Retry Analysis'),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
