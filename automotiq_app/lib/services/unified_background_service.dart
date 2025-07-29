@@ -557,6 +557,11 @@ class UnifiedBackgroundService extends ChangeNotifier {
     return sortedDtcs.join('_').toLowerCase();
   }
 
+  // Public method to generate diagnosis key for external use
+  String generateDiagnosisKey(List<String> dtcs) {
+    return _generateDiagnosisKey(dtcs);
+  }
+
   String _createDiagnosisPrompt(List<String> dtcs) {
     return "You are an AI mechanic. Your role is to diagnose the health of a vehicle, given its diagnostic trouble codes and recommend further action. The vehicle has the following diagnostic trouble codes: ${dtcs.join(', ')}";
   }

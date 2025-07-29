@@ -71,11 +71,150 @@ class DiagnosisScreenState extends State<DiagnosisScreen> with WidgetsBindingObs
     
     if (existingDiagnosis == null) {
       AppLogger.logInfo('No diagnosis found for current DTCs after inference completion, starting new inference', 'DiagnosisScreen._checkAndStartInferenceIfNeeded');
-      _runInference();
+      _runInferenceSafely();
     } else if (!existingDiagnosis.isComplete && !_backgroundService.isInferenceActiveForDtcs(widget.dtcs)) {
       AppLogger.logInfo('Incomplete diagnosis found for current DTCs, restarting inference', 'DiagnosisScreen._checkAndStartInferenceIfNeeded');
-      _runInference();
+      _runInferenceSafely();
     }
+  }
+
+  // Enhanced safe inference method that never shows queue-related errors to users
+  Future<void> _runInferenceSafely({bool forceRerun = false}) async {
+    if (widget.dtcs.isEmpty) return;
+
+    final modelProvider = Provider.of<ModelProvider>(context, listen: false);
+    if (!modelProvider.isChatInitialized || modelProvider.globalAgent == null) {
+      AppLogger.logError('Global chat not initialized', null, 'DiagnosisScreen._runInferenceSafely');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Chat not initialized. Please try again.')),
+      );
+      return;
+    }
+
+    // Check if agent is busy or there's chat inference running
+    if (_backgroundService.isAgentBusy || _backgroundService.hasChatInference) {
+      AppLogger.logInfo('Agent busy or chat active, will queue diagnosis for DTCs: ${widget.dtcs.join(', ')}', 'DiagnosisScreen._runInferenceSafely');
+      
+      // Create a temporary diagnosis result to show queued state
+      final diagnosisKey = _backgroundService.generateDiagnosisKey(widget.dtcs);
+      final tempDiagnosisId = '${diagnosisKey}_${DateTime.now().millisecondsSinceEpoch}';
+      
+      if (mounted) {
+        setState(() {
+          _currentDiagnosisId = tempDiagnosisId;
+        });
+      }
+      
+      // Set up a periodic check to retry when agent becomes available
+      _scheduleRetryWhenAgentAvailable();
+      return;
+    }
+
+    try {
+      // Create a placeholder diagnosis result to show queued state immediately
+      final diagnosisKey = _backgroundService.generateDiagnosisKey(widget.dtcs);
+      final tempDiagnosisId = '${diagnosisKey}_${DateTime.now().millisecondsSinceEpoch}';
+      
+      if (mounted) {
+        setState(() {
+          _currentDiagnosisId = tempDiagnosisId;
+        });
+      }
+
+      AppLogger.logInfo('Starting diagnosis inference for DTCs: ${widget.dtcs.join(', ')}', 'DiagnosisScreen._runInferenceSafely');
+
+      final diagnosisId = await _backgroundService.runDiagnosis(
+        dtcs: widget.dtcs,
+        chat: modelProvider.globalAgent!,
+        forceRerun: forceRerun,
+      );
+      
+      if (mounted) {
+        setState(() {
+          _currentDiagnosisId = diagnosisId;
+        });
+      }
+
+      AppLogger.logInfo('Diagnosis inference completed successfully for DTCs: ${widget.dtcs.join(', ')}', 'DiagnosisScreen._runInferenceSafely');
+    } catch (e, stackTrace) {
+      AppLogger.logError(e, stackTrace, 'DiagnosisScreen._runInferenceSafely');
+      
+      // Categorize the error type
+      final errorMessage = e.toString().toLowerCase();
+      final isQueueError = errorMessage.contains('queue') || 
+                          errorMessage.contains('busy') || 
+                          errorMessage.contains('already running') ||
+                          errorMessage.contains('waiting') ||
+                          errorMessage.contains('request cancelled') ||
+                          errorMessage.contains('agent is currently') ||
+                          errorMessage.contains('inference');
+      
+      final isNetworkError = errorMessage.contains('network') ||
+                            errorMessage.contains('connection') ||
+                            errorMessage.contains('timeout');
+      
+      final isResourceError = errorMessage.contains('memory') ||
+                             errorMessage.contains('resource') ||
+                             errorMessage.contains('out of');
+
+      if (isQueueError) {
+        // For queue errors, schedule a retry and don't show error to user
+        AppLogger.logInfo('Diagnosis queued due to system busy: $e', 'DiagnosisScreen._runInferenceSafely');
+        _scheduleRetryWhenAgentAvailable();
+      } else if (mounted) {
+        // Only show error to user for non-queue issues
+        String userMessage;
+        if (isNetworkError) {
+          userMessage = 'Network error. Please check your connection and try again.';
+        } else if (isResourceError) {
+          userMessage = 'System resources are low. Please try again in a moment.';
+        } else {
+          userMessage = 'Unable to run diagnosis at this time. Please try again.';
+        }
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(userMessage),
+            action: SnackBarAction(
+              label: 'Retry',
+              onPressed: () => _runInferenceSafely(forceRerun: forceRerun),
+            ),
+          ),
+        );
+      }
+    }
+  }
+
+  // Schedule periodic retries when agent becomes available
+  void _scheduleRetryWhenAgentAvailable() async {
+    // Wait a bit before checking again
+    await Future.delayed(const Duration(seconds: 2));
+    
+    if (!mounted || widget.dtcs.isEmpty) return;
+    
+    // Check if agent is still busy
+    if (_backgroundService.isAgentBusy || _backgroundService.hasChatInference) {
+      // Agent still busy, schedule another check
+      _scheduleRetryWhenAgentAvailable();
+      return;
+    }
+    
+    // Check if we already have a diagnosis or if inference is already running for these DTCs
+    final existingDiagnosis = _backgroundService.getDiagnosisForDtcs(widget.dtcs);
+    if (existingDiagnosis != null && existingDiagnosis.isComplete && existingDiagnosis.error == null) {
+      // We already have a good diagnosis, no need to retry
+      return;
+    }
+    
+    if (_backgroundService.isInferenceActiveForDtcs(widget.dtcs)) {
+      // Inference already running for these DTCs
+      return;
+    }
+    
+    // Agent is available and we need to run diagnosis
+    AppLogger.logInfo('Agent became available, retrying diagnosis for DTCs: ${widget.dtcs.join(', ')}', 'DiagnosisScreen._scheduleRetryWhenAgentAvailable');
+    _runInferenceSafely();
   }
 
   bool _listEquals(List<String> a, List<String> b) {
@@ -118,10 +257,11 @@ class DiagnosisScreenState extends State<DiagnosisScreen> with WidgetsBindingObs
         }
         
         if (!existingDiagnosis.isComplete && !_backgroundService.isInferenceActiveForDtcs(widget.dtcs)) {
-          _runInference();
+          _runInferenceSafely();
         }
       } else {
-        _runInference();
+        // For fresh DTCs, always use safe inference to handle queue gracefully
+        _runInferenceSafely();
       }
     } else {
       if (mounted) {
@@ -137,36 +277,8 @@ class DiagnosisScreenState extends State<DiagnosisScreen> with WidgetsBindingObs
   Future<void> _runInference({bool forceRerun = false}) async {
     if (widget.dtcs.isEmpty) return;
 
-    // The queue system in UnifiedBackgroundService will handle conflicts now
-    final modelProvider = Provider.of<ModelProvider>(context, listen: false);
-    if (!modelProvider.isChatInitialized || modelProvider.globalAgent == null) {
-      AppLogger.logError('Global chat not initialized', null, 'DiagnosisScreen._runInference');
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Chat not initialized. Please try again.')),
-      );
-      return;
-    }
-
-    try {
-      final diagnosisId = await _backgroundService.runDiagnosis(
-        dtcs: widget.dtcs,
-        chat: modelProvider.globalAgent!,
-        forceRerun: forceRerun,
-      );
-      
-      if (mounted) {
-        setState(() {
-          _currentDiagnosisId = diagnosisId;
-        });
-      }
-    } catch (e, stackTrace) {
-      AppLogger.logError(e, stackTrace, 'DiagnosisScreen._runInference');
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to run diagnosis: $e')),
-      );
-    }
+    // Use the safe inference method for user-initiated actions too
+    return _runInferenceSafely(forceRerun: forceRerun);
   }
 
   Future<void> _clearAndRerun() async {
@@ -205,42 +317,185 @@ class DiagnosisScreenState extends State<DiagnosisScreen> with WidgetsBindingObs
         );
       }
       
-      // Enhanced status checking with queue information
+      // Enhanced status checking with better queue information
       final isActiveForCurrentDtcs = backgroundService.isInferenceActiveForDtcs(widget.dtcs);
       final isAgentBusy = backgroundService.isAgentBusy;
       final queueLength = backgroundService.queueLength;
+      final hasChatInference = backgroundService.hasChatInference;
+      final hasDiagnosisInference = backgroundService.hasDiagnosisInference;
       
       String statusMessage;
-      if (isActiveForCurrentDtcs && backgroundService.hasDiagnosisInference) {
+      String? subMessage;
+      
+      if (isActiveForCurrentDtcs && hasDiagnosisInference) {
         statusMessage = 'Analyzing diagnostic codes...';
-      } else if (isActiveForCurrentDtcs && !backgroundService.hasDiagnosisInference) {
-        statusMessage = 'Diagnosis queued, waiting for agent...';
+        subMessage = 'AI is processing your vehicle\'s diagnostic trouble codes.';
+      } else if (isActiveForCurrentDtcs && !hasDiagnosisInference) {
+        statusMessage = 'Diagnosis queued for processing...';
+        if (hasChatInference) {
+          subMessage = 'Waiting for the chat assistant to finish, then your diagnosis will begin.';
+        } else {
+          subMessage = 'Your diagnosis will start shortly.';
+        }
       } else if (isAgentBusy || queueLength > 0) {
-        statusMessage = 'Waiting for current operation to complete...\n${queueLength > 0 ? 'Position in queue: $queueLength' : ''}';
+        statusMessage = 'Waiting for system availability...';
+        if (hasChatInference) {
+          subMessage = 'The chat assistant is currently active. Your diagnosis will begin when it\'s available.';
+        } else if (queueLength > 0) {
+          subMessage = queueLength == 1 
+              ? 'One operation ahead of you in the queue.'
+              : '$queueLength operations ahead of you in the queue.';
+        } else {
+          subMessage = 'System is processing other requests. Please wait a moment.';
+        }
       } else {
-        statusMessage = 'Initializing diagnosis...';
+        statusMessage = 'Preparing diagnosis...';
+        subMessage = 'Setting up the analysis for your diagnostic trouble codes.';
       }
       
       return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const CircularProgressIndicator(),
-            const SizedBox(height: 16),
-            Text(
-              statusMessage,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 16),
-            ),
-            if (queueLength > 0) ...[
-              const SizedBox(height: 8),
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const CircularProgressIndicator(
+                strokeWidth: 3,
+                color: Colors.deepPurpleAccent,
+              ),
+              const SizedBox(height: 24),
               Text(
-                'Other operations are running. Your diagnosis will start soon.',
-                style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                statusMessage,
                 textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              if (subMessage != null) ...[
+                const SizedBox(height: 12),
+                Text(
+                  subMessage,
+                  style: TextStyle(
+                    fontSize: 14, 
+                    color: Colors.grey[600],
+                    height: 1.4,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+              const SizedBox(height: 24),
+              // Show current DTCs being processed
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Diagnostic Trouble Codes:',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 4,
+                        children: widget.dtcs.map((dtc) => Chip(
+                          label: Text(dtc),
+                          backgroundColor: Colors.orange.withOpacity(0.2),
+                        )).toList(),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ],
-          ],
+          ),
+        ),
+      );
+    }
+
+    // Check if this diagnosis has a queue-related error that should be handled gracefully
+    final hasQueueError = diagnosis.error != null && _isQueueRelatedError(diagnosis.error!);
+    
+    // If there's a queue-related error, treat it as if diagnosis is still loading/queued
+    if (hasQueueError) {
+      final isAgentBusy = backgroundService.isAgentBusy;
+      final hasChatInference = backgroundService.hasChatInference;
+      final queueLength = backgroundService.queueLength;
+      
+      String statusMessage;
+      String? subMessage;
+      
+      if (hasChatInference) {
+        statusMessage = 'Waiting for chat to complete...';
+        subMessage = 'Your diagnosis will automatically start when the chat assistant finishes.';
+      } else if (isAgentBusy || queueLength > 0) {
+        statusMessage = 'Diagnosis will start automatically...';
+        subMessage = 'Waiting for the system to become available. No action needed.';
+      } else {
+        statusMessage = 'Retrying diagnosis...';
+        subMessage = 'The system will automatically attempt your diagnosis again.';
+      }
+      
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const CircularProgressIndicator(
+                strokeWidth: 3,
+                color: Colors.deepPurpleAccent,
+              ),
+              const SizedBox(height: 24),
+              Text(
+                statusMessage,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              if (subMessage != null) ...[
+                const SizedBox(height: 12),
+                Text(
+                  subMessage,
+                  style: TextStyle(
+                    fontSize: 14, 
+                    color: Colors.grey[600],
+                    height: 1.4,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+              const SizedBox(height: 24),
+              // Show current DTCs being processed
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Diagnostic Trouble Codes:',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 4,
+                        children: diagnosis.dtcs.map((dtc) => Chip(
+                          label: Text(dtc),
+                          backgroundColor: Colors.orange.withOpacity(0.2),
+                        )).toList(),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       );
     }
@@ -322,8 +577,8 @@ class DiagnosisScreenState extends State<DiagnosisScreen> with WidgetsBindingObs
                         child: _buildProgressIndicator(backgroundService, widget.dtcs),
                       ),
                     
-                    // Show error if exists
-                    if (diagnosis.error != null)
+                    // Show error if exists (but only non-queue errors)
+                    if (diagnosis.error != null && !_isQueueRelatedError(diagnosis.error!))
                       Padding(
                         padding: const EdgeInsets.only(top: 16.0),
                         child: Container(
@@ -338,9 +593,31 @@ class DiagnosisScreenState extends State<DiagnosisScreen> with WidgetsBindingObs
                               const Icon(Icons.error_outline, color: Colors.red),
                               const SizedBox(width: 8),
                               Expanded(
-                                child: Text(
-                                  diagnosis.error!,
-                                  style: const TextStyle(color: Colors.red),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Analysis Error',
+                                      style: TextStyle(
+                                        color: Colors.red,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      diagnosis.error!,
+                                      style: const TextStyle(color: Colors.red),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    ElevatedButton(
+                                      onPressed: () => _runInference(forceRerun: true),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.red,
+                                        foregroundColor: Colors.white,
+                                      ),
+                                      child: const Text('Retry Analysis'),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ],
@@ -357,18 +634,46 @@ class DiagnosisScreenState extends State<DiagnosisScreen> with WidgetsBindingObs
     );
   }
 
+  // Helper method to identify queue-related errors
+  bool _isQueueRelatedError(String error) {
+    final errorLower = error.toLowerCase();
+    return errorLower.contains('queue') ||
+           errorLower.contains('busy') ||
+           errorLower.contains('already running') ||
+           errorLower.contains('waiting') ||
+           errorLower.contains('request cancelled') ||
+           errorLower.contains('agent is currently') ||
+           errorLower.contains('inference');
+  }
+
   Widget _buildProgressIndicator(UnifiedBackgroundService backgroundService, List<String> dtcs) {
     final isActiveForCurrentDtcs = backgroundService.isInferenceActiveForDtcs(dtcs);
     final hasDiagnosisInference = backgroundService.hasDiagnosisInference;
+    final hasChatInference = backgroundService.hasChatInference;
     final queueLength = backgroundService.queueLength;
     
     String statusText;
+    String? detailText;
+    
     if (isActiveForCurrentDtcs && hasDiagnosisInference) {
       statusText = 'Generating diagnosis...';
+      detailText = 'AI is analyzing your diagnostic codes and formulating recommendations.';
     } else if (isActiveForCurrentDtcs && !hasDiagnosisInference) {
       statusText = 'Queued for analysis...';
+      if (hasChatInference) {
+        detailText = 'Waiting for chat to complete, then diagnosis will begin.';
+      } else {
+        detailText = 'Your diagnosis will start momentarily.';
+      }
     } else {
       statusText = 'Waiting in queue...';
+      if (hasChatInference) {
+        detailText = 'Chat assistant is active. Diagnosis will follow.';
+      } else if (queueLength > 0) {
+        detailText = queueLength == 1 
+            ? '1 operation ahead in queue.'
+            : '$queueLength operations ahead in queue.';
+      }
     }
     
     return Column(
@@ -382,22 +687,28 @@ class DiagnosisScreenState extends State<DiagnosisScreen> with WidgetsBindingObs
               child: CircularProgressIndicator(strokeWidth: 2),
             ),
             const SizedBox(width: 12),
-            Text(
-              statusText,
-              style: TextStyle(
-                color: Colors.grey[600],
-                fontStyle: FontStyle.italic,
+            Expanded(
+              child: Text(
+                statusText,
+                style: TextStyle(
+                  color: Colors.grey[600],
+                  fontStyle: FontStyle.italic,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ),
           ],
         ),
-        if (queueLength > 0 && !hasDiagnosisInference) ...[
+        if (detailText != null) ...[
           const SizedBox(height: 8),
-          Text(
-            'Position in queue: $queueLength',
-            style: TextStyle(
-              color: Colors.grey[500],
-              fontSize: 12,
+          Padding(
+            padding: const EdgeInsets.only(left: 32),
+            child: Text(
+              detailText,
+              style: TextStyle(
+                color: Colors.grey[500],
+                fontSize: 12,
+              ),
             ),
           ),
         ],
@@ -410,20 +721,30 @@ class DiagnosisScreenState extends State<DiagnosisScreen> with WidgetsBindingObs
     final isAgentBusy = backgroundService.isAgentBusy;
     final queueLength = backgroundService.queueLength;
     final isActiveForCurrentDtcs = backgroundService.isInferenceActiveForDtcs(widget.dtcs);
+    final hasChatInference = backgroundService.hasChatInference;
     
     if (!hasDiagnosisInference && !isAgentBusy && queueLength == 0) {
       return const SizedBox.shrink();
     }
     
     String statusText;
+    Color? statusColor;
+    
     if (hasDiagnosisInference && isActiveForCurrentDtcs) {
       statusText = 'Analyzing...';
+      statusColor = Colors.green;
     } else if (isActiveForCurrentDtcs) {
       statusText = 'Queued...';
+      statusColor = Colors.orange;
+    } else if (isAgentBusy && hasChatInference) {
+      statusText = 'Chat active...';
+      statusColor = Colors.blue;
     } else if (isAgentBusy) {
       statusText = 'Agent busy...';
+      statusColor = Colors.amber;
     } else {
       statusText = 'Queue ($queueLength)';
+      statusColor = Colors.grey;
     }
     
     return Container(
@@ -431,15 +752,20 @@ class DiagnosisScreenState extends State<DiagnosisScreen> with WidgetsBindingObs
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const SizedBox(
+          SizedBox(
             width: 16,
             height: 16,
-            child: CircularProgressIndicator(strokeWidth: 2),
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation<Color>(statusColor ?? Colors.grey),
+            ),
           ),
           const SizedBox(width: 4),
           Text(
             statusText,
-            style: Theme.of(context).textTheme.bodySmall,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: statusColor,
+            ),
           ),
         ],
       ),
