@@ -134,9 +134,7 @@ class _VehicleDetailsCardState extends State<VehicleDetailsCard> {
     // Keep fetching until we have 2 unique codes
     while (codesSet.length < 2) {
       String? codeNullable = await DtcDatabaseService().getRandomDtcCode();
-      if (codeNullable != null) {
-        codesSet.add(codeNullable);
-      }
+      codesSet.add(codeNullable);
     }
 
     return codesSet.toList();

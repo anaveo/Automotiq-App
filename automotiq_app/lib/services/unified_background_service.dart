@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:automotiq_app/utils/logger.dart';
 import 'package:flutter_gemma/flutter_gemma.dart';
+import '../services/dtc_database_service.dart';
 
 enum InferenceType { chat, diagnosis }
 
@@ -561,9 +562,34 @@ class UnifiedBackgroundService extends ChangeNotifier {
     return _generateDiagnosisKey(dtcs);
   }
 
-  String _createDiagnosisPrompt(List<String> dtcs) {
-    return "You are an AI mechanic. Your role is to diagnose the health of a vehicle, given its diagnostic trouble codes and recommend further action. The vehicle has the following diagnostic trouble codes: ${dtcs.join(', ')}. Give a concise repsponse.";
+Future<List<String>> getDtcDescriptions(List<String> codes) async {
+  List<String> descriptions = [];
+  for (String code in codes) {
+    Map<String, String> entry = await DtcDatabaseService().getDtc(code);
+    String desc = entry["description"] ?? '';
+    descriptions.add("$code ($desc)");
   }
+  return descriptions;
+}
+
+
+Future<String> _createDiagnosisPrompt(List<String> dtcs) async {
+  final descriptions = await getDtcDescriptions(dtcs);
+  return """
+    You are an AI auto mechanic assistant. Your job is to help everyday drivers understand their vehicle's health based on diagnostic trouble codes (DTCs).
+
+    The vehicle has reported the following DTCs: ${descriptions.join(', ')}.
+
+    For each issue:
+    - Explain what it means in simple terms.
+    - Suggest possible causes.
+    - Recommend easy fixes if they are safe and doable for the average person.
+    - If the repair is too technical or risky, recommend visiting a qualified mechanic.
+    - If the user needs help with a DIY fix, recommend using the app's chat feature and uploading a photo of the issue to get more help.
+
+    Your response should be concise, clear, and helpful to someone who is not a car expert.
+    """;
+}
 
   Future<String> runDiagnosis({
     required List<String> dtcs,
@@ -604,9 +630,11 @@ class UnifiedBackgroundService extends ChangeNotifier {
     }
 
     // Create initial diagnosis result
+    final prompt = await _createDiagnosisPrompt(dtcs);
+
     final initialResult = DiagnosisResult(
       dtcs: dtcs,
-      prompt: _createDiagnosisPrompt(dtcs),
+      prompt: prompt,
       output: '',
       id: diagnosisId,
       isComplete: false,
@@ -637,7 +665,7 @@ class UnifiedBackgroundService extends ChangeNotifier {
     if (_isDisposed) return '';
 
     final completer = Completer<void>();
-    final prompt = _createDiagnosisPrompt(dtcs);
+    final prompt = await _createDiagnosisPrompt(dtcs);
 
     try {
       await chat.addQueryChunk(
