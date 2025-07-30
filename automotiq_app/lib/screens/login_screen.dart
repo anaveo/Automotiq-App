@@ -27,8 +27,8 @@ class _LoginScreenState extends State<LoginScreen> {
         _emailController.text.trim(),
         _passwordController.text,
       );
-    } catch (e, stackTrace) {
-      AppLogger.logError(e, stackTrace, 'LoginScreen.signInWithEmail');
+    } catch (e) {
+      AppLogger.logError(e);
       setState(() {
         _errorMessage = 'Failed to sign in: $e';
       });
@@ -40,8 +40,8 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       setState(() => _errorMessage = null);
       await authProvider.signInAnonymously();
-    } catch (e, stackTrace) {
-      AppLogger.logError(e, stackTrace, 'LoginScreen._signInAnonymously');
+    } catch (e) {
+      AppLogger.logError(e);
       setState(() {
         _errorMessage = 'Failed to sign in: $e';
       });

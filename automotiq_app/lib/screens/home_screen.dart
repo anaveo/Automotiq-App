@@ -30,8 +30,8 @@ class _HomeScreenState extends State<HomeScreen> {
       try {
         await vehicleProvider.loadVehicles();
         setState(() => _errorMessage = null);
-      } catch (e, stackTrace) {
-        AppLogger.logError(e, stackTrace, 'HomeScreen.initState');
+      } catch (e) {
+        AppLogger.logError(e);
         setState(() => _errorMessage = 'Failed to load vehicles: $e');
       }
 
@@ -43,8 +43,8 @@ class _HomeScreenState extends State<HomeScreen> {
           if (modelProvider.isModelInitialized && !modelProvider.isChatInitializing && !modelProvider.isChatInitialized) {
             await modelProvider.initializeGlobalChat();
           }
-        } catch (e, stackTrace) {
-          AppLogger.logError(e, stackTrace, 'HomeScreen.initializeModelAndChat');
+        } catch (e) {
+          AppLogger.logError(e);
           setState(() => _errorMessage = 'Failed to initialize model/chat: $e');
         }
       }
@@ -56,19 +56,19 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       await vehicleProvider.loadVehicles();
       setState(() => _errorMessage = null);
-    } catch (e, stackTrace) {
-      AppLogger.logError(e, stackTrace, 'HomeScreen.loadVehicles');
+    } catch (e) {
+      AppLogger.logError(e);
       setState(() => _errorMessage = 'Failed to load vehicles: $e');
     }
   }
 
   Future<void> _attemptConnection(BluetoothManager bluetoothManager, VehicleModel vehicle) async {
     try {
-      AppLogger.logInfo('Attempting to connect to device: ${vehicle.deviceId}', 'HomeScreen');
+      AppLogger.logInfo('Attempting to connect to device: ${vehicle.deviceId}');
       // Start connection process
       await bluetoothManager.connectToDevice(vehicle.deviceId, autoReconnect: true);
-    } catch (e, stackTrace) {
-      AppLogger.logError(e, stackTrace, 'HomeScreen.attemptConnection');
+    } catch (e) {
+      AppLogger.logError(e);
     }
   }
 
@@ -104,7 +104,7 @@ class _HomeScreenState extends State<HomeScreen> {
         IconButton(
           icon: const Icon(Icons.account_circle_rounded),
           onPressed: () {
-            AppLogger.logInfo('Account settings button clicked', 'HomeScreen');
+            AppLogger.logInfo('Account settings button clicked');
             Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const AccountSettingsScreen()),
             );

@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:logger/logger.dart';
 import 'package:path_provider/path_provider.dart';
 
-// Custom FileOutput to write logs to a file
+/// Custom FileOutput to write logs to a file
 class CustomFileOutput extends LogOutput {
   File? _file;
 
@@ -25,40 +25,33 @@ class CustomFileOutput extends LogOutput {
   }
 }
 
-// Singleton Logger instance
+/// Singleton Logger instance
 class AppLogger {
   static final Logger _logger = Logger(
     printer: CallerPrinter(),
     output: MultiOutput([
       ConsoleOutput(),
-      // CustomFileOutput()..init(),
+      // CustomFileOutput()..init(), // enable if file logging needed
     ]),
-    filter: ProductionFilter(), // Log all levels in debug, filter in production
+    filter: ProductionFilter(),
   );
 
+  /// Backward compatible: accepts [context] but ignores it
   static void logInfo(String message, [String? context]) {
-    _logger.i(
-      '${context != null ? '[$context] ' : ''}Info: $message',
-    );
+    _logger.i(message);
   }
 
   static void logWarning(String message, [String? context]) {
-    _logger.w(
-      '${context != null ? '[$context] ' : ''}Warning: $message',
-    );
+    _logger.w(message);
   }
-  
-  static void logError(dynamic error, StackTrace? stackTrace, [String? context]) {
-    _logger.e(
-      '${context != null ? '[$context] ' : ''}Error: $error',
-      error: error,
-      stackTrace: stackTrace,
-    );
+
+  static void logError(dynamic error, [StackTrace? stackTrace, String? context]) {
+    _logger.e(error.toString(), error: error, stackTrace: stackTrace);
   }
 }
 
+/// Custom printer with caller detection
 class CallerPrinter extends LogPrinter {
-  // ANSI color codes: 31=red, 33=yellow, 34=blue, 36=cyan, 32=green
   final AnsiColor _errorColor   = AnsiColor.fg(1);
   final AnsiColor _warningColor = AnsiColor.fg(3);
   final AnsiColor _infoColor    = AnsiColor.fg(4);
@@ -67,37 +60,50 @@ class CallerPrinter extends LogPrinter {
 
   @override
   List<String> log(LogEvent event) {
-    final trace = StackTrace.current.toString().split('\n');
-    final callerLine = trace.length > 4 ? trace[4] : trace[0];
-    final callerInfo = _extractCaller(callerLine);
+    final callerInfo = _getCallerInfo();
 
-    var output = '[$callerInfo] ${event.level.name}: ${event.message}';
+    // Build output in the desired format
+    final output = '[$callerInfo] ${_capitalize(event.level.name)}: ${event.message}';
 
+    // Apply colors
     switch (event.level) {
       case Level.error:
-        output = _errorColor(output);
-        break;
+        return [_errorColor(output)];
       case Level.warning:
-        output = _warningColor(output);
-        break;
+        return [_warningColor(output)];
       case Level.info:
-        output = _infoColor(output);
-        break;
+        return [_infoColor(output)];
       case Level.debug:
-        output = _debugColor(output);
-        break;
+        return [_debugColor(output)];
       case Level.verbose:
-        output = _verboseColor(output);
-        break;
+        return [_verboseColor(output)];
       default:
-        break;
+        return [output];
+    }
+  }
+
+String _getCallerInfo() {
+  final trace = StackTrace.current.toString().split('\n');
+
+  for (final line in trace) {
+    // Skip any internal logger frames
+    if (line.contains('AppLogger.') || line.contains('CallerPrinter.') || line.contains('Logger.')) {
+      continue;
     }
 
-    return [output];
+    // Extract class + function from the first external frame
+    final match = RegExp(r'#\d+\s+([^\s]+) \(').firstMatch(line);
+    if (match != null) {
+      final raw = match.group(1)!;
+      return raw
+          .replaceAll('<anonymous closure>', '()')
+          .replaceAll('.<anonymous closure>', '()');
+    }
   }
 
-  String _extractCaller(String line) {
-    final match = RegExp(r'#\d+\s+(.+?) \(').firstMatch(line);
-    return match != null ? match.group(1)! : 'unknown';
-  }
+  return 'Unknown';
+}
+
+  String _capitalize(String text) =>
+      text.isNotEmpty ? text[0].toUpperCase() + text.substring(1) : text;
 }

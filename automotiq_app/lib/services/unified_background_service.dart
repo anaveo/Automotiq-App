@@ -278,7 +278,7 @@ class UnifiedBackgroundService extends ChangeNotifier {
           _messages.add(message);
         } catch (e) {
           // Skip corrupted messages and continue loading
-          AppLogger.logError(e, null, 'UnifiedBackgroundService._loadMessages.parseMessage');
+          AppLogger.logError(e, null);
           continue;
         }
       }
@@ -287,7 +287,7 @@ class UnifiedBackgroundService extends ChangeNotifier {
         notifyListeners();
       }
     } catch (e, stackTrace) {
-      AppLogger.logError(e, stackTrace, 'UnifiedBackgroundService._loadMessages');
+      AppLogger.logError(e, stackTrace);
     }
   }
 
@@ -299,7 +299,7 @@ class UnifiedBackgroundService extends ChangeNotifier {
       final encoded = _messages.map((msg) => json.encode(msg.toJson())).toList();
       await prefs.setStringList('chat_messages', encoded);
     } catch (e, stackTrace) {
-      AppLogger.logError(e, stackTrace, 'UnifiedBackgroundService._saveMessages');
+      AppLogger.logError(e, stackTrace);
     }
   }
 
@@ -407,14 +407,14 @@ class UnifiedBackgroundService extends ChangeNotifier {
                 await _saveMessages();
               }
             } catch (e, stackTrace) {
-              AppLogger.logError(e, stackTrace, 'UnifiedBackgroundService.chat.FunctionCallResponse');
+              AppLogger.logError(e, stackTrace);
             }
           }
         },
         onError: (error, stackTrace) {
           if (_isDisposed) return;
           
-          AppLogger.logError(error, stackTrace, 'UnifiedBackgroundService.chat.responseStream');
+          AppLogger.logError(error, stackTrace);
           
           final botIndex = _messages.indexWhere((msg) => msg.id == '${messageId}_bot');
           if (botIndex != -1) {
@@ -503,7 +503,7 @@ class UnifiedBackgroundService extends ChangeNotifier {
         notifyListeners();
       }
     } catch (e, stackTrace) {
-      AppLogger.logError(e, stackTrace, 'UnifiedBackgroundService.clearChatMessages');
+      AppLogger.logError(e, stackTrace);
     }
   }
 
@@ -525,7 +525,7 @@ class UnifiedBackgroundService extends ChangeNotifier {
           _diagnoses[_generateDiagnosisKey(result.dtcs)] = result;
         } catch (e) {
           // Skip corrupted diagnoses and continue loading
-          AppLogger.logError(e, null, 'UnifiedBackgroundService._loadDiagnoses.parseDiagnosis');
+          AppLogger.logError(e, null);
           continue;
         }
       }
@@ -534,7 +534,7 @@ class UnifiedBackgroundService extends ChangeNotifier {
         notifyListeners();
       }
     } catch (e, stackTrace) {
-      AppLogger.logError(e, stackTrace, 'UnifiedBackgroundService._loadDiagnoses');
+      AppLogger.logError(e, stackTrace);
     }
   }
 
@@ -548,7 +548,7 @@ class UnifiedBackgroundService extends ChangeNotifier {
           .toList();
       await prefs.setStringList('diagnosis_results', encoded);
     } catch (e, stackTrace) {
-      AppLogger.logError(e, stackTrace, 'UnifiedBackgroundService._saveDiagnoses');
+      AppLogger.logError(e, stackTrace);
     }
   }
 
@@ -605,14 +605,14 @@ Future<String> _createDiagnosisPrompt(List<String> dtcs) async {
     if (!forceRerun && _diagnoses.containsKey(diagnosisKey)) {
       final existingDiagnosis = _diagnoses[diagnosisKey]!;
       if (existingDiagnosis.isComplete && existingDiagnosis.error == null) {
-        AppLogger.logInfo('Using existing diagnosis for DTCs: ${dtcs.join(', ')}', 'UnifiedBackgroundService.runDiagnosis');
+        AppLogger.logInfo('Using existing diagnosis for DTCs: ${dtcs.join(', ')}');
         return existingDiagnosis.id;
       }
     }
 
     // Check if there's already an active inference for these DTCs
     if (_activeInferences.containsKey(diagnosisKey)) {
-      AppLogger.logInfo('Diagnosis already running for DTCs: ${dtcs.join(', ')}', 'UnifiedBackgroundService.runDiagnosis');
+      AppLogger.logInfo('Diagnosis already running for DTCs: ${dtcs.join(', ')}');
       final activeInference = _activeInferences[diagnosisKey]!;
       await activeInference.completer?.future;
       return _diagnoses[diagnosisKey]?.id ?? diagnosisId;
@@ -703,7 +703,7 @@ Future<String> _createDiagnosisPrompt(List<String> dtcs) async {
                 await _saveDiagnoses();
               }
             } catch (e, stackTrace) {
-              AppLogger.logError(e, stackTrace, 'UnifiedBackgroundService.diagnosis.FunctionCallResponse');
+              AppLogger.logError(e, stackTrace);
               if (!_isDisposed) {
                 _diagnoses[diagnosisKey] = _diagnoses[diagnosisKey]!.copyWith(
                   error: 'Error processing function call: $e',
@@ -718,7 +718,7 @@ Future<String> _createDiagnosisPrompt(List<String> dtcs) async {
         onError: (error, stackTrace) {
           if (_isDisposed) return;
           
-          AppLogger.logError(error, stackTrace, 'UnifiedBackgroundService.diagnosis.responseStream');
+          AppLogger.logError(error, stackTrace);
           
           _diagnoses[diagnosisKey] = _diagnoses[diagnosisKey]!.copyWith(
             error: 'Inference failed: $error',

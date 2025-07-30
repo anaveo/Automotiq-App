@@ -35,9 +35,9 @@ class AppAuthProvider extends ChangeNotifier {
       notifyListeners();
       final userCredential = await _authService.signInAnonymously();
       _user = userCredential.user;
-      AppLogger.logInfo('User signed in anonymously: ${_user?.uid}', 'AppAuthProvider.signInAnonymously');
-    } catch (e, stackTrace) {
-      AppLogger.logError(e, stackTrace, 'AppAuthProvider.signInAnonymously');
+      AppLogger.logInfo('User signed in anonymously: ${_user?.uid}');
+    } catch (e) {
+      AppLogger.logError(e);
       _authError = e.toString();
       rethrow;
     } finally {
@@ -59,9 +59,9 @@ class AppAuthProvider extends ChangeNotifier {
       notifyListeners();
       final userCredential = await _authService.signInWithEmailAndPassword(email, password);
       _user = userCredential.user;
-      AppLogger.logInfo('User signed in with email: ${_user?.uid}', 'AppAuthProvider.signInWithEmail');
-    } catch (e, stackTrace) {
-      AppLogger.logError(e, stackTrace, 'AppAuthProvider.signInWithEmail');
+      AppLogger.logInfo('User signed in with email: ${_user?.uid}');
+    } catch (e) {
+      AppLogger.logError(e);
       _authError = e.toString();
       rethrow;
     } finally {
@@ -88,12 +88,12 @@ class AppAuthProvider extends ChangeNotifier {
         final credential = EmailAuthProvider.credential(email: email, password: password);
         final userCredential = await _user!.linkWithCredential(credential);
         _user = userCredential.user;
-        AppLogger.logInfo('User linked to email: ${_user?.uid}', 'AppAuthProvider.linkAnonymousToEmail');
+        AppLogger.logInfo('User linked to email: ${_user?.uid}');
       } else {
         throw StateError('Current user is not anonymous');
       }
-    } catch (e, stackTrace) {
-      AppLogger.logError(e, stackTrace, 'AppAuthProvider.linkAnonymousToEmail');
+    } catch (e) {
+      AppLogger.logError(e);
       _authError = e.toString();
       rethrow;
     } finally {

@@ -16,16 +16,31 @@ class UserRepository {
     final docRef = _usersRef.doc(uid);
 
     try {
-      final snapshot = await docRef.get();
-
+      final snapshot = await docRef.get(const GetOptions(source: Source.cache));
       if (!snapshot.exists) {
         final userMap = newUser.toMap();
         userMap['createdAt'] = FieldValue.serverTimestamp();
 
         await docRef.set(userMap);
+
+        // Check if operation was queued offline
+        final docSnapshot = await docRef.get();
+        if (docSnapshot.metadata.isFromCache) {
+          AppLogger.logWarning('Operation queued for sync due to offline mode');
+        }
       }
-    } catch (e, stackTrace) {
-      AppLogger.logError(e, stackTrace, 'UserRepository.createUserIfNotExists');
+    } catch (e) {
+      if (e is FirebaseException && e.code == 'unavailable') {
+        AppLogger.logWarning('Operation queued for sync due to offline mode');
+        // Firestore queues the set operation, so no retry needed
+        final snapshot = await docRef.get(const GetOptions(source: Source.cache));
+        if (!snapshot.exists) {
+          final userMap = newUser.toMap();
+          userMap['createdAt'] = FieldValue.serverTimestamp();
+          await docRef.set(userMap);
+        }
+        return;
+      }
       throw Exception('Failed to create user: $e');
     }
   }
@@ -34,15 +49,27 @@ class UserRepository {
     if (uid.isEmpty) throw ArgumentError('User ID cannot be empty');
 
     try {
-      final doc = await _usersRef.doc(uid).get();
+      final doc = await _usersRef.doc(uid).get(const GetOptions(source: Source.cache));
+
+      if (doc.metadata.isFromCache) {
+        AppLogger.logWarning('Using cached data due to offline mode');
+      }
 
       if (!doc.exists || doc.data() == null) {
         throw Exception('User document not found or empty for UID: $uid');
       }
 
       return UserModel.fromMap(doc.id, doc.data()! as Map<String, dynamic>);
-    } catch (e, stackTrace) {
-      AppLogger.logError(e, stackTrace, 'UserRepository.getUser');
+    } catch (e) {
+      if (e is FirebaseException && e.code == 'unavailable') {
+        AppLogger.logWarning('Offline mode, using cached data');
+        // Retry with cache explicitly
+        final doc = await _usersRef.doc(uid).get(const GetOptions(source: Source.cache));
+        if (!doc.exists || doc.data() == null) {
+          throw Exception('User document not found or empty for UID: $uid');
+        }
+        return UserModel.fromMap(doc.id, doc.data()! as Map<String, dynamic>);
+      }
       throw Exception('Failed to fetch user profile: $e');
     }
   }
@@ -54,14 +81,24 @@ class UserRepository {
     try {
       final docRef = _usersRef.doc(uid);
 
-      final snapshot = await docRef.get();
+      final snapshot = await docRef.get(const GetOptions(source: Source.cache));
       if (!snapshot.exists) {
         throw Exception('Cannot update field. User $uid does not exist.');
       }
 
       await docRef.update({field: value});
-    } catch (e, stackTrace) {
-      AppLogger.logError(e, stackTrace, 'UserRepository.updateField');
+
+      // Check if operation was queued offline
+      final docSnapshot = await docRef.get();
+      if (docSnapshot.metadata.isFromCache) {
+        AppLogger.logWarning('Operation queued for sync due to offline mode');
+      }
+    } catch (e) {
+      if (e is FirebaseException && e.code == 'unavailable') {
+        AppLogger.logWarning('Operation queued for sync due to offline mode');
+        // Firestore queues the update, so no retry needed
+        return;
+      }
       throw Exception('Failed to update user field: $e');
     }
   }

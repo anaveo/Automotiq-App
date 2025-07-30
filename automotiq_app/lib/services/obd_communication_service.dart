@@ -47,13 +47,13 @@ class ObdCommunicationService {
     //         buffer.clear();
     //       }
     //     },
-    //     onError: (e, stackTrace) {
-    //       AppLogger.logError(e, stackTrace, 'ObdCommunicationService.read');
-    //       _dataController.addError(e, stackTrace);
+    //     onError: (e) {
+    //       AppLogger.logError(e);
+    //       _dataController.addError(e);
     //     },
     //   );
-    // } catch (e, stackTrace) {
-    //   AppLogger.logError(e, stackTrace, 'ObdCommunicationService.initialize');
+    // } catch (e) {
+    //   AppLogger.logError(e);
     //   rethrow;
     // }
   }
@@ -65,8 +65,8 @@ class ObdCommunicationService {
     }
     try {
       await bleService.writeCharacteristic(_characteristic!, command.codeUnits, withResponse: true);
-    } catch (e, stackTrace) {
-      AppLogger.logError(e, stackTrace, 'ObdCommunicationService.sendCommand');
+    } catch (e) {
+      AppLogger.logError(e);
       rethrow;
     }
   }

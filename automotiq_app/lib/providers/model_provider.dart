@@ -49,7 +49,7 @@ class ModelProvider extends ChangeNotifier {
 
   Future<void> startModelDownload() async {
     if (_modelDownloading || _modelDownloaded) {
-      AppLogger.logInfo('Model already downloading or downloaded', 'ModelProvider.startModelDownload');
+      AppLogger.logInfo('Model already downloading or downloaded');
       return;
     }
     try {
@@ -58,9 +58,9 @@ class ModelProvider extends ChangeNotifier {
       notifyListeners();
 
       if (await _modelService.checkModelExistence()) {
-        AppLogger.logInfo('Model already exists', 'ModelProvider.startModelDownload');
+        AppLogger.logInfo('Model already exists');
       } else {
-        AppLogger.logInfo('Starting model download', 'ModelProvider.startModelDownload');
+        AppLogger.logInfo('Starting model download');
         await _modelService.downloadModel(
           onProgress: (progress) {
             _downloadProgress = progress;
@@ -69,9 +69,9 @@ class ModelProvider extends ChangeNotifier {
         );
       }
       _modelDownloaded = true;
-      AppLogger.logInfo('Model download completed', 'ModelProvider.startModelDownload');
-    } catch (e, stackTrace) {
-      AppLogger.logError(e, stackTrace, 'ModelProvider.startModelDownload');
+      AppLogger.logInfo('Model download completed');
+    } catch (e) {
+      AppLogger.logError(e);
       _downloadError = 'Failed to download model: $e';
       notifyListeners();
       rethrow;
@@ -83,7 +83,7 @@ class ModelProvider extends ChangeNotifier {
 
   Future<void> initializeModel() async {
     if (_modelInitializing || _modelInitialized) {
-      AppLogger.logInfo('Model already initializing or initialized', 'ModelProvider.initializeModel');
+      AppLogger.logInfo('Model already initializing or initialized');
       return;
     }
     try {
@@ -94,9 +94,9 @@ class ModelProvider extends ChangeNotifier {
       await _modelService.initializeModel();
 
       _modelInitialized = true;
-      AppLogger.logInfo('Model initialized successfully', 'ModelProvider.initializeModel');
-    } catch (e, stackTrace) {
-      AppLogger.logError(e, stackTrace, 'ModelProvider.initializeModel');
+      AppLogger.logInfo('Model initialized successfully');
+    } catch (e) {
+      AppLogger.logError(e);
       _initializeError = 'Failed to initialize model: $e';
       rethrow;
     } finally {
@@ -107,7 +107,7 @@ class ModelProvider extends ChangeNotifier {
 
   Future<void> initializeGlobalChat() async {
     if (_chatInitializing || _chatInitialized) {
-      AppLogger.logInfo('Global chat already initializing or initialized', 'ModelProvider.initializeGlobalChat');
+      AppLogger.logInfo('Global chat already initializing or initialized');
       return;
     }
     try {
@@ -123,9 +123,9 @@ class ModelProvider extends ChangeNotifier {
       );
 
       _chatInitialized = true;
-      AppLogger.logInfo('Global chat initialized successfully', 'ModelProvider.initializeGlobalChat');
-    } catch (e, stackTrace) {
-      AppLogger.logError(e, stackTrace, 'ModelProvider.initializeGlobalChat');
+      AppLogger.logInfo('Global chat initialized successfully');
+    } catch (e) {
+      AppLogger.logError(e);
       _initializeError = 'Failed to initialize global chat: $e';
       rethrow;
     } finally {
@@ -161,8 +161,8 @@ class ModelProvider extends ChangeNotifier {
           onToken(fullResponse);
         }
       }
-    } catch (e, stackTrace) {
-      AppLogger.logError(e, stackTrace, 'ModelProvider.handleUserMessage');
+    } catch (e) {
+      AppLogger.logError(e);
       onToken('Error: $e');
     } finally {
       _isResponding = false;
@@ -197,13 +197,13 @@ class ModelProvider extends ChangeNotifier {
       if (_globalAgent != null) {
         _globalAgent = null;
         _chatInitialized = false;
-        AppLogger.logInfo('Global chat closed', 'ModelProvider.closeModel');
+        AppLogger.logInfo('Global chat closed');
       }
       await _modelService.closeModel();
       _modelInitialized = false;
       notifyListeners();
-    } catch (e, stackTrace) {
-      AppLogger.logError(e, stackTrace, 'ModelProvider.closeModel');
+    } catch (e) {
+      AppLogger.logError(e);
       rethrow;
     }
   }

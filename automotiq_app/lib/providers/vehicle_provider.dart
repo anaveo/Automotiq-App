@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:uuid/uuid.dart';
 import '../models/vehicle_model.dart';
 import '../repositories/vehicle_repository.dart';
 import '../utils/logger.dart';
@@ -9,7 +10,8 @@ class VehicleProvider extends ChangeNotifier {
   late FirebaseAuth _firebaseAuth;
   List<VehicleModel> _vehicles = [];
   VehicleModel? _selected;
-
+  final Uuid _uuid = const Uuid();
+  
   // Demo vehicle for testing purposes
   final VehicleModel? demoVehicle = VehicleModel(
     id: 'demo',
@@ -50,9 +52,9 @@ class VehicleProvider extends ChangeNotifier {
       notifyListeners();
       _vehicles = await _vehicleRepository.getVehicles(user.uid);
       _selected = _vehicles.isNotEmpty ? _vehicles.first : demoVehicle;
-      AppLogger.logInfo('Loaded ${_vehicles.length} vehicle(s) for UID: ${_firebaseAuth.currentUser?.uid}', 'VehicleProvider.loadVehicles');
-    } catch (e, stackTrace) {
-      AppLogger.logError(e, stackTrace, 'VehicleProvider.loadVehicles');
+      AppLogger.logInfo('Loaded ${_vehicles.length} vehicle(s) for UID: ${_firebaseAuth.currentUser?.uid}');
+    } catch (e) {
+      AppLogger.logError(e);
       _vehicles = [];
       _selected = demoVehicle;
       rethrow;
@@ -68,10 +70,7 @@ class VehicleProvider extends ChangeNotifier {
       notifyListeners();
     } else {
       AppLogger.logError(
-        Exception('Invalid vehicle selected'),
-        StackTrace.current,
-        'VehicleProvider.selectVehicle',
-      );
+        Exception('Invalid vehicle selected'));
     }
   }
 
@@ -79,10 +78,7 @@ class VehicleProvider extends ChangeNotifier {
     final user = _firebaseAuth.currentUser;
     if (user == null) {
       AppLogger.logError(
-        StateError('No user is signed in'),
-        StackTrace.current,
-        'VehicleProvider.addVehicle',
-      );
+        StateError('No user is signed in'));
       return;
     }
 
@@ -90,15 +86,18 @@ class VehicleProvider extends ChangeNotifier {
       _isLoading = true;
       notifyListeners();
 
-      // Add vehicle to Firestore, get document ID
-      final vehicleId = await _vehicleRepository.addVehicle(user.uid, newVehicle);
+      // Generate client-side ID and include it in the VehicleModel
+      final vehicleId = _uuid.v4();
       final newVehicleWithId = newVehicle.copyWith(id: vehicleId);
+
+      // Add vehicle to Firestore
+      await _vehicleRepository.addVehicle(user.uid, newVehicleWithId);
 
       // Prioritize new vehicle
       _vehicles.insert(0, newVehicleWithId);
       _selected = newVehicleWithId;
-    } catch (e, stackTrace) {
-      AppLogger.logError(e, stackTrace, 'VehicleProvider.addVehicle');
+    } catch (e) {
+      AppLogger.logError(e);
       rethrow;
     } finally {
       _isLoading = false;
@@ -109,11 +108,7 @@ class VehicleProvider extends ChangeNotifier {
   Future<void> removeVehicle(String vehicleId) async {
     final user = _firebaseAuth.currentUser;
     if (user == null) {
-      AppLogger.logError(
-        StateError('No user is signed in'),
-        StackTrace.current,
-        'VehicleProvider.removeVehicle',
-      );
+      AppLogger.logError(StateError('No user is signed in'));
       return;
     }
 
@@ -123,8 +118,8 @@ class VehicleProvider extends ChangeNotifier {
       await _vehicleRepository.removeVehicle(user.uid, vehicleId);
       _vehicles.removeWhere((v) => v.id == vehicleId);
       _selected = _vehicles.isNotEmpty ? _vehicles.first : null;
-    } catch (e, stackTrace) {
-      AppLogger.logError(e, stackTrace, 'VehicleProvider.removeVehicle');
+    } catch (e) {
+      AppLogger.logError(e);
       rethrow;
     } finally {
       _isLoading = false;

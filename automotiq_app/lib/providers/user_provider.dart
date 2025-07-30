@@ -34,13 +34,13 @@ class UserProvider with ChangeNotifier {
         uid!,
         UserModel(uid: uid!, createdAt: DateTime.now(), demoMode: true),
       );
-      AppLogger.logInfo('User document created or verified for UID: $uid', 'UserProvider.initializeUser');
+      AppLogger.logInfo('User document created or verified for UID: $uid');
 
       // Load user profile
       _user = await repository.getUser(uid!);
-      AppLogger.logInfo('User profile loaded for UID: $uid', 'UserProvider.initializeUser');
-    } catch (e, stackTrace) {
-      AppLogger.logError(e, stackTrace, 'UserProvider.initializeUser');
+      AppLogger.logInfo('User profile loaded for UID: $uid');
+    } catch (e) {
+      AppLogger.logError(e);
       _user = null;
     } finally {
       _isLoading = false;
@@ -56,9 +56,9 @@ class UserProvider with ChangeNotifier {
 
     try {
       _user = await repository.getUser(uid!);
-      AppLogger.logInfo('User profile loaded for UID: $uid', 'UserProvider.loadUserProfile');
-    } catch (e, stackTrace) {
-      AppLogger.logError(e, stackTrace, 'UserProvider.loadUserProfile');
+      AppLogger.logInfo('User profile loaded for UID: $uid');
+    } catch (e) {
+      AppLogger.logError(e);
       _user = null;
     } finally {
       _isLoading = false;
@@ -77,9 +77,9 @@ class UserProvider with ChangeNotifier {
       // Update Firestore
       await repository.updateField(uid!, 'demoMode', value);
 
-      AppLogger.logInfo('Demo mode updated to $value for UID: $uid', 'UserProvider.setDemoMode');
-    } catch (e, stackTrace) {
-      AppLogger.logError(e, stackTrace, 'UserProvider.setDemoMode');
+      AppLogger.logInfo('Demo mode updated to $value for UID: $uid');
+    } catch (e) {
+      AppLogger.logError(e);
       // Revert optimistic update here if needed
       _user = _user!.copyWith(demoMode: !value);
     } finally {
