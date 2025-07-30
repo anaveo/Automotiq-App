@@ -56,14 +56,14 @@ class DtcDatabaseService {
     await batch.commit(noResult: true);
   }
 
-  Future<Map<String, String>?> getDtc(String code) async {
+  Future<Map<String, String>> getDtc(String code) async {
     final db = await database;
     final result = await db.query(
       'dtcs',
       where: 'code = ?',
       whereArgs: [code],
     );
-    if (result.isEmpty) return null;
+    // if (result.isEmpty) return null;
     return {
       'description': result[0]['description'] as String,
       'cause': result[0]['cause'] as String,

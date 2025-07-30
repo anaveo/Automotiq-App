@@ -57,9 +57,7 @@ class _VehicleInfoCardState extends State<VehicleInfoCard> {
           child: CustomScrollView(
             controller: _scrollController,
             slivers: [
-              SliverToBoxAdapter(
-                child: SizedBox(height: imageHeight),
-              ),
+              SliverToBoxAdapter(child: SizedBox(height: imageHeight)),
               SliverToBoxAdapter(
                 child: VehicleDetailsCard(vehicle: widget.vehicle),
               ),
@@ -84,14 +82,19 @@ class VehicleImagePlaceholder extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Opacity(
-      opacity: fadeOpacity.clamp(0.0, 1.0), // Ensures opacity stays within bounds
+      opacity: fadeOpacity.clamp(
+        0.0,
+        1.0,
+      ), // Ensures opacity stays within bounds
       child: Container(
         height: height,
         width: double.infinity,
         color: Colors.black,
         alignment: Alignment.center,
         child: const Image(
-          image: AssetImage('assets/images/Pickup_Wireframe.png'), // TODO: Add vehicle selection logic
+          image: AssetImage(
+            'assets/images/Pickup_Wireframe.png',
+          ), // TODO: Add vehicle selection logic
           fit: BoxFit.cover,
         ),
       ),
@@ -102,10 +105,7 @@ class VehicleImagePlaceholder extends StatelessWidget {
 class VehicleDetailsCard extends StatefulWidget {
   final VehicleModel vehicle;
 
-  const VehicleDetailsCard({
-    super.key,
-    required this.vehicle,
-  });
+  const VehicleDetailsCard({super.key, required this.vehicle});
 
   @override
   State<VehicleDetailsCard> createState() => _VehicleDetailsCardState();
@@ -134,14 +134,17 @@ class _VehicleDetailsCardState extends State<VehicleDetailsCard> {
     while (codesSet.length < 2) {
       String? codeNullable = await DtcDatabaseService().getRandomDtcCode();
       codesSet.add(codeNullable);
-        }
+    }
 
     return codesSet.toList();
   }
 
   @override
   Widget build(BuildContext context) {
-    final bluetoothManager = Provider.of<BluetoothManager?>(context, listen: false);
+    final bluetoothManager = Provider.of<BluetoothManager?>(
+      context,
+      listen: false,
+    );
 
     return Container(
       child: Column(
@@ -177,9 +180,8 @@ class _VehicleDetailsCardState extends State<VehicleDetailsCard> {
                   Navigator.push(
                     context,
                     MaterialPageRoute<void>(
-                      builder: (context) => DiagnosisScreen(
-                        dtcs: vehicle.diagnosticTroubleCodes,
-                      ),
+                      builder: (context) =>
+                          DiagnosisScreen(dtcs: vehicle.diagnosticTroubleCodes),
                     ),
                   );
                 },
@@ -196,9 +198,7 @@ class _VehicleDetailsCardState extends State<VehicleDetailsCard> {
                 onPressed: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute<void>(
-                      builder: (context) => ChatScreen(),
-                    ),
+                    MaterialPageRoute<void>(builder: (context) => ChatScreen()),
                   );
                 },
                 icon: const Icon(Icons.chat_outlined),
@@ -215,7 +215,9 @@ class _VehicleDetailsCardState extends State<VehicleDetailsCard> {
           Card(
             elevation: 3,
             margin: const EdgeInsets.all(16),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
             color: const Color.fromARGB(255, 20, 20, 20),
             child: Padding(
               padding: const EdgeInsets.all(16.0),
@@ -230,9 +232,7 @@ class _VehicleDetailsCardState extends State<VehicleDetailsCard> {
                   ),
                   CurrentStatusWidget(dtcs: vehicle.diagnosticTroubleCodes),
                   const SizedBox(height: 16),
-                  Text(
-                    'VIN: ${vehicle.vin.isEmpty ? "N/A" : vehicle.vin}',
-                  ),
+                  Text('VIN: ${vehicle.vin.isEmpty ? "N/A" : vehicle.vin}'),
                   const SizedBox(height: 8),
                   Text(
                     'Odometer: ${vehicle.odometer == 0 ? "N/A" : "${vehicle.odometer} miles"}',
@@ -240,7 +240,7 @@ class _VehicleDetailsCardState extends State<VehicleDetailsCard> {
                 ],
               ),
             ),
-          )
+          ),
         ],
       ),
     );
@@ -291,7 +291,8 @@ class ConnectionStatusWidget extends StatelessWidget {
         }
 
         final state = snapshot.data ?? DeviceConnectionState.disconnected;
-        final isLoading = state == DeviceConnectionState.connecting ||
+        final isLoading =
+            state == DeviceConnectionState.connecting ||
             state == DeviceConnectionState.disconnecting;
 
         return Center(
@@ -313,12 +314,12 @@ class ConnectionStatusWidget extends StatelessWidget {
                 Text(
                   stateMapper(state),
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: state == DeviceConnectionState.connected
-                            ? Colors.greenAccent
-                            : isLoading
-                                ? Colors.white70
-                                : Colors.redAccent,
-                      ),
+                    color: state == DeviceConnectionState.connected
+                        ? Colors.greenAccent
+                        : isLoading
+                        ? Colors.white70
+                        : Colors.redAccent,
+                  ),
                   textAlign: TextAlign.center,
                 ),
               ],
