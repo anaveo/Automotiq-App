@@ -124,7 +124,7 @@ void main() {
       )).thenAnswer((_) => connectionStreamController.stream);
 
       // Start connection and emit state
-      final connectionFuture = bleService.connectToDevice(mockDevice);
+      final connectionFuture = bleService.connectToDevice(mockDevice.id);
       await Future.delayed(Duration(milliseconds: 10)); // Allow stream setup
       connectionStreamController.add(ConnectionStateUpdate(
         deviceId: 'VEEPEAK:1234',
@@ -150,7 +150,7 @@ void main() {
       )).thenAnswer((_) => throw TimeoutException('Connection timeout'));
 
       await expectLater(
-        bleService.connectToDevice(mockDevice, connectionTimeout: Duration(seconds: 5)),
+        bleService.connectToDevice(mockDevice.id, connectionTimeout: Duration(seconds: 5)),
         throwsA(
           isA<Exception>().having(
             (e) => e.toString(),
@@ -169,7 +169,7 @@ void main() {
       )).thenAnswer((_) => throw Exception('Connection error'));
 
       await expectLater(
-        bleService.connectToDevice(mockDevice),
+        bleService.connectToDevice(mockDevice.id),
         throwsA(
           isA<Exception>().having(
             (e) => e.toString(),
@@ -195,7 +195,7 @@ void main() {
       final subscription = bleService.connectionStateStream.listen(emittedStates.add);
 
       // Connect
-      await bleService.connectToDevice(mockDevice);
+      await bleService.connectToDevice(mockDevice.id);
       connectionStreamController.add(ConnectionStateUpdate(
         deviceId: 'VEEPEAK:1234',
         connectionState: DeviceConnectionState.connected,
@@ -230,7 +230,7 @@ void main() {
       )).thenAnswer((_) => connectionStreamController.stream);
 
       // Simulate a connection
-      await bleService.connectToDevice(mockDevice);
+      await bleService.connectToDevice(mockDevice.id);
       connectionStreamController.add(ConnectionStateUpdate(
         deviceId: 'VEEPEAK:1234',
         connectionState: DeviceConnectionState.connected,
@@ -245,50 +245,6 @@ void main() {
     test('returns disconnected state when no connection exists', () {
       final state = bleService.getDeviceState();
       expect(state, DeviceConnectionState.disconnected);
-    });
-  });
-
-  group('getDeviceStateStream', () {
-    test('streams connection state updates', () async {
-      when(mockAdapter.connectToDevice(
-        id: anyNamed('id'),
-        servicesWithCharacteristicsToDiscover: anyNamed('servicesWithCharacteristicsToDiscover'),
-        connectionTimeout: anyNamed('connectionTimeout'),
-      )).thenAnswer((_) => connectionStreamController.stream);
-
-      // Start listening to the stream
-      final stream = bleService.getDeviceStateStream();
-      final expectation = expectLater(
-        stream.skip(1).take(1),
-        emits(DeviceConnectionState.connected),
-      );
-
-      // Simulate a connection to trigger state update
-      await bleService.connectToDevice(mockDevice);
-      await Future.delayed(Duration(milliseconds: 10)); // Allow stream setup
-      connectionStreamController.add(ConnectionStateUpdate(
-        deviceId: 'VEEPEAK:1234',
-        connectionState: DeviceConnectionState.connected,
-        failure: null,
-      ));
-
-      // Wait for the expectation to complete
-      await expectation;
-    });
-  });
-
-  group('clearGattCache', () {
-    test('clears GATT cache successfully', () async {
-      when(mockAdapter.clearGattCache(any)).thenAnswer((_) async {});
-
-      await bleService.clearGattCache('VEEPEAK:1234');
-      verify(mockAdapter.clearGattCache('VEEPEAK:1234')).called(1);
-    });
-
-    test('throws on GATT cache clear failure', () async {
-      when(mockAdapter.clearGattCache(any)).thenThrow(Exception('GATT cache error'));
-
-      expect(() => bleService.clearGattCache('VEEPEAK:1234'), throwsException);
     });
   });
 

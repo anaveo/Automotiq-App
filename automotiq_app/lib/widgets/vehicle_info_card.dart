@@ -7,7 +7,6 @@ import 'package:provider/provider.dart';
 import '../models/vehicle_model.dart';
 import '../services/bluetooth_manager.dart';
 import '../utils/logger.dart';
-import '../models/model_config_object.dart';
 import '../services/dtc_database_service.dart';
 
 class VehicleInfoCard extends StatefulWidget {
@@ -134,10 +133,8 @@ class _VehicleDetailsCardState extends State<VehicleDetailsCard> {
     // Keep fetching until we have 2 unique codes
     while (codesSet.length < 2) {
       String? codeNullable = await DtcDatabaseService().getRandomDtcCode();
-      if (codeNullable != null) {
-        codesSet.add(codeNullable);
-      }
-    }
+      codesSet.add(codeNullable);
+        }
 
     return codesSet.toList();
   }
@@ -181,7 +178,7 @@ class _VehicleDetailsCardState extends State<VehicleDetailsCard> {
                     context,
                     MaterialPageRoute<void>(
                       builder: (context) => DiagnosisScreen(
-                        dtcs: vehicle.diagnosticTroubleCodes ?? [],
+                        dtcs: vehicle.diagnosticTroubleCodes,
                       ),
                     ),
                   );
@@ -231,7 +228,7 @@ class _VehicleDetailsCardState extends State<VehicleDetailsCard> {
                     vehicle: vehicle,
                     stateMapper: _mapConnectionStateToString,
                   ),
-                  CurrentStatusWidget(dtcs: vehicle.diagnosticTroubleCodes ?? []),
+                  CurrentStatusWidget(dtcs: vehicle.diagnosticTroubleCodes),
                   const SizedBox(height: 16),
                   Text(
                     'VIN: ${vehicle.vin.isEmpty ? "N/A" : vehicle.vin}',

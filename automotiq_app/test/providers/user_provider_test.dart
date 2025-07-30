@@ -15,7 +15,6 @@ void main() {
 
     testUser = UserModel(
       uid: 'test-uid',
-      name: 'Test User',
       email: 'test@example.com',
       createdAt: DateTime.now(),
     );

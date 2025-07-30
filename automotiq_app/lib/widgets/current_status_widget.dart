@@ -7,10 +7,7 @@ import 'code_card.dart';
 class CurrentStatusWidget extends StatefulWidget {
   final List<String> dtcs;
 
-  const CurrentStatusWidget({
-    super.key,
-    required this.dtcs,
-  });
+  const CurrentStatusWidget({super.key, required this.dtcs});
 
   @override
   State<CurrentStatusWidget> createState() => _CurrentStatusWidgetState();
@@ -39,11 +36,8 @@ class _CurrentStatusWidgetState extends State<CurrentStatusWidget> {
     final Map<String, Map<String, String>> result = {};
     for (final code in widget.dtcs) {
       final info = await DtcDatabaseService().getDtc(code);
-      result[code] = info ??
-          {
-            'description': 'Unknown DTC',
-            'cause': 'No data available.'
-          };
+      result[code] =
+          info ?? {'description': 'Unknown DTC', 'cause': 'No data available.'};
     }
     return result;
   }
@@ -70,22 +64,36 @@ class _CurrentStatusWidgetState extends State<CurrentStatusWidget> {
             SizedBox(height: 16),
             Column(
               children: widget.dtcs.map((code) {
-                final detail = dtcDetails[code];
-                return CodeCard(
-                  code: code,
-                  description: detail?['description'] ?? 'No description available',
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => DtcDetailScreen(
-                          code: code,
-                          description: detail?['description'] ?? 'No description available',
-                          cause: detail?['cause'] ?? 'No cause available',
+                final description =
+                    dtcDetails[code]?['description'] ??
+                    'No description available';
+                final cause =
+                    dtcDetails[code]?['cause'] ?? 'No cause available';
+
+                return Card(
+                  margin: const EdgeInsets.symmetric(vertical: 6),
+                  child: ListTile(
+                    leading: Text(
+                      code,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    title: Text(
+                      description,
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => DtcDetailScreen(
+                            code: code,
+                            description: description,
+                            cause: cause,
+                          ),
                         ),
-                      ),
-                    );
-                  },
+                      );
+                    },
+                  ),
                 );
               }).toList(),
             ),
