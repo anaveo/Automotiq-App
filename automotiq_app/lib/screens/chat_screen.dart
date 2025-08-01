@@ -281,16 +281,14 @@ Future<Uint8List?> _captureWithImagePickerStandard() async {
   return null;
 }
 
-Future<void> _pickImage() async {
-  final source = ImageSource.camera;
-  
+Future<void> _pickImage({required ImageSource source}) async {
   if (_isDisposed) return;
   
   try {
     Uint8List? imageBytes;
     
-    // Handle permissions
     if (source == ImageSource.camera) {
+      // Handle camera permission
       final cameraStatus = await Permission.camera.request();
       if (!cameraStatus.isGranted) {
         if (mounted) {
@@ -339,7 +337,6 @@ Future<void> _pickImage() async {
     }
   }
 }
-
 
   Future<void> _sendMessage(String text) async {
     if (_isDisposed || (text.trim().isEmpty && _selectedImage == null)) return;
@@ -479,6 +476,107 @@ Future<void> _pickImage() async {
 
   //   return cleaned;
   // }
+
+  Future<void> _showImageSourceDialog() async {
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: Colors.transparent,
+    builder: (BuildContext context) {
+      return Container(
+        decoration: BoxDecoration(
+          color: Theme.of(context).scaffoldBackgroundColor,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(20),
+            topRight: Radius.circular(20),
+          ),
+        ),
+        child: SafeArea(
+          child: Wrap(
+            children: [
+              // Header
+              Container(
+                width: double.infinity,
+                padding: EdgeInsets.all(20),
+                child: Column(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[300],
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                    SizedBox(height: 16),
+                    Text(
+                      'Select Image Source',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              
+              // Camera option
+              ListTile(
+                leading: Container(
+                  padding: EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.blue[50],
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(Icons.camera_alt, color: Colors.blue),
+                ),
+                title: Text('Camera'),
+                subtitle: Text('Take a new photo'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickImage(source: ImageSource.camera);
+                },
+              ),
+              
+              // Gallery option
+              ListTile(
+                leading: Container(
+                  padding: EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.green[50],
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(Icons.photo_library, color: Colors.green),
+                ),
+                title: Text('Gallery'),
+                subtitle: Text('Choose from your photos'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickImage(source: ImageSource.gallery);
+                },
+              ),
+              
+              // Cancel option
+              ListTile(
+                leading: Container(
+                  padding: EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[50],
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(Icons.cancel, color: Colors.grey[600]),
+                ),
+                title: Text('Cancel'),
+                onTap: () => Navigator.pop(context),
+              ),
+              
+              SizedBox(height: 20),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+}
 
   InputDecoration _inputDecoration(String hintText) {
     return InputDecoration(
@@ -941,7 +1039,7 @@ Future<void> _pickImage() async {
                                     : Colors.deepPurpleAccent,
                                 size: 24,
                               ),
-                              onPressed: isLoading ? null : _pickImage,
+                              onPressed: isLoading ? null : _showImageSourceDialog,
                               tooltip: 'Pick image',
                             ),
                             const SizedBox(width: 12),
@@ -1118,41 +1216,11 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen> {
             bottom: MediaQuery.of(context).padding.bottom + 32,
             left: 0,
             right: 0,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            child:
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Gallery button
-                GestureDetector(
-                  onTap: () async {
-                    try {
-                      final picker = ImagePicker();
-                      final pickedFile = await picker.pickImage(
-                        source: ImageSource.gallery,
-                        maxWidth: 1024,
-                        maxHeight: 1024,
-                        imageQuality: 85,
-                      );
-                      
-                      if (pickedFile != null && mounted) {
-                        final imageBytes = await pickedFile.readAsBytes();
-                        Navigator.of(context).pop(imageBytes);
-                      }
-                    } catch (e) {
-                      print('Gallery picker error: $e');
-                    }
-                  },
-                  child: Container(
-                    width: 50,
-                    height: 50,
-                    decoration: BoxDecoration(
-                      color: Colors.black54,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(Icons.photo_library, color: Colors.white),
-                  ),
-                ),
-                
-                // Capture button
+                // Just the capture button
                 GestureDetector(
                   onTap: _isCapturing ? null : _takePicture,
                   child: Container(
@@ -1168,9 +1236,6 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen> {
                         : Icon(Icons.camera, color: Colors.black, size: 30),
                   ),
                 ),
-                
-                // Placeholder for spacing
-                SizedBox(width: 50),
               ],
             ),
           ),
