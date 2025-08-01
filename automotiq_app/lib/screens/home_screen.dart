@@ -25,7 +25,6 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-
       final vehicleProvider = context.read<VehicleProvider>();
       try {
         await vehicleProvider.loadVehicles();
@@ -37,10 +36,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
       // Initialize model and chat in the background
       final modelProvider = Provider.of<ModelProvider>(context, listen: false);
-      if (!modelProvider.isModelInitializing && !modelProvider.isModelInitialized) {
+      if (!modelProvider.isModelInitializing &&
+          !modelProvider.isModelInitialized) {
         try {
           await modelProvider.initializeModel();
-          if (modelProvider.isModelInitialized && !modelProvider.isChatInitializing && !modelProvider.isChatInitialized) {
+          if (modelProvider.isModelInitialized &&
+              !modelProvider.isChatInitializing &&
+              !modelProvider.isChatInitialized) {
             await modelProvider.initializeGlobalChat();
           }
         } catch (e) {
@@ -62,11 +64,17 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Future<void> _attemptConnection(BluetoothManager bluetoothManager, VehicleModel vehicle) async {
+  Future<void> _attemptConnection(
+    BluetoothManager bluetoothManager,
+    VehicleModel vehicle,
+  ) async {
     try {
       AppLogger.logInfo('Attempting to connect to device: ${vehicle.deviceId}');
       // Start connection process
-      await bluetoothManager.connectToDevice(vehicle.deviceId, autoReconnect: true);
+      await bluetoothManager.connectToDevice(
+        vehicle.deviceId,
+        autoReconnect: true,
+      );
     } catch (e) {
       AppLogger.logError(e);
     }
@@ -83,10 +91,12 @@ class _HomeScreenState extends State<HomeScreen> {
     final userProvider = context.watch<UserProvider>();
     final vehicleProvider = context.watch<VehicleProvider>();
 
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: _buildAppBar(context, authProvider, vehicleProvider),
-      body: _buildBody(context, authProvider, userProvider, vehicleProvider),
+    return SafeArea(
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        appBar: _buildAppBar(context, authProvider, vehicleProvider),
+        body: _buildBody(context, authProvider, userProvider, vehicleProvider),
+      ),
     );
   }
 
@@ -120,20 +130,21 @@ class _HomeScreenState extends State<HomeScreen> {
     UserProvider userProvider,
     VehicleProvider vehicleProvider,
   ) {
-    final bluetoothManager = Provider.of<BluetoothManager?>(context, listen: false);
+    final bluetoothManager = Provider.of<BluetoothManager?>(
+      context,
+      listen: false,
+    );
 
     if (authProvider.isLoading || vehicleProvider.isLoading) {
       return const _LoadingView();
     }
 
     if (_errorMessage != null) {
-      return _ErrorView(
-        errorMessage: _errorMessage!,
-        onRetry: _loadVehicles,
-      );
+      return _ErrorView(errorMessage: _errorMessage!, onRetry: _loadVehicles);
     }
 
-    if (vehicleProvider.vehicles.isEmpty && userProvider.user?.demoMode == false) {
+    if (vehicleProvider.vehicles.isEmpty &&
+        userProvider.user?.demoMode == false) {
       return const _EmptyView();
     }
 
@@ -142,7 +153,9 @@ class _HomeScreenState extends State<HomeScreen> {
       builder: (context, vehicleProvider, child) {
         final selectedVehicle = vehicleProvider.selectedVehicle;
         // Trigger connection attempt when selectedVehicle changes
-        if (selectedVehicle != null && bluetoothManager != null && selectedVehicle.deviceId.isNotEmpty) {
+        if (selectedVehicle != null &&
+            bluetoothManager != null &&
+            selectedVehicle.deviceId.isNotEmpty) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             _attemptConnection(bluetoothManager, selectedVehicle);
             AppLogger.logInfo('Done!');
@@ -189,9 +202,9 @@ class _ErrorView extends StatelessWidget {
           ElevatedButton(
             onPressed: onRetry,
             style: Theme.of(context).elevatedButtonTheme.style,
-          child: const Text('Retry'),
-        ),
-      ],
+            child: const Text('Retry'),
+          ),
+        ],
       ),
     );
   }
@@ -203,10 +216,7 @@ class _EmptyView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Text(
-        'No Vehicles',
-        style: Theme.of(context).textTheme.bodyMedium,
-      ),
+      child: Text('No Vehicles', style: Theme.of(context).textTheme.bodyMedium),
     );
   }
 }

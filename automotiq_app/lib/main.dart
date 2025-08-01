@@ -23,7 +23,8 @@ class RootScreen extends StatelessWidget {
     return Consumer<ModelProvider>(
       builder: (context, modelProvider, child) {
         // Show splash screen during model download
-        if (modelProvider.isModelDownloading || !modelProvider.isModelDownloaded) {
+        if (modelProvider.isModelDownloading ||
+            !modelProvider.isModelDownloaded) {
           return const SplashScreen();
         }
 
@@ -36,7 +37,8 @@ class RootScreen extends StatelessWidget {
         return Consumer<AppAuthProvider>(
           builder: (context, authProvider, child) {
             // Show loader during auth or user loading
-            if (authProvider.isLoading || Provider.of<UserProvider>(context).isLoading) {
+            if (authProvider.isLoading ||
+                Provider.of<UserProvider>(context).isLoading) {
               return const LoaderScreen();
             }
 
@@ -94,6 +96,7 @@ class ErrorApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       theme: AppTheme.darkTheme,
+      debugShowCheckedModeBanner: false,
       home: Scaffold(
         body: Center(
           child: Column(
@@ -108,7 +111,10 @@ class ErrorApp extends StatelessWidget {
               ElevatedButton(
                 onPressed: () {
                   AppLogger.logInfo('Retrying app initialization');
-                  Provider.of<ModelProvider>(context, listen: false).startModelDownload();
+                  Provider.of<ModelProvider>(
+                    context,
+                    listen: false,
+                  ).startModelDownload();
                 },
                 style: Theme.of(context).elevatedButtonTheme.style,
                 child: const Text('Retry'),
@@ -129,7 +135,9 @@ void main() async {
   try {
     AppLogger.logInfo('Initializing Firebase...');
     await Firebase.initializeApp();
-    FirebaseFirestore.instance.settings = const Settings(persistenceEnabled: true);
+    FirebaseFirestore.instance.settings = const Settings(
+      persistenceEnabled: true,
+    );
     AppLogger.logInfo('Firebase initialized successfully');
   } catch (e) {
     AppLogger.logError(e);
@@ -171,6 +179,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     AppLogger.logInfo('Building MyApp');
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       title: 'Automotiq',
       theme: AppTheme.darkTheme,
       initialRoute: '/',
@@ -183,9 +192,7 @@ class MyApp extends StatelessWidget {
         AppLogger.logError('Unknown route: ${settings.name}');
         return MaterialPageRoute(
           builder: (context) => Scaffold(
-            body: Center(
-              child: Text('Route not found: ${settings.name}'),
-            ),
+            body: Center(child: Text('Route not found: ${settings.name}')),
           ),
         );
       },

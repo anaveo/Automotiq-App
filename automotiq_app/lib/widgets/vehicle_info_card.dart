@@ -232,8 +232,8 @@ class _VehicleDetailsCardState extends State<VehicleDetailsCard> {
                   ),
                   CurrentStatusWidget(dtcs: vehicle.diagnosticTroubleCodes),
                   const SizedBox(height: 16),
-                  Text('VIN: ${vehicle.vin.isEmpty ? "N/A" : vehicle.vin}'),
-                  const SizedBox(height: 8),
+                  // Text('VIN: ${vehicle.vin.isEmpty ? "N/A" : vehicle.vin}'),
+                  // const SizedBox(height: 8),
                   Text(
                     'Odometer: ${vehicle.odometer == 0 ? "N/A" : "${vehicle.odometer} miles"}',
                   ),

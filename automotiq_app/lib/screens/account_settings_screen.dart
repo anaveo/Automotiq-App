@@ -17,215 +17,222 @@ class AccountSettingsScreen extends StatelessWidget {
     final userProvider = context.watch<UserProvider>();
     final vehicleProvider = context.watch<VehicleProvider>();
 
-    return Scaffold(
-      appBar: AppBar(title: const Text("Settings")),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          /// My Vehicles section
-          if (vehicleProvider.vehicles.isNotEmpty)
+    return SafeArea(
+      child: Scaffold(
+        appBar: AppBar(title: const Text("Settings")),
+        body: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            /// My Vehicles section
+            if (vehicleProvider.vehicles.isNotEmpty)
+              _card(
+                title: 'My Vehicles',
+                child: Column(
+                  children: [
+                    ...vehicleProvider.vehicles.map((vehicle) {
+                      return ListTile(
+                        title: Text(vehicle.name),
+                        subtitle: Text(
+                          vehicle.vin,
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.delete, color: Colors.red),
+                          onPressed: () async {
+                            final confirm = await showDialog<bool>(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                title: const Text('Delete Vehicle?'),
+                                content: Text(
+                                  '${vehicle.name} and all settings will be deleted.',
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () =>
+                                        Navigator.pop(context, false),
+                                    child: const Text('Cancel'),
+                                  ),
+                                  TextButton(
+                                    onPressed: () =>
+                                        Navigator.pop(context, true),
+                                    child: const Text(
+                                      'Delete',
+                                      style: TextStyle(color: Colors.red),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                            if (confirm == true) {
+                              await vehicleProvider.removeVehicle(vehicle.id);
+                            }
+                          },
+                        ),
+                      );
+                    }),
+                  ],
+                ),
+              ),
+
+            /// Demo mode
             _card(
-              title: 'My Vehicles',
+              title: 'Demo Mode',
               child: Column(
                 children: [
-                  ...vehicleProvider.vehicles.map((vehicle) {
-                    return ListTile(
-                      title: Text(vehicle.name),
-                      subtitle: Text(
-                        vehicle.vin,
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.delete, color: Colors.red),
-                        onPressed: () async {
-                          final confirm = await showDialog<bool>(
-                            context: context,
-                            builder: (context) => AlertDialog(
-                              title: const Text('Delete Vehicle?'),
-                              content: Text(
-                                '${vehicle.name} and all settings will be deleted.',
-                              ),
-                              actions: [
-                                TextButton(
-                                  onPressed: () =>
-                                      Navigator.pop(context, false),
-                                  child: const Text('Cancel'),
-                                ),
-                                TextButton(
-                                  onPressed: () => Navigator.pop(context, true),
-                                  child: const Text(
-                                    'Delete',
-                                    style: TextStyle(color: Colors.red),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                          if (confirm == true) {
-                            await vehicleProvider.removeVehicle(vehicle.id);
-                          }
-                        },
-                      ),
-                    );
-                  }),
+                  Text(
+                    "Enable demo mode to simulate vehicle data without a physical OBD-II device.",
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  SwitchListTile(
+                    title: const Text("Enable Demo Mode"),
+                    value: userProvider.user?.demoMode ?? false,
+                    onChanged: (value) {
+                      userProvider.setDemoMode(value);
+                      vehicleProvider.updateDemoMode(
+                        value,
+                      ); // Notify VehicleProvider
+                    },
+                  ),
                 ],
               ),
             ),
 
-          /// Demo mode
-          _card(
-            title: 'Demo Mode',
-            child: Column(
-              children: [
-                Text(
-                  "Enable demo mode to simulate vehicle data without a physical OBD-II device.",
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-                SwitchListTile(
-                  title: const Text("Enable Demo Mode"),
-                  value: userProvider.user?.demoMode ?? false,
-                  onChanged: (value) {
-                    userProvider.setDemoMode(value);
-                    vehicleProvider.updateDemoMode(
-                      value,
-                    ); // Notify VehicleProvider
-                  },
-                ),
-              ],
-            ),
-          ),
-
-          /// Clear Assistant Memory
-          _card(
-            title: 'Clear Assistant Memory',
-            child: Consumer<ModelProvider>(
-              builder: (context, modelProvider, child) {
-                final isButtonEnabled =
-                    modelProvider.isModelDownloaded &&
-                    modelProvider.isModelInitialized &&
-                    modelProvider.isChatInitialized;
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "Reset integrated assistant to default settings.",
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                    const SizedBox(height: 12),
-                    ElevatedButton(
-                      onPressed: isButtonEnabled
-                          ? () async {
-                              final confirm = await showDialog<bool>(
-                                context: context,
-                                builder: (context) => AlertDialog(
-                                  title: const Text('Clear Assistant Memory?'),
-                                  content: const Text(
-                                    'All assistant chats and vehicle data will be deleted. This action cannot be undone.',
+            /// Clear Assistant Memory
+            _card(
+              title: 'Clear Assistant Memory',
+              child: Consumer<ModelProvider>(
+                builder: (context, modelProvider, child) {
+                  final isButtonEnabled =
+                      modelProvider.isModelDownloaded &&
+                      modelProvider.isModelInitialized &&
+                      modelProvider.isChatInitialized;
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "Reset integrated assistant to default settings.",
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                      const SizedBox(height: 12),
+                      ElevatedButton(
+                        onPressed: isButtonEnabled
+                            ? () async {
+                                final confirm = await showDialog<bool>(
+                                  context: context,
+                                  builder: (context) => AlertDialog(
+                                    title: const Text(
+                                      'Clear Assistant Memory?',
+                                    ),
+                                    content: const Text(
+                                      'All assistant chats and vehicle data will be deleted. This action cannot be undone.',
+                                    ),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () =>
+                                            Navigator.pop(context, false),
+                                        child: const Text('Cancel'),
+                                      ),
+                                      TextButton(
+                                        onPressed: () =>
+                                            Navigator.pop(context, true),
+                                        child: const Text(
+                                          'Clear',
+                                          style: TextStyle(color: Colors.red),
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () =>
-                                          Navigator.pop(context, false),
-                                      child: const Text('Cancel'),
-                                    ),
-                                    TextButton(
-                                      onPressed: () =>
-                                          Navigator.pop(context, true),
-                                      child: const Text(
-                                        'Clear',
-                                        style: TextStyle(color: Colors.red),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                              if (confirm == true) {
-                                try {
-                                  await modelProvider.resetChat();
-                                  final prefs =
-                                      await SharedPreferences.getInstance();
-                                  await prefs.remove('chat_messages');
+                                );
+                                if (confirm == true) {
+                                  try {
+                                    await modelProvider.resetChat();
+                                    final prefs =
+                                        await SharedPreferences.getInstance();
+                                    await prefs.remove('chat_messages');
 
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Assistant memory cleared'),
-                                    ),
-                                  );
-                                } catch (e) {
-                                  AppLogger.logError(e);
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        'Failed to clear memory: $e',
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                          'Assistant memory cleared',
+                                        ),
                                       ),
-                                    ),
-                                  );
+                                    );
+                                  } catch (e) {
+                                    AppLogger.logError(e);
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          'Failed to clear memory: $e',
+                                        ),
+                                      ),
+                                    );
+                                  }
                                 }
                               }
-                            }
-                          : null,
-                      child: const Text('Clear Assistant Memory'),
-                    ),
-                  ],
-                );
-              },
-            ),
-          ),
-
-          /// Link anonymous account
-          if (user != null && user.isAnonymous)
-            _card(title: 'Create Account', child: _AnonymousLinkForm()),
-
-          /// Change email/password
-          if (user != null && !user.isAnonymous)
-            _card(
-              title: 'Update Email / Password',
-              child: _EmailPasswordSettings(),
-            ),
-
-          /// Logout
-          if (user != null)
-            ElevatedButton.icon(
-              onPressed: () async {
-                late final bool? confirm;
-                if (user.isAnonymous) {
-                  confirm = await showDialog<bool>(
-                    context: context,
-                    builder: (context) => AlertDialog(
-                      title: const Text('Exit without creating an account?'),
-                      content: const Text(
-                        'All vehicles and settings will be lost.',
+                            : null,
+                        child: const Text('Clear Assistant Memory'),
                       ),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(context, false),
-                          child: const Text('Cancel'),
-                        ),
-                        TextButton(
-                          onPressed: () => Navigator.pop(context, true),
-                          child: const Text(
-                            'Confirm',
-                            style: TextStyle(color: Colors.red),
-                          ),
-                        ),
-                      ],
-                    ),
+                    ],
                   );
-                } else {
-                  confirm = true;
-                }
-                if (confirm == true) {
-                  await FirebaseAuth.instance.signOut();
-                  Navigator.of(context).popUntil((route) => route.isFirst);
-                }
-              },
-              icon: const Icon(Icons.logout),
-              label: const Text("Log Out"),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.redAccent,
+                },
               ),
             ),
-        ],
+
+            /// Link anonymous account
+            if (user != null && user.isAnonymous)
+              _card(title: 'Create Account', child: _AnonymousLinkForm()),
+
+            /// Change email/password
+            if (user != null && !user.isAnonymous)
+              _card(
+                title: 'Update Email / Password',
+                child: _EmailPasswordSettings(),
+              ),
+
+            /// Logout
+            if (user != null)
+              ElevatedButton.icon(
+                onPressed: () async {
+                  late final bool? confirm;
+                  if (user.isAnonymous) {
+                    confirm = await showDialog<bool>(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: const Text('Exit without creating an account?'),
+                        content: const Text(
+                          'All vehicles and settings will be lost.',
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context, false),
+                            child: const Text('Cancel'),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.pop(context, true),
+                            child: const Text(
+                              'Confirm',
+                              style: TextStyle(color: Colors.red),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  } else {
+                    confirm = true;
+                  }
+                  if (confirm == true) {
+                    await FirebaseAuth.instance.signOut();
+                    Navigator.of(context).popUntil((route) => route.isFirst);
+                  }
+                },
+                icon: const Icon(Icons.logout),
+                label: const Text("Log Out"),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.redAccent,
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

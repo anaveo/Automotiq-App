@@ -72,93 +72,95 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AppAuthProvider>(context);
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: SafeArea(
-        child: Center(
-          child: authProvider.isLoading
-              ? const CircularProgressIndicator(color: Colors.deepPurple)
-              : SingleChildScrollView(
-                  padding: const EdgeInsets.all(24.0),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      // App Title
-                      const Text(
-                        'Automotiq',
-                        style: TextStyle(
-                          fontSize: 36,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(height: 32),
-                      // Error Message
-                      if (_errorMessage != null)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 16),
-                          child: Text(
-                            _errorMessage!,
-                            style: const TextStyle(color: Colors.redAccent),
+    return SafeArea(
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        body: SafeArea(
+          child: Center(
+            child: authProvider.isLoading
+                ? const CircularProgressIndicator(color: Colors.deepPurple)
+                : SingleChildScrollView(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        // App Title
+                        const Text(
+                          'Automotiq',
+                          style: TextStyle(
+                            fontSize: 36,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
                           ),
                         ),
-                      // Email/Password Form
-                      Form(
-                        key: _formKey,
-                        child: Column(
-                          children: [
-                            TextFormField(
-                              controller: _emailController,
-                              decoration: _inputDecoration('Email'),
-                              autocorrect: false,
-                              keyboardType: TextInputType.emailAddress,
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'Please enter an email';
-                                }
-                                if (!RegExp(
-                                  r'^[^@]+@[^@]+\.[^@]+',
-                                ).hasMatch(value)) {
-                                  return 'Please enter a valid email';
-                                }
-                                return null;
-                              },
+                        const SizedBox(height: 32),
+                        // Error Message
+                        if (_errorMessage != null)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 16),
+                            child: Text(
+                              _errorMessage!,
+                              style: const TextStyle(color: Colors.redAccent),
                             ),
-                            const SizedBox(height: 16),
-                            TextFormField(
-                              controller: _passwordController,
-                              decoration: _inputDecoration('Password'),
-                              obscureText: true,
-                              autocorrect: false,
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'Please enter a password';
-                                }
-                                if (value.length < 6) {
-                                  return 'Password must be at least 6 characters';
-                                }
-                                return null;
-                              },
-                            ),
-                            const SizedBox(height: 24),
-                            ElevatedButton(
-                              onPressed: _signInWithEmail,
-                              style: Theme.of(
-                                context,
-                              ).elevatedButtonTheme.style,
-                              child: Text('Sign In'),
-                            ),
-                            const SizedBox(height: 16),
-                            TextButton(
-                              onPressed: _signInAnonymously,
-                              child: Text('New User? Tap here'),
-                            ),
-                          ],
+                          ),
+                        // Email/Password Form
+                        Form(
+                          key: _formKey,
+                          child: Column(
+                            children: [
+                              TextFormField(
+                                controller: _emailController,
+                                decoration: _inputDecoration('Email'),
+                                autocorrect: false,
+                                keyboardType: TextInputType.emailAddress,
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return 'Please enter an email';
+                                  }
+                                  if (!RegExp(
+                                    r'^[^@]+@[^@]+\.[^@]+',
+                                  ).hasMatch(value)) {
+                                    return 'Please enter a valid email';
+                                  }
+                                  return null;
+                                },
+                              ),
+                              const SizedBox(height: 16),
+                              TextFormField(
+                                controller: _passwordController,
+                                decoration: _inputDecoration('Password'),
+                                obscureText: true,
+                                autocorrect: false,
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return 'Please enter a password';
+                                  }
+                                  if (value.length < 6) {
+                                    return 'Password must be at least 6 characters';
+                                  }
+                                  return null;
+                                },
+                              ),
+                              const SizedBox(height: 24),
+                              ElevatedButton(
+                                onPressed: _signInWithEmail,
+                                style: Theme.of(
+                                  context,
+                                ).elevatedButtonTheme.style,
+                                child: Text('Sign In'),
+                              ),
+                              const SizedBox(height: 16),
+                              TextButton(
+                                onPressed: _signInAnonymously,
+                                child: Text('New User? Tap here'),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
+          ),
         ),
       ),
     );
