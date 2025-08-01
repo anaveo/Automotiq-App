@@ -28,6 +28,7 @@ class VehicleProvider extends ChangeNotifier {
   List<VehicleModel> get vehicles => _vehicles;
   VehicleModel? get selectedVehicle => _selected;
   bool get isLoading => _isLoading;
+  bool _demoMode = true;
 
   VehicleProvider({
     required VehicleRepository vehicleRepository,
@@ -80,10 +81,8 @@ class VehicleProvider extends ChangeNotifier {
 
   /// Updates the selected vehicle when demo mode changes.
   void updateDemoMode(bool isDemoMode) {
-    if (!isDemoMode && _selected == demoVehicle) {
-      // If demo mode is disabled and demoVehicle is selected, reset to a valid vehicle
-      _setValidSelectedVehicle();
-    }
+    _demoMode = isDemoMode;
+    _setValidSelectedVehicle();
     notifyListeners();
   }
 
@@ -91,6 +90,8 @@ class VehicleProvider extends ChangeNotifier {
   void _setValidSelectedVehicle() {
     if (_vehicles.isNotEmpty) {
       _selected = _vehicles.first;
+    } else if (_demoMode) {
+      _selected = demoVehicle;
     } else {
       _selected = null;
     }

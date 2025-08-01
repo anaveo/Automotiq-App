@@ -80,16 +80,17 @@ class _CurrentStatusWidgetState extends State<CurrentStatusWidget> {
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
                     onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => DtcDetailScreen(
-                            code: code,
-                            description: description,
-                            cause: cause,
-                          ),
-                        ),
-                      );
+                      // TODO: To be added in a future release
+                      // Navigator.push(
+                      //   context,
+                      //   MaterialPageRoute(
+                      //     builder: (_) => DtcDetailScreen(
+                      //       code: code,
+                      //       description: description,
+                      //       cause: cause,
+                      //     ),
+                      //   ),
+                      // );
                     },
                   ),
                 );
