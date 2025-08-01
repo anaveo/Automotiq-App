@@ -898,27 +898,6 @@ class DiagnosisScreenState extends State<DiagnosisScreen>
 
           const SizedBox(height: 24),
 
-          // Output Section Header
-          Row(
-            children: [
-              Icon(
-                Icons.auto_fix_high,
-                color: Colors.deepPurpleAccent[400],
-                size: 24,
-              ),
-              const SizedBox(width: 10),
-              const Text(
-                'AI Diagnosis',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 20,
-                  color: Colors.white,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-
           Container(
             width: double.infinity,
             decoration: BoxDecoration(
@@ -935,20 +914,16 @@ class DiagnosisScreenState extends State<DiagnosisScreen>
                     MarkdownBody(
                       data: _cleanLlmOutput(diagnosis.output),
                       styleSheet: MarkdownStyleSheet(
-                        p: const TextStyle(
-                          fontSize: 16,
-                          height: 1.6,
-                          color: Colors.white,
-                        ),
+                        p: Theme.of(context).textTheme.bodyMedium,
                         h1: TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
-                          color: Colors.deepPurpleAccent[300],
+                          color: Colors.white,
                         ),
                         h2: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
-                          color: Colors.deepPurpleAccent[400],
+                          color: Colors.white,
                         ),
                         h3: TextStyle(
                           fontSize: 18,

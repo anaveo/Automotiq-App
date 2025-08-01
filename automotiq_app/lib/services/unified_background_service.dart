@@ -39,10 +39,12 @@ class ChatMessage {
       text: json['text'] as String? ?? '',
       sender: json['sender'] as String? ?? 'unknown',
       image: json['image'] != null ? base64Decode(json['image']) : null,
-      timestamp: json['timestamp'] != null 
+      timestamp: json['timestamp'] != null
           ? DateTime.fromMillisecondsSinceEpoch(json['timestamp'] as int)
           : DateTime.now(),
-      id: json['id'] as String? ?? DateTime.now().millisecondsSinceEpoch.toString(),
+      id:
+          json['id'] as String? ??
+          DateTime.now().millisecondsSinceEpoch.toString(),
     );
   }
 }
@@ -84,10 +86,12 @@ class DiagnosisResult {
       dtcs: List<String>.from(json['dtcs'] as List? ?? []),
       prompt: json['prompt'] as String? ?? '',
       output: json['output'] as String? ?? '',
-      timestamp: json['timestamp'] != null 
+      timestamp: json['timestamp'] != null
           ? DateTime.fromMillisecondsSinceEpoch(json['timestamp'] as int)
           : DateTime.now(),
-      id: json['id'] as String? ?? DateTime.now().millisecondsSinceEpoch.toString(),
+      id:
+          json['id'] as String? ??
+          DateTime.now().millisecondsSinceEpoch.toString(),
       isComplete: json['isComplete'] as bool? ?? false,
       error: json['error'] as String?,
     );
@@ -155,39 +159,45 @@ class UnifiedBackgroundService extends ChangeNotifier {
 
   // Chat-related data
   final List<ChatMessage> _messages = [];
-  
+
   // Diagnosis-related data
   final Map<String, DiagnosisResult> _diagnoses = {};
-  
+
   // Shared inference management
   final Map<String, ActiveInference> _activeInferences = {};
-  
+
   // Agent access queue
   final List<QueuedRequest> _requestQueue = [];
   bool _isAgentBusy = false;
-  
+
   // Getters
-  List<ChatMessage> get messages => _isDisposed ? [] : List.unmodifiable(_messages);
-  Map<String, DiagnosisResult> get diagnoses => _isDisposed ? {} : Map.unmodifiable(_diagnoses);
-  bool get hasActiveInference => _isDisposed ? false : _activeInferences.isNotEmpty;
+  List<ChatMessage> get messages =>
+      _isDisposed ? [] : List.unmodifiable(_messages);
+  Map<String, DiagnosisResult> get diagnoses =>
+      _isDisposed ? {} : Map.unmodifiable(_diagnoses);
+  bool get hasActiveInference =>
+      _isDisposed ? false : _activeInferences.isNotEmpty;
   int get activeInferenceCount => _isDisposed ? 0 : _activeInferences.length;
-  bool get hasChatInference => _isDisposed ? false : _activeInferences.values.any((inf) => inf.type == InferenceType.chat);
-  bool get hasDiagnosisInference => _isDisposed ? false : _activeInferences.values.any((inf) => inf.type == InferenceType.diagnosis);
+  bool get hasChatInference => _isDisposed
+      ? false
+      : _activeInferences.values.any((inf) => inf.type == InferenceType.chat);
+  bool get hasDiagnosisInference => _isDisposed
+      ? false
+      : _activeInferences.values.any(
+          (inf) => inf.type == InferenceType.diagnosis,
+        );
   bool get isAgentBusy => _isAgentBusy;
   int get queueLength => _requestQueue.length;
 
   // Initialize the service
   Future<void> initialize() async {
     if (_isDisposed) return;
-    
-    await Future.wait([
-      _loadMessages(),
-      _loadDiagnoses(),
-    ]);
+
+    await Future.wait([_loadMessages(), _loadDiagnoses()]);
   }
 
   // === AGENT QUEUE MANAGEMENT ===
-  
+
   Future<String> _enqueueRequest(QueuedRequest request) async {
     if (_isDisposed) {
       request.completer.completeError('Service disposed');
@@ -199,52 +209,59 @@ class UnifiedBackgroundService extends ChangeNotifier {
       'Request ${request.id} (${request.type}) added to queue. Queue length: ${_requestQueue.length}',
       'UnifiedBackgroundService._enqueueRequest',
     );
-    
+
     notifyListeners(); // Notify UI about queue change
-    
+
     if (!_isAgentBusy) {
       _processQueue();
     }
-    
+
     return request.completer.future;
   }
 
   Future<void> _processQueue() async {
     if (_isDisposed || _isAgentBusy || _requestQueue.isEmpty) return;
-    
+
     _isAgentBusy = true;
     notifyListeners();
-    
+
     while (_requestQueue.isNotEmpty && !_isDisposed) {
       final request = _requestQueue.removeAt(0);
-      
+
       AppLogger.logInfo(
         'Processing request ${request.id} (${request.type}). Remaining in queue: ${_requestQueue.length}',
         'UnifiedBackgroundService._processQueue',
       );
-      
+
       try {
         final result = await request.operation();
         if (!request.completer.isCompleted) {
           request.completer.complete(result);
         }
       } catch (e, stackTrace) {
-        AppLogger.logError(e, stackTrace, 'UnifiedBackgroundService._processQueue.${request.type}');
+        AppLogger.logError(
+          e,
+          stackTrace,
+          'UnifiedBackgroundService._processQueue.${request.type}',
+        );
         if (!request.completer.isCompleted) {
           request.completer.completeError(e);
         }
       }
-      
+
       // Small delay between requests to prevent overwhelming the agent
       if (_requestQueue.isNotEmpty && !_isDisposed) {
         await Future.delayed(const Duration(milliseconds: 100));
       }
     }
-    
+
     _isAgentBusy = false;
     notifyListeners();
-    
-    AppLogger.logInfo('Queue processing completed', 'UnifiedBackgroundService._processQueue');
+
+    AppLogger.logInfo(
+      'Queue processing completed',
+      'UnifiedBackgroundService._processQueue',
+    );
   }
 
   void _cancelQueuedRequest(String requestId) {
@@ -261,16 +278,16 @@ class UnifiedBackgroundService extends ChangeNotifier {
   }
 
   // === CHAT METHODS ===
-  
+
   Future<void> _loadMessages() async {
     if (_isDisposed) return;
-    
+
     try {
       final prefs = await SharedPreferences.getInstance();
       final data = prefs.getStringList('chat_messages') ?? [];
-      
+
       if (_isDisposed) return;
-      
+
       _messages.clear();
       for (final msgJson in data) {
         try {
@@ -282,7 +299,7 @@ class UnifiedBackgroundService extends ChangeNotifier {
           continue;
         }
       }
-      
+
       if (!_isDisposed) {
         notifyListeners();
       }
@@ -293,10 +310,12 @@ class UnifiedBackgroundService extends ChangeNotifier {
 
   Future<void> _saveMessages() async {
     if (_isDisposed) return;
-    
+
     try {
       final prefs = await SharedPreferences.getInstance();
-      final encoded = _messages.map((msg) => json.encode(msg.toJson())).toList();
+      final encoded = _messages
+          .map((msg) => json.encode(msg.toJson()))
+          .toList();
       await prefs.setStringList('chat_messages', encoded);
     } catch (e, stackTrace) {
       AppLogger.logError(e, stackTrace);
@@ -309,9 +328,9 @@ class UnifiedBackgroundService extends ChangeNotifier {
     required dynamic chat,
   }) async {
     if (_isDisposed || (text.trim().isEmpty && image == null)) return '';
-    
+
     final messageId = DateTime.now().millisecondsSinceEpoch.toString();
-    
+
     // Add user message immediately
     final userMessage = ChatMessage(
       text: text,
@@ -319,7 +338,7 @@ class UnifiedBackgroundService extends ChangeNotifier {
       image: image,
       id: messageId,
     );
-    
+
     _messages.add(userMessage);
     if (!_isDisposed) {
       notifyListeners();
@@ -377,11 +396,13 @@ class UnifiedBackgroundService extends ChangeNotifier {
       final streamSubscription = responseStream.listen(
         (response) async {
           if (_isDisposed) return;
-          
+
           if (response is TextResponse) {
             fullResponse += response.token;
-            
-            final botIndex = _messages.indexWhere((msg) => msg.id == '${messageId}_bot');
+
+            final botIndex = _messages.indexWhere(
+              (msg) => msg.id == '${messageId}_bot',
+            );
             if (botIndex != -1 && !_isDisposed) {
               _messages[botIndex] = ChatMessage(
                 text: fullResponse,
@@ -395,7 +416,9 @@ class UnifiedBackgroundService extends ChangeNotifier {
           } else if (response is FunctionCallResponse) {
             try {
               final finalResponse = await chat.generateChatResponse();
-              final botIndex = _messages.indexWhere((msg) => msg.id == '${messageId}_bot');
+              final botIndex = _messages.indexWhere(
+                (msg) => msg.id == '${messageId}_bot',
+              );
               if (botIndex != -1 && !_isDisposed) {
                 _messages[botIndex] = ChatMessage(
                   text: finalResponse.toString(),
@@ -413,10 +436,12 @@ class UnifiedBackgroundService extends ChangeNotifier {
         },
         onError: (error, stackTrace) {
           if (_isDisposed) return;
-          
+
           AppLogger.logError(error, stackTrace);
-          
-          final botIndex = _messages.indexWhere((msg) => msg.id == '${messageId}_bot');
+
+          final botIndex = _messages.indexWhere(
+            (msg) => msg.id == '${messageId}_bot',
+          );
           if (botIndex != -1) {
             _messages[botIndex] = ChatMessage(
               text: 'Error: $error',
@@ -435,7 +460,10 @@ class UnifiedBackgroundService extends ChangeNotifier {
             _activeInferences.remove(messageId);
             notifyListeners();
           }
-          AppLogger.logInfo('Chat response completed: $fullResponse', 'UnifiedBackgroundService._executeChatInference');
+          AppLogger.logInfo(
+            'Chat response completed: $fullResponse',
+            'UnifiedBackgroundService._executeChatInference',
+          );
         },
       );
 
@@ -450,10 +478,16 @@ class UnifiedBackgroundService extends ChangeNotifier {
 
       return messageId;
     } catch (e, stackTrace) {
-      AppLogger.logError(e, stackTrace, 'UnifiedBackgroundService._executeChatInference');
-      
+      AppLogger.logError(
+        e,
+        stackTrace,
+        'UnifiedBackgroundService._executeChatInference',
+      );
+
       if (!_isDisposed) {
-        final botIndex = _messages.indexWhere((msg) => msg.id == '${messageId}_bot');
+        final botIndex = _messages.indexWhere(
+          (msg) => msg.id == '${messageId}_bot',
+        );
         if (botIndex != -1) {
           _messages[botIndex] = ChatMessage(
             text: 'Error: $e',
@@ -465,29 +499,29 @@ class UnifiedBackgroundService extends ChangeNotifier {
           await _saveMessages();
         }
       }
-      
+
       rethrow;
     }
   }
 
   Future<void> clearChatMessages() async {
     if (_isDisposed) return;
-    
+
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('chat_messages');
       _messages.clear();
-      
+
       // Cancel chat-related streams and remove from queue
       final chatInferences = _activeInferences.entries
           .where((entry) => entry.value.type == InferenceType.chat)
           .toList();
-      
+
       for (final entry in chatInferences) {
         entry.value.subscription.cancel();
         _activeInferences.remove(entry.key);
       }
-      
+
       // Cancel queued chat requests
       _requestQueue.removeWhere((request) {
         if (request.type == InferenceType.chat) {
@@ -498,7 +532,7 @@ class UnifiedBackgroundService extends ChangeNotifier {
         }
         return false;
       });
-      
+
       if (!_isDisposed) {
         notifyListeners();
       }
@@ -508,16 +542,16 @@ class UnifiedBackgroundService extends ChangeNotifier {
   }
 
   // === DIAGNOSIS METHODS ===
-  
+
   Future<void> _loadDiagnoses() async {
     if (_isDisposed) return;
-    
+
     try {
       final prefs = await SharedPreferences.getInstance();
       final data = prefs.getStringList('diagnosis_results') ?? [];
-      
+
       if (_isDisposed) return;
-      
+
       _diagnoses.clear();
       for (final resultJson in data) {
         try {
@@ -529,7 +563,7 @@ class UnifiedBackgroundService extends ChangeNotifier {
           continue;
         }
       }
-      
+
       if (!_isDisposed) {
         notifyListeners();
       }
@@ -540,7 +574,7 @@ class UnifiedBackgroundService extends ChangeNotifier {
 
   Future<void> _saveDiagnoses() async {
     if (_isDisposed) return;
-    
+
     try {
       final prefs = await SharedPreferences.getInstance();
       final encoded = _diagnoses.values
@@ -562,34 +596,49 @@ class UnifiedBackgroundService extends ChangeNotifier {
     return _generateDiagnosisKey(dtcs);
   }
 
-Future<List<String>> getDtcDescriptions(List<String> codes) async {
-  List<String> descriptions = [];
-  for (String code in codes) {
-    Map<String, String> entry = await DtcDatabaseService().getDtc(code);
-    String desc = entry["description"] ?? '';
-    descriptions.add("$code ($desc)");
+  Future<List<String>> getDtcDescriptions(List<String> codes) async {
+    List<String> descriptions = [];
+    for (String code in codes) {
+      Map<String, String> entry = await DtcDatabaseService().getDtc(code);
+      String desc = entry["description"] ?? '';
+      descriptions.add("$code ($desc)");
+    }
+    return descriptions;
   }
-  return descriptions;
-}
 
-
-Future<String> _createDiagnosisPrompt(List<String> dtcs) async {
-  final descriptions = await getDtcDescriptions(dtcs);
-  return """
+  Future<String> _createDiagnosisPrompt(List<String> dtcs) async {
+    final descriptions = await getDtcDescriptions(dtcs);
+    return """
     You are an AI auto mechanic assistant. Your job is to help everyday drivers understand their vehicle's health based on diagnostic trouble codes (DTCs).
 
     The vehicle has reported the following DTCs: ${descriptions.join(', ')}.
 
-    For each issue:
-    - Explain what it means in simple terms.
-    - Suggest possible causes.
-    - Recommend easy fixes if they are safe and doable for the average person.
-    - If the repair is too technical or risky, recommend visiting a qualified mechanic.
-    - If the user needs help with a DIY fix, recommend using the app's chat feature and uploading a photo of the issue to get more help.
+    For each issue, answer the following using the markdown format. Ensure that each subsection only contains what is requested (i.e. do not put possible causes when explaining what it means):
+    1) Explain what the DTC code means in simple terms. This subsection shall be under 5 sentences.
+    2) Suggest possible causes. This subsection shall be in a bulleted list.
+    3) Recommend easy fixes if they are safe and doable for the average person. This subsection shall be in a numbered list
+    4) If and only if the repair is too technical or risky, recommend visiting a qualified mechanic.
+    5) If the user needs help with a DIY fix, recommend using the app's chat feature and uploading a photo of the issue to get more help.
+
+    Please use the below markdown structure for your response:
+    ## <DTC>
+    <Subsection 1 contents>
+    ## <Possible causes>
+    - <Subsection 2 item 1>
+    - <Subsection 2 item 2>
+    - <Remaining subsection 2 contents>
+    ## <How to fix>
+    1. <Subsection 2 item 1>
+    2. <Subsection 2 item 2>
+    3. <Remaining subsection contents>
+    <divider here>
+
+    <Subsection 4 contents (if needed)>
+    <Subsection 5 contents (if needed)>
 
     Your response should be concise, clear, and helpful to someone who is not a car expert.
     """;
-}
+  }
 
   Future<String> runDiagnosis({
     required List<String> dtcs,
@@ -597,22 +646,27 @@ Future<String> _createDiagnosisPrompt(List<String> dtcs) async {
     bool forceRerun = false,
   }) async {
     if (_isDisposed || dtcs.isEmpty) return '';
-    
+
     final diagnosisKey = _generateDiagnosisKey(dtcs);
-    final diagnosisId = '${diagnosisKey}_${DateTime.now().millisecondsSinceEpoch}';
-    
+    final diagnosisId =
+        '${diagnosisKey}_${DateTime.now().millisecondsSinceEpoch}';
+
     // Check if we already have a recent diagnosis
     if (!forceRerun && _diagnoses.containsKey(diagnosisKey)) {
       final existingDiagnosis = _diagnoses[diagnosisKey]!;
       if (existingDiagnosis.isComplete && existingDiagnosis.error == null) {
-        AppLogger.logInfo('Using existing diagnosis for DTCs: ${dtcs.join(', ')}');
+        AppLogger.logInfo(
+          'Using existing diagnosis for DTCs: ${dtcs.join(', ')}',
+        );
         return existingDiagnosis.id;
       }
     }
 
     // Check if there's already an active inference for these DTCs
     if (_activeInferences.containsKey(diagnosisKey)) {
-      AppLogger.logInfo('Diagnosis already running for DTCs: ${dtcs.join(', ')}');
+      AppLogger.logInfo(
+        'Diagnosis already running for DTCs: ${dtcs.join(', ')}',
+      );
       final activeInference = _activeInferences[diagnosisKey]!;
       await activeInference.completer?.future;
       return _diagnoses[diagnosisKey]?.id ?? diagnosisId;
@@ -620,12 +674,21 @@ Future<String> _createDiagnosisPrompt(List<String> dtcs) async {
 
     // Check if this diagnosis is already queued
     final existingRequest = _requestQueue.firstWhere(
-      (request) => request.id == diagnosisKey && request.type == InferenceType.diagnosis,
-      orElse: () => QueuedRequest(id: '', type: InferenceType.chat, completer: Completer(), operation: () async => ''),
+      (request) =>
+          request.id == diagnosisKey && request.type == InferenceType.diagnosis,
+      orElse: () => QueuedRequest(
+        id: '',
+        type: InferenceType.chat,
+        completer: Completer(),
+        operation: () async => '',
+      ),
     );
-    
+
     if (existingRequest.id.isNotEmpty) {
-      AppLogger.logInfo('Diagnosis already queued for DTCs: ${dtcs.join(', ')}', 'UnifiedBackgroundService.runDiagnosis');
+      AppLogger.logInfo(
+        'Diagnosis already queued for DTCs: ${dtcs.join(', ')}',
+        'UnifiedBackgroundService.runDiagnosis',
+      );
       return existingRequest.completer.future;
     }
 
@@ -639,7 +702,7 @@ Future<String> _createDiagnosisPrompt(List<String> dtcs) async {
       id: diagnosisId,
       isComplete: false,
     );
-    
+
     _diagnoses[diagnosisKey] = initialResult;
     if (!_isDisposed) {
       notifyListeners();
@@ -669,21 +732,25 @@ Future<String> _createDiagnosisPrompt(List<String> dtcs) async {
 
     try {
       await chat.addQueryChunk(
-          Message.text(text: 'Reset context for new diagnosis', isUser: false));
+        Message.text(text: 'Reset context for new diagnosis', isUser: false),
+      );
       await chat.addQueryChunk(Message.text(text: prompt, isUser: true));
 
       final responseStream = chat.generateChatResponseAsync();
       String responseText = '';
 
-      AppLogger.logInfo('Executing diagnosis inference for DTCs: ${dtcs.join(', ')}', 'UnifiedBackgroundService._executeDiagnosisInference');
+      AppLogger.logInfo(
+        'Executing diagnosis inference for DTCs: ${dtcs.join(', ')}',
+        'UnifiedBackgroundService._executeDiagnosisInference',
+      );
 
       final streamSubscription = responseStream.listen(
         (response) async {
           if (_isDisposed) return;
-          
+
           if (response is TextResponse) {
             responseText += response.token;
-            
+
             _diagnoses[diagnosisKey] = _diagnoses[diagnosisKey]!.copyWith(
               output: responseText,
             );
@@ -717,9 +784,9 @@ Future<String> _createDiagnosisPrompt(List<String> dtcs) async {
         },
         onError: (error, stackTrace) {
           if (_isDisposed) return;
-          
+
           AppLogger.logError(error, stackTrace);
-          
+
           _diagnoses[diagnosisKey] = _diagnoses[diagnosisKey]!.copyWith(
             error: 'Inference failed: $error',
             isComplete: true,
@@ -731,20 +798,24 @@ Future<String> _createDiagnosisPrompt(List<String> dtcs) async {
         },
         onDone: () {
           if (_isDisposed) return;
-          
-          if (_diagnoses.containsKey(diagnosisKey) && !_diagnoses[diagnosisKey]!.isComplete) {
+
+          if (_diagnoses.containsKey(diagnosisKey) &&
+              !_diagnoses[diagnosisKey]!.isComplete) {
             _diagnoses[diagnosisKey] = _diagnoses[diagnosisKey]!.copyWith(
               isComplete: true,
             );
             notifyListeners();
             _saveDiagnoses();
           }
-          
+
           _activeInferences.remove(diagnosisKey);
           completer.complete();
           notifyListeners();
-          
-          AppLogger.logInfo('Diagnosis completed for DTCs: ${dtcs.join(', ')}', 'UnifiedBackgroundService._executeDiagnosisInference');
+
+          AppLogger.logInfo(
+            'Diagnosis completed for DTCs: ${dtcs.join(', ')}',
+            'UnifiedBackgroundService._executeDiagnosisInference',
+          );
         },
       );
 
@@ -761,8 +832,12 @@ Future<String> _createDiagnosisPrompt(List<String> dtcs) async {
       await completer.future;
       return _diagnoses[diagnosisKey]?.id ?? '';
     } catch (e, stackTrace) {
-      AppLogger.logError(e, stackTrace, 'UnifiedBackgroundService._executeDiagnosisInference');
-      
+      AppLogger.logError(
+        e,
+        stackTrace,
+        'UnifiedBackgroundService._executeDiagnosisInference',
+      );
+
       if (!_isDisposed) {
         _diagnoses[diagnosisKey] = _diagnoses[diagnosisKey]!.copyWith(
           error: 'Inference failed: $e',
@@ -771,10 +846,10 @@ Future<String> _createDiagnosisPrompt(List<String> dtcs) async {
         notifyListeners();
         await _saveDiagnoses();
       }
-      
+
       _activeInferences.remove(diagnosisKey);
       completer.complete();
-      
+
       rethrow;
     }
   }
@@ -796,22 +871,25 @@ Future<String> _createDiagnosisPrompt(List<String> dtcs) async {
   bool isInferenceActiveForDtcs(List<String> dtcs) {
     if (_isDisposed) return false;
     final key = _generateDiagnosisKey(dtcs);
-    return _activeInferences.containsKey(key) || 
-           _requestQueue.any((request) => request.id == key && request.type == InferenceType.diagnosis);
+    return _activeInferences.containsKey(key) ||
+        _requestQueue.any(
+          (request) =>
+              request.id == key && request.type == InferenceType.diagnosis,
+        );
   }
 
   Future<void> clearDiagnosis(List<String> dtcs) async {
     if (_isDisposed) return;
-    
+
     final key = _generateDiagnosisKey(dtcs);
-    
+
     // Cancel active stream if exists
     _activeInferences[key]?.subscription.cancel();
     _activeInferences.remove(key);
-    
+
     // Cancel queued request if exists
     _cancelQueuedRequest(key);
-    
+
     // Remove from storage
     _diagnoses.remove(key);
     await _saveDiagnoses();
@@ -822,17 +900,17 @@ Future<String> _createDiagnosisPrompt(List<String> dtcs) async {
 
   Future<void> clearAllDiagnoses() async {
     if (_isDisposed) return;
-    
+
     // Cancel diagnosis-related streams
     final diagnosisInferences = _activeInferences.entries
         .where((entry) => entry.value.type == InferenceType.diagnosis)
         .toList();
-    
+
     for (final entry in diagnosisInferences) {
       entry.value.subscription.cancel();
       _activeInferences.remove(entry.key);
     }
-    
+
     // Cancel queued diagnosis requests
     _requestQueue.removeWhere((request) {
       if (request.type == InferenceType.diagnosis) {
@@ -843,7 +921,7 @@ Future<String> _createDiagnosisPrompt(List<String> dtcs) async {
       }
       return false;
     });
-    
+
     // Clear storage
     _diagnoses.clear();
     final prefs = await SharedPreferences.getInstance();
@@ -854,26 +932,23 @@ Future<String> _createDiagnosisPrompt(List<String> dtcs) async {
   }
 
   // === SHARED METHODS ===
-  
+
   Future<void> clearAll() async {
     if (_isDisposed) return;
-    
-    await Future.wait([
-      clearChatMessages(),
-      clearAllDiagnoses(),
-    ]);
+
+    await Future.wait([clearChatMessages(), clearAllDiagnoses()]);
   }
 
   @override
   void dispose() {
     _isDisposed = true;
-    
+
     // Cancel all active streams
     for (final inference in _activeInferences.values) {
       inference.subscription.cancel();
     }
     _activeInferences.clear();
-    
+
     // Cancel all queued requests
     for (final request in _requestQueue) {
       if (!request.completer.isCompleted) {
@@ -881,9 +956,9 @@ Future<String> _createDiagnosisPrompt(List<String> dtcs) async {
       }
     }
     _requestQueue.clear();
-    
+
     super.dispose();
-    
+
     // Reset the singleton instance so it can be recreated
     _instance = null;
   }
