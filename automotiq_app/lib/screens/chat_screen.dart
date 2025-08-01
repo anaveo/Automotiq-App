@@ -7,6 +7,15 @@ import 'package:automotiq_app/providers/model_provider.dart';
 import 'package:automotiq_app/utils/logger.dart';
 import '../services/unified_background_service.dart';
 
+
+import 'dart:io';
+import 'dart:typed_data';
+import 'package:camera/camera.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:path_provider/path_provider.dart';
+
+
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
 
@@ -127,9 +136,23 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     }
   }
 
-  Future<void> _pickImage() async {
-    if (_isDisposed) return;
-    try {
+  Future<Uint8List?> pickImageUniversal({required ImageSource source}) async {
+  try {
+    // Handle permissions
+    if (source == ImageSource.camera) {
+      final cameraStatus = await Permission.camera.request();
+      if (!cameraStatus.isGranted) {
+        throw Exception('Camera permission denied');
+      }
+    }
+
+    Uint8List? imageBytes;
+
+    if (source == ImageSource.camera) {
+      // Use different camera strategies based on platform/device
+      imageBytes = await _captureImageUniversal();
+    } else {
+      // Gallery selection - use standard image picker
       final picker = ImagePicker();
       final pickedFile = await picker.pickImage(
         source: ImageSource.gallery,
@@ -137,20 +160,186 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
         maxHeight: 1024,
         imageQuality: 85,
       );
+      
       if (pickedFile != null) {
-        final imageBytes = await pickedFile.readAsBytes();
-        if (!_isDisposed && mounted) {
-          setState(() => _selectedImage = imageBytes);
-        }
+        imageBytes = await pickedFile.readAsBytes();
       }
-    } catch (e, stackTrace) {
-      AppLogger.logError(e, stackTrace, 'ChatScreen._pickImage');
-      if (!_isDisposed || !mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to pick image: $e')));
+    }
+
+    return imageBytes;
+    
+  } catch (e) {
+    print('Universal image picker error: $e');
+    return null;
+  }
+}
+
+Future<Uint8List?> _captureImageUniversal() async {
+  // Try multiple camera capture methods for maximum compatibility
+  
+  // Method 1: Try direct camera plugin (most reliable for Samsung)
+  try {
+    return await _captureWithCameraPlugin();
+  } catch (e) {
+    print('Camera plugin failed: $e');
+  }
+  
+  // Method 2: Try image picker with reduced settings
+  try {
+    return await _captureWithImagePickerReduced();
+  } catch (e) {
+    print('Reduced image picker failed: $e');
+  }
+  
+  // Method 3: Try standard image picker as last resort
+  try {
+    return await _captureWithImagePickerStandard();
+  } catch (e) {
+    print('Standard image picker failed: $e');
+  }
+  
+  throw Exception('All camera capture methods failed');
+}
+
+Future<Uint8List?> _captureWithCameraPlugin() async {
+  CameraController? controller;
+  
+  try {
+    // Get available cameras
+    final cameras = await availableCameras();
+    if (cameras.isEmpty) throw Exception('No cameras available');
+    
+    // Initialize camera controller
+    controller = CameraController(
+      cameras.first,
+      ResolutionPreset.medium,
+      enableAudio: false, // Disable audio for faster initialization
+    );
+    
+    await controller.initialize();
+    
+    // Take picture
+    final XFile photo = await controller.takePicture();
+    final imageBytes = await photo.readAsBytes();
+    
+    // Clean up temporary file
+    try {
+      await File(photo.path).delete();
+    } catch (e) {
+      // Ignore cleanup errors
+    }
+    
+    return imageBytes;
+    
+  } finally {
+    // Always dispose controller
+    try {
+      await controller?.dispose();
+    } catch (e) {
+      // Ignore disposal errors
     }
   }
+}
+
+Future<Uint8List?> _captureWithImagePickerReduced() async {
+  final picker = ImagePicker();
+  
+  // Use reduced settings for problematic devices
+  final pickedFile = await picker.pickImage(
+    source: ImageSource.camera,
+    maxWidth: 600,
+    maxHeight: 600,
+    imageQuality: 50,
+    preferredCameraDevice: CameraDevice.rear,
+    requestFullMetadata: false,
+  ).timeout(
+    const Duration(seconds: 30),
+    onTimeout: () => throw Exception('Camera timeout'),
+  );
+  
+  if (pickedFile != null) {
+    return await pickedFile.readAsBytes();
+  }
+  
+  return null;
+}
+
+Future<Uint8List?> _captureWithImagePickerStandard() async {
+  final picker = ImagePicker();
+  
+  final pickedFile = await picker.pickImage(
+    source: ImageSource.camera,
+    maxWidth: 1024,
+    maxHeight: 1024,
+    imageQuality: 85,
+  );
+  
+  if (pickedFile != null) {
+    return await pickedFile.readAsBytes();
+  }
+  
+  return null;
+}
+
+Future<void> _pickImage() async {
+  final source = ImageSource.camera;
+  
+  if (_isDisposed) return;
+  
+  try {
+    Uint8List? imageBytes;
+    
+    // Handle permissions
+    if (source == ImageSource.camera) {
+      final cameraStatus = await Permission.camera.request();
+      if (!cameraStatus.isGranted) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Camera permission denied')),
+          );
+        }
+        return;
+      }
+      
+      // Show camera preview screen
+      imageBytes = await Navigator.of(context).push<Uint8List>(
+        MaterialPageRoute(
+          builder: (context) => CameraPreviewScreen(),
+          fullscreenDialog: true,
+        ),
+      );
+    } else {
+      // Gallery selection
+      final picker = ImagePicker();
+      final pickedFile = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 85,
+      );
+      
+      if (pickedFile != null) {
+        imageBytes = await pickedFile.readAsBytes();
+      }
+    }
+    
+    if (imageBytes != null && !_isDisposed && mounted) {
+      setState(() => _selectedImage = imageBytes);
+    }
+    
+  } catch (e, stackTrace) {
+    AppLogger.logError(e, stackTrace, 'ChatScreen._pickImage');
+    if (!_isDisposed && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to pick image: ${e.toString()}'),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
+  }
+}
+
 
   Future<void> _sendMessage(String text) async {
     if (_isDisposed || (text.trim().isEmpty && _selectedImage == null)) return;
@@ -799,5 +988,200 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
         ),
       ),
     );
+  }
+}
+
+
+class CameraPreviewScreen extends StatefulWidget {
+  const CameraPreviewScreen({Key? key}) : super(key: key);
+
+  @override
+  State<CameraPreviewScreen> createState() => _CameraPreviewScreenState();
+}
+
+class _CameraPreviewScreenState extends State<CameraPreviewScreen> {
+  CameraController? _controller;
+  bool _isInitialized = false;
+  bool _isCapturing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeCamera();
+  }
+
+  Future<void> _initializeCamera() async {
+    try {
+      final cameras = await availableCameras();
+      if (cameras.isEmpty) {
+        if (mounted) Navigator.of(context).pop();
+        return;
+      }
+
+      _controller = CameraController(
+        cameras.first,
+        ResolutionPreset.high,
+        enableAudio: false,
+      );
+
+      await _controller!.initialize();
+      
+      if (mounted) {
+        setState(() => _isInitialized = true);
+      }
+    } catch (e) {
+      print('Camera initialization error: $e');
+      if (mounted) Navigator.of(context).pop();
+    }
+  }
+
+  Future<void> _takePicture() async {
+    if (_controller == null || !_controller!.value.isInitialized || _isCapturing) {
+      return;
+    }
+
+    setState(() => _isCapturing = true);
+
+    try {
+      final XFile photo = await _controller!.takePicture();
+      final imageBytes = await photo.readAsBytes();
+      
+      // Clean up temporary file
+      try {
+        await File(photo.path).delete();
+      } catch (e) {
+        // Ignore cleanup errors
+      }
+      
+      if (mounted) {
+        Navigator.of(context).pop(imageBytes);
+      }
+      
+    } catch (e) {
+      print('Take picture error: $e');
+      setState(() => _isCapturing = false);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to take picture: $e')),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_isInitialized) {
+      return Scaffold(
+        backgroundColor: Colors.black,
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(color: Colors.white),
+              SizedBox(height: 16),
+              Text('Initializing camera...', style: TextStyle(color: Colors.white)),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Stack(
+        children: [
+          // Camera preview
+          Positioned.fill(
+            child: CameraPreview(_controller!),
+          ),
+          
+          // Top bar with close button
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 16,
+            left: 16,
+            child: GestureDetector(
+              onTap: () => Navigator.of(context).pop(),
+              child: Container(
+                padding: EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.black54,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.close, color: Colors.white, size: 24),
+              ),
+            ),
+          ),
+          
+          // Bottom controls
+          Positioned(
+            bottom: MediaQuery.of(context).padding.bottom + 32,
+            left: 0,
+            right: 0,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                // Gallery button
+                GestureDetector(
+                  onTap: () async {
+                    try {
+                      final picker = ImagePicker();
+                      final pickedFile = await picker.pickImage(
+                        source: ImageSource.gallery,
+                        maxWidth: 1024,
+                        maxHeight: 1024,
+                        imageQuality: 85,
+                      );
+                      
+                      if (pickedFile != null && mounted) {
+                        final imageBytes = await pickedFile.readAsBytes();
+                        Navigator.of(context).pop(imageBytes);
+                      }
+                    } catch (e) {
+                      print('Gallery picker error: $e');
+                    }
+                  },
+                  child: Container(
+                    width: 50,
+                    height: 50,
+                    decoration: BoxDecoration(
+                      color: Colors.black54,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(Icons.photo_library, color: Colors.white),
+                  ),
+                ),
+                
+                // Capture button
+                GestureDetector(
+                  onTap: _isCapturing ? null : _takePicture,
+                  child: Container(
+                    width: 70,
+                    height: 70,
+                    decoration: BoxDecoration(
+                      color: _isCapturing ? Colors.grey : Colors.white,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.black, width: 3),
+                    ),
+                    child: _isCapturing
+                        ? Center(child: CircularProgressIndicator(strokeWidth: 2))
+                        : Icon(Icons.camera, color: Colors.black, size: 30),
+                  ),
+                ),
+                
+                // Placeholder for spacing
+                SizedBox(width: 50),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
   }
 }
