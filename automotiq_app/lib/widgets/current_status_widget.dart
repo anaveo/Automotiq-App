@@ -2,7 +2,6 @@ import 'package:automotiq_app/screens/dtc_detail_screen.dart';
 import 'package:automotiq_app/widgets/summary_status_box.dart';
 import 'package:flutter/material.dart';
 import '../services/dtc_database_service.dart';
-import 'code_card.dart';
 
 class CurrentStatusWidget extends StatefulWidget {
   final List<String> dtcs;
@@ -36,8 +35,7 @@ class _CurrentStatusWidgetState extends State<CurrentStatusWidget> {
     final Map<String, Map<String, String>> result = {};
     for (final code in widget.dtcs) {
       final info = await DtcDatabaseService().getDtc(code);
-      result[code] =
-          info ?? {'description': 'Unknown DTC', 'cause': 'No data available.'};
+      result[code] = info;
     }
     return result;
   }

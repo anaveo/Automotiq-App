@@ -1,12 +1,15 @@
-import 'dart:async';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:automotiq_app/models/vehicle_model.dart';
 import 'package:automotiq_app/utils/logger.dart';
+import 'dart:async';
 
 class VehicleRepository {
   final FirebaseFirestore firestore;
 
+  /// Constructor for UserRepository.
+  ///
+  /// [firestoreInstance] is an optional parameter to allow dependency injection
+  /// for testing. Defaults to [FirebaseFirestore.instance] if not provided.
   VehicleRepository({FirebaseFirestore? firestoreInstance})
     : firestore = firestoreInstance ?? FirebaseFirestore.instance;
 

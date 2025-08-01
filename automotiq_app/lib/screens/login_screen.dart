@@ -61,11 +61,14 @@ class _LoginScreenState extends State<LoginScreen> {
       labelStyle: Theme.of(context).textTheme.bodySmall,
       filled: true,
       fillColor: Colors.grey.shade900,
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide.none,
+      ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
     );
   }
-  
+
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AppAuthProvider>(context);
@@ -113,7 +116,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                 if (value == null || value.isEmpty) {
                                   return 'Please enter an email';
                                 }
-                                if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
+                                if (!RegExp(
+                                  r'^[^@]+@[^@]+\.[^@]+',
+                                ).hasMatch(value)) {
                                   return 'Please enter a valid email';
                                 }
                                 return null;
@@ -138,13 +143,15 @@ class _LoginScreenState extends State<LoginScreen> {
                             const SizedBox(height: 24),
                             ElevatedButton(
                               onPressed: _signInWithEmail,
-                              style: Theme.of(context).elevatedButtonTheme.style,
+                              style: Theme.of(
+                                context,
+                              ).elevatedButtonTheme.style,
                               child: Text('Sign In'),
                             ),
                             const SizedBox(height: 16),
                             TextButton(
                               onPressed: _signInAnonymously,
-                              child: Text('New User? Tap here')
+                              child: Text('New User? Tap here'),
                             ),
                           ],
                         ),
