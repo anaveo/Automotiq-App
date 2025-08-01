@@ -16,8 +16,28 @@ class VehicleDropdown extends StatelessWidget {
     final isDemo = userProvider?.user?.demoMode ?? false;
     final demoVehicle = isDemo ? [vehicleProvider.demoVehicle] : [];
 
-    final allVehicles = [...demoVehicle, ...vehicleProvider.vehicles];
-    final selected = vehicleProvider.selectedVehicle;
+    // Combine vehicles, ensuring no duplicates
+    final allVehicles = [
+      ...demoVehicle,
+      ...vehicleProvider.vehicles,
+    ].toSet().toList();
+    VehicleModel? selected = vehicleProvider.selectedVehicle;
+
+    // Validate selected vehicle
+    if (selected != null && !allVehicles.contains(selected)) {
+      // If selected is invalid, reset to a valid option
+      selected = allVehicles.isNotEmpty ? allVehicles.first : null;
+      if (selected != vehicleProvider.selectedVehicle) {
+        // Update provider asynchronously to avoid build-time state changes
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (selected != null) {
+            vehicleProvider.selectVehicle(selected);
+          } else {
+            vehicleProvider.updateDemoMode(isDemo);
+          }
+        });
+      }
+    }
 
     void navigateToAddVehicle(BuildContext context) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -46,7 +66,9 @@ class VehicleDropdown extends StatelessWidget {
         style: Theme.of(context).textTheme.titleLarge,
         items: [
           ...allVehicles.map((vehicle) {
-            final name = vehicle.name.length > 16 ? '${vehicle.name.substring(0, 16)}…' : vehicle.name;
+            final name = vehicle.name.length > 16
+                ? '${vehicle.name.substring(0, 16)}…'
+                : vehicle.name;
             return DropdownMenuItem<VehicleModel>(
               value: vehicle,
               child: Text(name),

@@ -93,7 +93,7 @@ class VehicleImagePlaceholder extends StatelessWidget {
         alignment: Alignment.center,
         child: const Image(
           image: AssetImage(
-            'assets/images/Pickup_Wireframe.png',
+            'assets/images/Sedan_Wireframe.png',
           ), // TODO: Add vehicle selection logic
           fit: BoxFit.cover,
         ),

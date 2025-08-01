@@ -31,7 +31,10 @@ class AccountSettingsScreen extends StatelessWidget {
                   ...vehicleProvider.vehicles.map((vehicle) {
                     return ListTile(
                       title: Text(vehicle.name),
-                      subtitle: Text(vehicle.vin, style: Theme.of(context).textTheme.bodySmall,),
+                      subtitle: Text(
+                        vehicle.vin,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
                       trailing: IconButton(
                         icon: const Icon(Icons.delete, color: Colors.red),
                         onPressed: () async {
@@ -39,15 +42,21 @@ class AccountSettingsScreen extends StatelessWidget {
                             context: context,
                             builder: (context) => AlertDialog(
                               title: const Text('Delete Vehicle?'),
-                              content: Text('${vehicle.name} and all settings will be deleted.'),
+                              content: Text(
+                                '${vehicle.name} and all settings will be deleted.',
+                              ),
                               actions: [
                                 TextButton(
-                                  onPressed: () => Navigator.pop(context, false),
+                                  onPressed: () =>
+                                      Navigator.pop(context, false),
                                   child: const Text('Cancel'),
                                 ),
                                 TextButton(
                                   onPressed: () => Navigator.pop(context, true),
-                                  child: const Text('Delete', style: TextStyle(color: Colors.red)),
+                                  child: const Text(
+                                    'Delete',
+                                    style: TextStyle(color: Colors.red),
+                                  ),
                                 ),
                               ],
                             ),
@@ -75,18 +84,24 @@ class AccountSettingsScreen extends StatelessWidget {
                 SwitchListTile(
                   title: const Text("Enable Demo Mode"),
                   value: userProvider.user?.demoMode ?? false,
-                  onChanged: (value) => userProvider.setDemoMode(value),
+                  onChanged: (value) {
+                    userProvider.setDemoMode(value);
+                    vehicleProvider.updateDemoMode(
+                      value,
+                    ); // Notify VehicleProvider
+                  },
                 ),
               ],
             ),
           ),
 
-          /// Clear Assistant Memory 
+          /// Clear Assistant Memory
           _card(
             title: 'Clear Assistant Memory',
             child: Consumer<ModelProvider>(
               builder: (context, modelProvider, child) {
-                final isButtonEnabled = modelProvider.isModelDownloaded &&
+                final isButtonEnabled =
+                    modelProvider.isModelDownloaded &&
                     modelProvider.isModelInitialized &&
                     modelProvider.isChatInitialized;
                 return Column(
@@ -104,34 +119,46 @@ class AccountSettingsScreen extends StatelessWidget {
                                 context: context,
                                 builder: (context) => AlertDialog(
                                   title: const Text('Clear Assistant Memory?'),
-                                  content: const Text('All assistant chats and vehicle data will be deleted. This action cannot be undone.'),
+                                  content: const Text(
+                                    'All assistant chats and vehicle data will be deleted. This action cannot be undone.',
+                                  ),
                                   actions: [
                                     TextButton(
-                                      onPressed: () => Navigator.pop(context, false),
+                                      onPressed: () =>
+                                          Navigator.pop(context, false),
                                       child: const Text('Cancel'),
                                     ),
                                     TextButton(
-                                      onPressed: () => Navigator.pop(context, true),
-                                      child: const Text('Clear', style: TextStyle(color: Colors.red)),
+                                      onPressed: () =>
+                                          Navigator.pop(context, true),
+                                      child: const Text(
+                                        'Clear',
+                                        style: TextStyle(color: Colors.red),
+                                      ),
                                     ),
                                   ],
                                 ),
                               );
                               if (confirm == true) {
                                 try {
-
-                                  // TODO: Clean this up
                                   await modelProvider.resetChat();
-                                  final prefs = await SharedPreferences.getInstance();
+                                  final prefs =
+                                      await SharedPreferences.getInstance();
                                   await prefs.remove('chat_messages');
 
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text('Assistant memory cleared')),
+                                    const SnackBar(
+                                      content: Text('Assistant memory cleared'),
+                                    ),
                                   );
                                 } catch (e) {
                                   AppLogger.logError(e);
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text('Failed to clear memory: $e')),
+                                    SnackBar(
+                                      content: Text(
+                                        'Failed to clear memory: $e',
+                                      ),
+                                    ),
                                   );
                                 }
                               }
@@ -151,9 +178,10 @@ class AccountSettingsScreen extends StatelessWidget {
 
           /// Change email/password
           if (user != null && !user.isAnonymous)
-            _card(title: 'Update Email / Password', child: _EmailPasswordSettings()),
-
-
+            _card(
+              title: 'Update Email / Password',
+              child: _EmailPasswordSettings(),
+            ),
 
           /// Logout
           if (user != null)
@@ -165,7 +193,9 @@ class AccountSettingsScreen extends StatelessWidget {
                     context: context,
                     builder: (context) => AlertDialog(
                       title: const Text('Exit without creating an account?'),
-                      content: const Text('All vehicles and settings will be lost.'),
+                      content: const Text(
+                        'All vehicles and settings will be lost.',
+                      ),
                       actions: [
                         TextButton(
                           onPressed: () => Navigator.pop(context, false),
@@ -173,7 +203,10 @@ class AccountSettingsScreen extends StatelessWidget {
                         ),
                         TextButton(
                           onPressed: () => Navigator.pop(context, true),
-                          child: const Text('Confirm', style: TextStyle(color: Colors.red)),
+                          child: const Text(
+                            'Confirm',
+                            style: TextStyle(color: Colors.red),
+                          ),
                         ),
                       ],
                     ),
@@ -188,7 +221,9 @@ class AccountSettingsScreen extends StatelessWidget {
               },
               icon: const Icon(Icons.logout),
               label: const Text("Log Out"),
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.redAccent,
+              ),
             ),
         ],
       ),
@@ -206,7 +241,10 @@ class AccountSettingsScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            Text(
+              title,
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
             const SizedBox(height: 12),
             child,
           ],
@@ -251,7 +289,10 @@ class _AnonymousLinkFormState extends State<_AnonymousLinkForm> {
       labelStyle: Theme.of(context).textTheme.bodySmall,
       filled: true,
       fillColor: Colors.grey.shade900,
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide.none,
+      ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
     );
   }
@@ -303,7 +344,8 @@ class _AnonymousLinkFormState extends State<_AnonymousLinkForm> {
               },
             ),
           ),
-          if (_error != null) Text(_error!, style: const TextStyle(color: Colors.red)),
+          if (_error != null)
+            Text(_error!, style: const TextStyle(color: Colors.red)),
           const SizedBox(height: 24),
           ElevatedButton(
             onPressed: _linkAccount,
@@ -347,7 +389,10 @@ class _EmailPasswordSettingsState extends State<_EmailPasswordSettings> {
       labelStyle: Theme.of(context).textTheme.bodySmall,
       filled: true,
       fillColor: Colors.grey.shade900,
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide.none,
+      ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
     );
   }

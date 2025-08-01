@@ -11,16 +11,16 @@ class VehicleProvider extends ChangeNotifier {
   List<VehicleModel> _vehicles = [];
   VehicleModel? _selected;
   final Uuid _uuid = const Uuid();
-  
+
   // Demo vehicle for testing purposes
-  final VehicleModel? demoVehicle = VehicleModel(
+  final VehicleModel demoVehicle = VehicleModel(
     id: 'demo',
     name: 'Demo Vehicle',
     deviceId: '',
     vin: '4S3OMBAO2A4050702',
     year: 2002,
     odometer: 20618,
-    diagnosticTroubleCodes: ['P0420', 'P0325'], 
+    diagnosticTroubleCodes: ['P0420', 'P0325'],
   );
 
   bool _isLoading = false;
@@ -29,9 +29,11 @@ class VehicleProvider extends ChangeNotifier {
   VehicleModel? get selectedVehicle => _selected;
   bool get isLoading => _isLoading;
 
-  VehicleProvider({required VehicleRepository vehicleRepository, required FirebaseAuth firebaseAuth})
-      : _vehicleRepository = vehicleRepository,
-        _firebaseAuth = firebaseAuth;
+  VehicleProvider({
+    required VehicleRepository vehicleRepository,
+    required FirebaseAuth firebaseAuth,
+  }) : _vehicleRepository = vehicleRepository,
+       _firebaseAuth = firebaseAuth;
 
   void updateAuth(FirebaseAuth auth) {
     _firebaseAuth = auth;
@@ -51,12 +53,15 @@ class VehicleProvider extends ChangeNotifier {
       _isLoading = true;
       notifyListeners();
       _vehicles = await _vehicleRepository.getVehicles(user.uid);
-      _selected = _vehicles.isNotEmpty ? _vehicles.first : demoVehicle;
-      AppLogger.logInfo('Loaded ${_vehicles.length} vehicle(s) for UID: ${_firebaseAuth.currentUser?.uid}');
+      // Set selected to first vehicle if available, otherwise null (demoVehicle handled externally)
+      _setValidSelectedVehicle();
+      AppLogger.logInfo(
+        'Loaded ${_vehicles.length} vehicle(s) for UID: ${_firebaseAuth.currentUser?.uid}',
+      );
     } catch (e) {
       AppLogger.logError(e);
       _vehicles = [];
-      _selected = demoVehicle;
+      _selected = null;
       rethrow;
     } finally {
       _isLoading = false;
@@ -69,16 +74,32 @@ class VehicleProvider extends ChangeNotifier {
       _selected = vehicle;
       notifyListeners();
     } else {
-      AppLogger.logError(
-        Exception('Invalid vehicle selected'));
+      AppLogger.logError(Exception('Invalid vehicle selected'));
+    }
+  }
+
+  /// Updates the selected vehicle when demo mode changes.
+  void updateDemoMode(bool isDemoMode) {
+    if (!isDemoMode && _selected == demoVehicle) {
+      // If demo mode is disabled and demoVehicle is selected, reset to a valid vehicle
+      _setValidSelectedVehicle();
+    }
+    notifyListeners();
+  }
+
+  /// Sets _selected to a valid vehicle or null based on current state.
+  void _setValidSelectedVehicle() {
+    if (_vehicles.isNotEmpty) {
+      _selected = _vehicles.first;
+    } else {
+      _selected = null;
     }
   }
 
   Future<void> addVehicle(VehicleModel newVehicle) async {
     final user = _firebaseAuth.currentUser;
     if (user == null) {
-      AppLogger.logError(
-        StateError('No user is signed in'));
+      AppLogger.logError(StateError('No user is signed in'));
       return;
     }
 
@@ -117,7 +138,7 @@ class VehicleProvider extends ChangeNotifier {
       notifyListeners();
       await _vehicleRepository.removeVehicle(user.uid, vehicleId);
       _vehicles.removeWhere((v) => v.id == vehicleId);
-      _selected = _vehicles.isNotEmpty ? _vehicles.first : null;
+      _setValidSelectedVehicle();
     } catch (e) {
       AppLogger.logError(e);
       rethrow;
