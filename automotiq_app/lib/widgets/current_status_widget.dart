@@ -1,4 +1,3 @@
-import 'package:automotiq_app/screens/dtc_detail_screen.dart';
 import 'package:automotiq_app/widgets/summary_status_box.dart';
 import 'package:flutter/material.dart';
 import '../services/dtc_database_service.dart';
@@ -65,8 +64,8 @@ class _CurrentStatusWidgetState extends State<CurrentStatusWidget> {
                 final description =
                     dtcDetails[code]?['description'] ??
                     'No description available';
-                final cause =
-                    dtcDetails[code]?['cause'] ?? 'No cause available';
+                // final cause =
+                //     dtcDetails[code]?['cause'] ?? 'No cause available';
 
                 return Card(
                   margin: const EdgeInsets.symmetric(vertical: 6),
