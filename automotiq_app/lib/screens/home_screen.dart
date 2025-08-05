@@ -4,12 +4,14 @@ import 'package:automotiq_app/screens/account_settings_screen.dart';
 import 'package:automotiq_app/services/bluetooth_manager.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_reactive_ble/flutter_reactive_ble.dart';
 import '../providers/auth_provider.dart';
 import '../providers/vehicle_provider.dart';
 import '../utils/logger.dart';
 import '../widgets/vehicle_dropdown.dart';
 import '../widgets/vehicle_info_card.dart';
 import '../models/vehicle_model.dart';
+import 'dart:async';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -20,6 +22,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   String? _errorMessage;
+  Timer? _dtcCheckTimer;
 
   @override
   void initState() {
@@ -50,6 +53,9 @@ class _HomeScreenState extends State<HomeScreen> {
           setState(() => _errorMessage = 'Failed to initialize model/chat: $e');
         }
       }
+
+      // Start periodic DTC check
+      _startDtcCheckTimer();
     });
   }
 
@@ -70,7 +76,6 @@ class _HomeScreenState extends State<HomeScreen> {
   ) async {
     try {
       AppLogger.logInfo('Attempting to connect to device: ${vehicle.deviceId}');
-      // Start connection process
       await bluetoothManager.connectToDevice(
         vehicle.deviceId,
         autoReconnect: true,
@@ -80,8 +85,78 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  void _startDtcCheckTimer() {
+    // Cancel any existing timer to avoid duplicates
+    _dtcCheckTimer?.cancel();
+
+    // Check for new errors every 1 minute, adjust if too frequent
+    _dtcCheckTimer = Timer.periodic(const Duration(minutes: 1), (timer) async {
+      final vehicleProvider = context.read<VehicleProvider>();
+      final bluetoothManager = Provider.of<BluetoothManager?>(
+        context,
+        listen: false,
+      );
+      final selectedVehicle = vehicleProvider.selectedVehicle;
+
+      if (selectedVehicle == null ||
+          selectedVehicle.id == 'demo' ||
+          bluetoothManager == null ||
+          selectedVehicle.deviceId.isEmpty) {
+        AppLogger.logInfo(
+          'Skipping DTC check: No valid vehicle or Bluetooth connection',
+        );
+        return;
+      }
+
+      // Check connection state
+      final connectionState = bluetoothManager.getDeviceState();
+      if (connectionState != DeviceConnectionState.connected) {
+        AppLogger.logInfo('Skipping DTC check: Device not connected');
+        return;
+      }
+
+      try {
+        // Fetch DTCs, VIN, and odometer
+        final codes = await bluetoothManager.getVehicleDTCs();
+
+        // TODO: To be added in future release
+        // final odometer = await bluetoothManager.getOdometer();
+
+        // Update VehicleModel
+        final updatedVehicle = selectedVehicle.copyWith(
+          diagnosticTroubleCodes: codes,
+          // TODO: To be added in future release
+          // vin: vin.isNotEmpty ? vin : selectedVehicle.vin,
+          // odometer: odometer > 0 ? odometer : selectedVehicle.odometer,
+        );
+
+        // Update Firestore and local state
+        await vehicleProvider.updateVehicle(updatedVehicle);
+        AppLogger.logInfo(
+          'Periodic DTC check completed for vehicle: ${selectedVehicle.id}, '
+          'DTCs: ${updatedVehicle.diagnosticTroubleCodes}, ',
+          // TODO: To be added in future release
+          // 'VIN: ${updatedVehicle.vin}, '
+          // 'Odometer: ${updatedVehicle.odometer} miles',
+        );
+      } catch (e) {
+        AppLogger.logError('Periodic DTC check failed: $e');
+        // Optionally show a SnackBar for user feedback
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to refresh vehicle data: $e'),
+              backgroundColor: Colors.redAccent,
+            ),
+          );
+        }
+      }
+    });
+  }
+
   @override
   void dispose() {
+    _dtcCheckTimer?.cancel();
     super.dispose();
   }
 
@@ -148,11 +223,9 @@ class _HomeScreenState extends State<HomeScreen> {
       return const _EmptyView();
     }
 
-    // Use Consumer to react to selectedVehicle changes
     return Consumer<VehicleProvider>(
       builder: (context, vehicleProvider, child) {
         final selectedVehicle = vehicleProvider.selectedVehicle;
-        // Trigger connection attempt when selectedVehicle changes
         if (selectedVehicle != null &&
             bluetoothManager != null &&
             selectedVehicle.deviceId.isNotEmpty) {
@@ -238,7 +311,6 @@ class _ContentView extends StatelessWidget {
       );
     }
 
-    // This becomes the entire scrollable content
     return VehicleInfoCard(vehicle: selectedVehicle!);
   }
 }

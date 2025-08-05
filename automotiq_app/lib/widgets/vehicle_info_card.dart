@@ -8,6 +8,7 @@ import '../models/vehicle_model.dart';
 import '../services/bluetooth_manager.dart';
 import '../utils/logger.dart';
 import '../services/dtc_database_service.dart';
+import '../providers/vehicle_provider.dart';
 
 class VehicleInfoCard extends StatefulWidget {
   final VehicleModel vehicle;
@@ -139,6 +140,52 @@ class _VehicleDetailsCardState extends State<VehicleDetailsCard> {
     return codesSet.toList();
   }
 
+  Future<void> _refreshDtcCodes() async {
+    final bluetoothManager = Provider.of<BluetoothManager?>(
+      context,
+      listen: false,
+    );
+    final vehicleProvider = Provider.of<VehicleProvider>(
+      context,
+      listen: false,
+    );
+
+    if (vehicle.id == 'demo') {
+      // Demo mode: Load random DTC codes
+      try {
+        final codes = await loadRandomDtcCodes();
+        setState(() {
+          vehicle.clearDiagnosticTroubleCodes();
+          codes.forEach(vehicle.addDiagnosticTroubleCode);
+        });
+      } catch (e) {
+        AppLogger.logError('Failed to load demo DTC codes: $e');
+      }
+    } else if (bluetoothManager != null && vehicle.deviceId.isNotEmpty) {
+      // Real vehicle: Fetch DTCs from OBD2 device
+      try {
+        final dtcs = await bluetoothManager.getVehicleDTCs();
+        setState(() {
+          vehicle.clearDiagnosticTroubleCodes();
+          dtcs.forEach(vehicle.addDiagnosticTroubleCode);
+        });
+        // Update Firestore via VehicleProvider
+        await vehicleProvider.updateVehicle(vehicle);
+        AppLogger.logInfo(
+          'DTC codes updated: ${vehicle.diagnosticTroubleCodes}',
+        );
+      } catch (e) {
+        AppLogger.logError('Failed to refresh DTC codes: $e');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to refresh DTC codes: $e'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final bluetoothManager = Provider.of<BluetoothManager?>(
@@ -156,14 +203,7 @@ class _VehicleDetailsCardState extends State<VehicleDetailsCard> {
               IconButton(
                 onPressed: () {
                   AppLogger.logInfo("Refresh button pressed");
-                  if (vehicle.id == 'demo') {
-                    loadRandomDtcCodes().then((codes) {
-                      setState(() {
-                        vehicle.diagnosticTroubleCodes = codes;
-                      });
-                    });
-                  }
-                  // else: TODO: Implement refresh logic for real vehicle
+                  _refreshDtcCodes();
                 },
                 icon: const Icon(Icons.refresh_rounded),
                 style: IconButton.styleFrom(
