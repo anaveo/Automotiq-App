@@ -19,7 +19,7 @@ The app supports both demo mode for new users and full OBD2 device integration f
 
 - **Demo Video**: [https://www.youtube.com/watch?v=XCygbZQzIXk](https://www.youtube.com/watch?v=XCygbZQzIXk)
 - **Kaggle Page**: [TODO]
-- **Technical Writeup**: [TODO]
+- **Technical Writeup**: [Automotiq_Technical_Report.pdf](docs/Automotiq_Technical_Report.pdf)
 - **Landing Page**: [automotiq.ai](https://www.automotiq.ai)
 
 ## Installation
@@ -31,53 +31,14 @@ Currently, the application only supports Android devices. The app has been teste
 
 If you have installed and tested this app on your device, please send us a message.
 
-### Option 1: Download APK (Recommended)
+**Note**: When the app starts for the first time, the Gemma 3n model is downloaded from the internet. This takes 2-4 minutes. **Please do not close the app or turn off the device while the model is downloading!** This may corrupt the model and cause the app to fail.
+
+### Download APK
 
 1. Download the latest APK from our releases
 2. Enable "Install from Unknown Sources" in your Android settings
 3. Install the APK file
-4. Launch Automotiq and follow the setup wizard
-
-### Option 2: Build from Source
-
-#### Prerequisites
-
-- Flutter SDK (version 3.8.1 or higher)
-- HuggingFace API Key for Gemma (models found [here](https://huggingface.co/collections/google/gemma-3n-685065323f5984ef315c93f4))
-- Android Studio or VS Code
-- Android SDK (API level 21 or higher)
-- Git
-
-#### Setup Instructions
-
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/anaveo/Automotiq-App.git
-   cd Automotiq-App
-   ```
-
-2. **Install dependencies**
-   ```bash
-   flutter pub get
-   ```
-
-3. **Configure environment variables**
-   - Create a `.env` file in the `assets/` directory
-   - Add your HuggingFace API key:
-     ```
-     HUGGINGFACE_API_KEY=your_api_key_here
-     GEMMA_MODEL_CONFIG=gemma3nGpu_2B
-     ```
-
-4. **Build the APK**
-   ```bash
-   flutter build apk --release
-   ```
-
-5. **Install on device**
-   ```bash
-   flutter install
-   ```
+4. Launch Automotiq and wait for the model to download. Downloading only happens on first-time init.
 
 #### Building for Different Architectures
 
@@ -86,9 +47,8 @@ If you have installed and tested this app on your device, please send us a messa
 
 #### Troubleshooting
 
-- Ensure your device supports Bluetooth Low Energy (BLE)
+- The app is compatible with the VEEPEAK BLE OBD2 scanner. Other devices may not work.
 - Grant necessary permissions for Bluetooth, Location, and Camera
-- For OBD2 functionality, ensure your device is compatible with ELM327 protocol
 
 ## Usage
 
@@ -101,7 +61,3 @@ If you have installed and tested this app on your device, please send us a messa
 ## Support
 
 For technical support or questions, please refer to our documentation or create an issue in the repository.
-
----
-
-*Automotiq - Making vehicle diagnostics intelligent and accessible.*
