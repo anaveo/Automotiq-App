@@ -627,9 +627,11 @@ class UnifiedBackgroundService extends ChangeNotifier {
     **SECTION 4 - Professional Help (Required)**
     Always include: "For complex repairs or if you're unsure, consult a qualified mechanic. Use the app's chat feature with photos for additional DIY guidance."
 
+    Follow this exact format. Be concise and avoid technical jargon.
+    
     FORMAT TEMPLATE FOR EACH CODE:
 
-    ## [CODE] - [Brief Description]
+    ## [CODE 1] [CODE 1 DESCRIPTION]
 
     [Simple explanation in 3-5 sentences]
 
@@ -644,13 +646,12 @@ class UnifiedBackgroundService extends ChangeNotifier {
     3. [Additional steps as needed]
 
     OR if no safe DIY fixes: "No safe DIY fixes recommended."
-
-    ### Professional Recommendation
-    For complex repairs or if you're unsure, consult a qualified mechanic. Use the app's chat feature with photos for additional DIY guidance.
-
     ---
+    
+    ## [Additional codes as needed] [Additional descriptions as needed]
 
-    Follow this exact format for each DTC. Be concise and avoid technical jargon.
+    ## Professional Recommendation
+    For complex repairs or if you're unsure, consult a qualified mechanic. Use the app's chat feature with photos for additional DIY guidance.
     """;
   }
 

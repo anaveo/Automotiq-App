@@ -144,12 +144,28 @@ class AccountSettingsScreen extends StatelessWidget {
                                   ),
                                 );
                                 if (confirm == true) {
+                                  // Show loading dialog
+                                  showDialog(
+                                    context: context,
+                                    barrierDismissible: false,
+                                    builder: (context) => const AlertDialog(
+                                      content: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          CircularProgressIndicator(),
+                                          SizedBox(height: 16),
+                                          Text('Clearing assistant memory...'),
+                                        ],
+                                      ),
+                                    ),
+                                  );
                                   try {
                                     await modelProvider.resetChat();
                                     final prefs =
                                         await SharedPreferences.getInstance();
                                     await prefs.remove('chat_messages');
-
+                                    // Close loading dialog
+                                    Navigator.pop(context);
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       const SnackBar(
                                         content: Text(
@@ -158,6 +174,8 @@ class AccountSettingsScreen extends StatelessWidget {
                                       ),
                                     );
                                   } catch (e) {
+                                    // Close loading dialog
+                                    Navigator.pop(context);
                                     AppLogger.logError(e);
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
