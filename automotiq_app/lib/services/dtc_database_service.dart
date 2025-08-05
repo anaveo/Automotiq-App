@@ -22,11 +22,7 @@ class DtcDatabaseService {
     final documentsDirectory = await getApplicationDocumentsDirectory();
     final path = join(documentsDirectory.path, 'dtcs.db');
 
-    return await openDatabase(
-      path,
-      version: 1,
-      onCreate: _onCreate,
-    );
+    return await openDatabase(path, version: 1, onCreate: _onCreate);
   }
 
   Future<void> _onCreate(Database db, int version) async {
@@ -58,12 +54,7 @@ class DtcDatabaseService {
 
   Future<Map<String, String>> getDtc(String code) async {
     final db = await database;
-    final result = await db.query(
-      'dtcs',
-      where: 'code = ?',
-      whereArgs: [code],
-    );
-    // if (result.isEmpty) return null;
+    final result = await db.query('dtcs', where: 'code = ?', whereArgs: [code]);
     return {
       'description': result[0]['description'] as String,
       'cause': result[0]['cause'] as String,
@@ -72,7 +63,9 @@ class DtcDatabaseService {
 
   Future<String> getRandomDtcCode() async {
     final db = await database;
-    final result = await db.rawQuery('SELECT code FROM dtcs ORDER BY RANDOM() LIMIT 1');
+    final result = await db.rawQuery(
+      'SELECT code FROM dtcs ORDER BY RANDOM() LIMIT 1',
+    );
     return result.first['code'] as String;
   }
 }

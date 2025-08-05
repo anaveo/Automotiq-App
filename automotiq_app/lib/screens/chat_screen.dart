@@ -7,14 +7,9 @@ import 'package:automotiq_app/providers/model_provider.dart';
 import 'package:automotiq_app/utils/logger.dart';
 import '../services/unified_background_service.dart';
 
-
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:camera/camera.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:path_provider/path_provider.dart';
-
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -137,206 +132,205 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   }
 
   Future<Uint8List?> pickImageUniversal({required ImageSource source}) async {
-  try {
-    // Handle permissions
-    if (source == ImageSource.camera) {
-      final cameraStatus = await Permission.camera.request();
-      if (!cameraStatus.isGranted) {
-        throw Exception('Camera permission denied');
+    try {
+      // Handle permissions
+      if (source == ImageSource.camera) {
+        final cameraStatus = await Permission.camera.request();
+        if (!cameraStatus.isGranted) {
+          throw Exception('Camera permission denied');
+        }
       }
+
+      Uint8List? imageBytes;
+
+      if (source == ImageSource.camera) {
+        // Use different camera strategies based on platform/device
+        imageBytes = await _captureImageUniversal();
+      } else {
+        // Gallery selection - use standard image picker
+        final picker = ImagePicker();
+        final pickedFile = await picker.pickImage(
+          source: ImageSource.gallery,
+          maxWidth: 1024,
+          maxHeight: 1024,
+          imageQuality: 85,
+        );
+
+        if (pickedFile != null) {
+          imageBytes = await pickedFile.readAsBytes();
+        }
+      }
+
+      return imageBytes;
+    } catch (e) {
+      print('Universal image picker error: $e');
+      return null;
+    }
+  }
+
+  Future<Uint8List?> _captureImageUniversal() async {
+    // Try multiple camera capture methods for maximum compatibility
+
+    // Method 1: Try direct camera plugin (most reliable for Samsung)
+    try {
+      return await _captureWithCameraPlugin();
+    } catch (e) {
+      print('Camera plugin failed: $e');
     }
 
-    Uint8List? imageBytes;
+    // Method 2: Try image picker with reduced settings
+    try {
+      return await _captureWithImagePickerReduced();
+    } catch (e) {
+      print('Reduced image picker failed: $e');
+    }
 
-    if (source == ImageSource.camera) {
-      // Use different camera strategies based on platform/device
-      imageBytes = await _captureImageUniversal();
-    } else {
-      // Gallery selection - use standard image picker
-      final picker = ImagePicker();
-      final pickedFile = await picker.pickImage(
-        source: ImageSource.gallery,
-        maxWidth: 1024,
-        maxHeight: 1024,
-        imageQuality: 85,
+    // Method 3: Try standard image picker as last resort
+    try {
+      return await _captureWithImagePickerStandard();
+    } catch (e) {
+      print('Standard image picker failed: $e');
+    }
+
+    throw Exception('All camera capture methods failed');
+  }
+
+  Future<Uint8List?> _captureWithCameraPlugin() async {
+    CameraController? controller;
+
+    try {
+      // Get available cameras
+      final cameras = await availableCameras();
+      if (cameras.isEmpty) throw Exception('No cameras available');
+
+      // Initialize camera controller
+      controller = CameraController(
+        cameras.first,
+        ResolutionPreset.medium,
+        enableAudio: false, // Disable audio for faster initialization
       );
-      
-      if (pickedFile != null) {
-        imageBytes = await pickedFile.readAsBytes();
+
+      await controller.initialize();
+
+      // Take picture
+      final XFile photo = await controller.takePicture();
+      final imageBytes = await photo.readAsBytes();
+
+      // Clean up temporary file
+      try {
+        await File(photo.path).delete();
+      } catch (e) {
+        // Ignore cleanup errors
+      }
+
+      return imageBytes;
+    } finally {
+      // Always dispose controller
+      try {
+        await controller?.dispose();
+      } catch (e) {
+        // Ignore disposal errors
       }
     }
+  }
 
-    return imageBytes;
-    
-  } catch (e) {
-    print('Universal image picker error: $e');
+  Future<Uint8List?> _captureWithImagePickerReduced() async {
+    final picker = ImagePicker();
+
+    // Use reduced settings for problematic devices
+    final pickedFile = await picker
+        .pickImage(
+          source: ImageSource.camera,
+          maxWidth: 600,
+          maxHeight: 600,
+          imageQuality: 50,
+          preferredCameraDevice: CameraDevice.rear,
+          requestFullMetadata: false,
+        )
+        .timeout(
+          const Duration(seconds: 30),
+          onTimeout: () => throw Exception('Camera timeout'),
+        );
+
+    if (pickedFile != null) {
+      return await pickedFile.readAsBytes();
+    }
+
     return null;
   }
-}
 
-Future<Uint8List?> _captureImageUniversal() async {
-  // Try multiple camera capture methods for maximum compatibility
-  
-  // Method 1: Try direct camera plugin (most reliable for Samsung)
-  try {
-    return await _captureWithCameraPlugin();
-  } catch (e) {
-    print('Camera plugin failed: $e');
-  }
-  
-  // Method 2: Try image picker with reduced settings
-  try {
-    return await _captureWithImagePickerReduced();
-  } catch (e) {
-    print('Reduced image picker failed: $e');
-  }
-  
-  // Method 3: Try standard image picker as last resort
-  try {
-    return await _captureWithImagePickerStandard();
-  } catch (e) {
-    print('Standard image picker failed: $e');
-  }
-  
-  throw Exception('All camera capture methods failed');
-}
+  Future<Uint8List?> _captureWithImagePickerStandard() async {
+    final picker = ImagePicker();
 
-Future<Uint8List?> _captureWithCameraPlugin() async {
-  CameraController? controller;
-  
-  try {
-    // Get available cameras
-    final cameras = await availableCameras();
-    if (cameras.isEmpty) throw Exception('No cameras available');
-    
-    // Initialize camera controller
-    controller = CameraController(
-      cameras.first,
-      ResolutionPreset.medium,
-      enableAudio: false, // Disable audio for faster initialization
+    final pickedFile = await picker.pickImage(
+      source: ImageSource.camera,
+      maxWidth: 1024,
+      maxHeight: 1024,
+      imageQuality: 85,
     );
-    
-    await controller.initialize();
-    
-    // Take picture
-    final XFile photo = await controller.takePicture();
-    final imageBytes = await photo.readAsBytes();
-    
-    // Clean up temporary file
-    try {
-      await File(photo.path).delete();
-    } catch (e) {
-      // Ignore cleanup errors
+
+    if (pickedFile != null) {
+      return await pickedFile.readAsBytes();
     }
-    
-    return imageBytes;
-    
-  } finally {
-    // Always dispose controller
+
+    return null;
+  }
+
+  Future<void> _pickImage({required ImageSource source}) async {
+    if (_isDisposed) return;
+
     try {
-      await controller?.dispose();
-    } catch (e) {
-      // Ignore disposal errors
-    }
-  }
-}
+      Uint8List? imageBytes;
 
-Future<Uint8List?> _captureWithImagePickerReduced() async {
-  final picker = ImagePicker();
-  
-  // Use reduced settings for problematic devices
-  final pickedFile = await picker.pickImage(
-    source: ImageSource.camera,
-    maxWidth: 600,
-    maxHeight: 600,
-    imageQuality: 50,
-    preferredCameraDevice: CameraDevice.rear,
-    requestFullMetadata: false,
-  ).timeout(
-    const Duration(seconds: 30),
-    onTimeout: () => throw Exception('Camera timeout'),
-  );
-  
-  if (pickedFile != null) {
-    return await pickedFile.readAsBytes();
-  }
-  
-  return null;
-}
-
-Future<Uint8List?> _captureWithImagePickerStandard() async {
-  final picker = ImagePicker();
-  
-  final pickedFile = await picker.pickImage(
-    source: ImageSource.camera,
-    maxWidth: 1024,
-    maxHeight: 1024,
-    imageQuality: 85,
-  );
-  
-  if (pickedFile != null) {
-    return await pickedFile.readAsBytes();
-  }
-  
-  return null;
-}
-
-Future<void> _pickImage({required ImageSource source}) async {
-  if (_isDisposed) return;
-  
-  try {
-    Uint8List? imageBytes;
-    
-    if (source == ImageSource.camera) {
-      // Handle camera permission
-      final cameraStatus = await Permission.camera.request();
-      if (!cameraStatus.isGranted) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Camera permission denied')),
-          );
+      if (source == ImageSource.camera) {
+        // Handle camera permission
+        final cameraStatus = await Permission.camera.request();
+        if (!cameraStatus.isGranted) {
+          if (mounted) {
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text('Camera permission denied')));
+          }
+          return;
         }
-        return;
+
+        // Show camera preview screen
+        imageBytes = await Navigator.of(context).push<Uint8List>(
+          MaterialPageRoute(
+            builder: (context) => CameraPreviewScreen(),
+            fullscreenDialog: true,
+          ),
+        );
+      } else {
+        // Gallery selection
+        final picker = ImagePicker();
+        final pickedFile = await picker.pickImage(
+          source: ImageSource.gallery,
+          maxWidth: 1024,
+          maxHeight: 1024,
+          imageQuality: 85,
+        );
+
+        if (pickedFile != null) {
+          imageBytes = await pickedFile.readAsBytes();
+        }
       }
-      
-      // Show camera preview screen
-      imageBytes = await Navigator.of(context).push<Uint8List>(
-        MaterialPageRoute(
-          builder: (context) => CameraPreviewScreen(),
-          fullscreenDialog: true,
-        ),
-      );
-    } else {
-      // Gallery selection
-      final picker = ImagePicker();
-      final pickedFile = await picker.pickImage(
-        source: ImageSource.gallery,
-        maxWidth: 1024,
-        maxHeight: 1024,
-        imageQuality: 85,
-      );
-      
-      if (pickedFile != null) {
-        imageBytes = await pickedFile.readAsBytes();
+
+      if (imageBytes != null && !_isDisposed && mounted) {
+        setState(() => _selectedImage = imageBytes);
       }
-    }
-    
-    if (imageBytes != null && !_isDisposed && mounted) {
-      setState(() => _selectedImage = imageBytes);
-    }
-    
-  } catch (e, stackTrace) {
-    AppLogger.logError(e, stackTrace, 'ChatScreen._pickImage');
-    if (!_isDisposed && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to pick image: ${e.toString()}'),
-          duration: const Duration(seconds: 3),
-        ),
-      );
+    } catch (e, stackTrace) {
+      AppLogger.logError(e, stackTrace, 'ChatScreen._pickImage');
+      if (!_isDisposed && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to pick image: ${e.toString()}'),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
     }
   }
-}
 
   Future<void> _sendMessage(String text) async {
     if (_isDisposed || (text.trim().isEmpty && _selectedImage == null)) return;
@@ -478,105 +472,105 @@ Future<void> _pickImage({required ImageSource source}) async {
   // }
 
   Future<void> _showImageSourceDialog() async {
-  showModalBottomSheet(
-    context: context,
-    backgroundColor: Colors.transparent,
-    builder: (BuildContext context) {
-      return Container(
-        decoration: BoxDecoration(
-          color: Theme.of(context).scaffoldBackgroundColor,
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(20),
-            topRight: Radius.circular(20),
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext context) {
+        return Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context).scaffoldBackgroundColor,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(20),
+              topRight: Radius.circular(20),
+            ),
           ),
-        ),
-        child: SafeArea(
-          child: Wrap(
-            children: [
-              // Header
-              Container(
-                width: double.infinity,
-                padding: EdgeInsets.all(20),
-                child: Column(
-                  children: [
-                    Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: Colors.grey[300],
-                        borderRadius: BorderRadius.circular(2),
+          child: SafeArea(
+            child: Wrap(
+              children: [
+                // Header
+                Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.all(20),
+                  child: Column(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[300],
+                          borderRadius: BorderRadius.circular(2),
+                        ),
                       ),
-                    ),
-                    SizedBox(height: 16),
-                    Text(
-                      'Select Image Source',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
+                      SizedBox(height: 16),
+                      Text(
+                        'Select Image Source',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
+                    ],
+                  ),
+                ),
+
+                // Camera option
+                ListTile(
+                  leading: Container(
+                    padding: EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.blue[50],
+                      borderRadius: BorderRadius.circular(8),
                     ),
-                  ],
-                ),
-              ),
-              
-              // Camera option
-              ListTile(
-                leading: Container(
-                  padding: EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.blue[50],
-                    borderRadius: BorderRadius.circular(8),
+                    child: Icon(Icons.camera_alt, color: Colors.blue),
                   ),
-                  child: Icon(Icons.camera_alt, color: Colors.blue),
+                  title: Text('Camera'),
+                  subtitle: Text('Take a new photo'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _pickImage(source: ImageSource.camera);
+                  },
                 ),
-                title: Text('Camera'),
-                subtitle: Text('Take a new photo'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _pickImage(source: ImageSource.camera);
-                },
-              ),
-              
-              // Gallery option
-              ListTile(
-                leading: Container(
-                  padding: EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.green[50],
-                    borderRadius: BorderRadius.circular(8),
+
+                // Gallery option
+                ListTile(
+                  leading: Container(
+                    padding: EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.green[50],
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(Icons.photo_library, color: Colors.green),
                   ),
-                  child: Icon(Icons.photo_library, color: Colors.green),
+                  title: Text('Gallery'),
+                  subtitle: Text('Choose from your photos'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _pickImage(source: ImageSource.gallery);
+                  },
                 ),
-                title: Text('Gallery'),
-                subtitle: Text('Choose from your photos'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _pickImage(source: ImageSource.gallery);
-                },
-              ),
-              
-              // Cancel option
-              ListTile(
-                leading: Container(
-                  padding: EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[50],
-                    borderRadius: BorderRadius.circular(8),
+
+                // Cancel option
+                ListTile(
+                  leading: Container(
+                    padding: EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[50],
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(Icons.cancel, color: Colors.grey[600]),
                   ),
-                  child: Icon(Icons.cancel, color: Colors.grey[600]),
+                  title: Text('Cancel'),
+                  onTap: () => Navigator.pop(context),
                 ),
-                title: Text('Cancel'),
-                onTap: () => Navigator.pop(context),
-              ),
-              
-              SizedBox(height: 20),
-            ],
+
+                SizedBox(height: 20),
+              ],
+            ),
           ),
-        ),
-      );
-    },
-  );
-}
+        );
+      },
+    );
+  }
 
   InputDecoration _inputDecoration(String hintText) {
     return InputDecoration(
@@ -1039,7 +1033,9 @@ Future<void> _pickImage({required ImageSource source}) async {
                                     : Colors.deepPurpleAccent,
                                 size: 24,
                               ),
-                              onPressed: isLoading ? null : _showImageSourceDialog,
+                              onPressed: isLoading
+                                  ? null
+                                  : _showImageSourceDialog,
                               tooltip: 'Pick image',
                             ),
                             const SizedBox(width: 12),
@@ -1089,7 +1085,6 @@ Future<void> _pickImage({required ImageSource source}) async {
   }
 }
 
-
 class CameraPreviewScreen extends StatefulWidget {
   const CameraPreviewScreen({Key? key}) : super(key: key);
 
@@ -1123,7 +1118,7 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen> {
       );
 
       await _controller!.initialize();
-      
+
       if (mounted) {
         setState(() => _isInitialized = true);
       }
@@ -1134,7 +1129,9 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen> {
   }
 
   Future<void> _takePicture() async {
-    if (_controller == null || !_controller!.value.isInitialized || _isCapturing) {
+    if (_controller == null ||
+        !_controller!.value.isInitialized ||
+        _isCapturing) {
       return;
     }
 
@@ -1143,26 +1140,25 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen> {
     try {
       final XFile photo = await _controller!.takePicture();
       final imageBytes = await photo.readAsBytes();
-      
+
       // Clean up temporary file
       try {
         await File(photo.path).delete();
       } catch (e) {
         // Ignore cleanup errors
       }
-      
+
       if (mounted) {
         Navigator.of(context).pop(imageBytes);
       }
-      
     } catch (e) {
       print('Take picture error: $e');
       setState(() => _isCapturing = false);
-      
+
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to take picture: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to take picture: $e')));
       }
     }
   }
@@ -1178,7 +1174,10 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen> {
             children: [
               CircularProgressIndicator(color: Colors.white),
               SizedBox(height: 16),
-              Text('Initializing camera...', style: TextStyle(color: Colors.white)),
+              Text(
+                'Initializing camera...',
+                style: TextStyle(color: Colors.white),
+              ),
             ],
           ),
         ),
@@ -1190,10 +1189,8 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen> {
       body: Stack(
         children: [
           // Camera preview
-          Positioned.fill(
-            child: CameraPreview(_controller!),
-          ),
-          
+          Positioned.fill(child: CameraPreview(_controller!)),
+
           // Top bar with close button
           Positioned(
             top: MediaQuery.of(context).padding.top + 16,
@@ -1210,14 +1207,13 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen> {
               ),
             ),
           ),
-          
+
           // Bottom controls
           Positioned(
             bottom: MediaQuery.of(context).padding.bottom + 32,
             left: 0,
             right: 0,
-            child:
-            Row(
+            child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 // Just the capture button
@@ -1232,7 +1228,9 @@ class _CameraPreviewScreenState extends State<CameraPreviewScreen> {
                       border: Border.all(color: Colors.black, width: 3),
                     ),
                     child: _isCapturing
-                        ? Center(child: CircularProgressIndicator(strokeWidth: 2))
+                        ? Center(
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
                         : Icon(Icons.camera, color: Colors.black, size: 30),
                   ),
                 ),
