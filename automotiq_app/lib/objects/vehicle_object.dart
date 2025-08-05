@@ -1,3 +1,5 @@
+import 'package:automotiq_app/utils/logger.dart';
+
 /// Represents a vehicle with its details and diagnostic information stored in Firestore.
 class VehicleObject {
   /// Firestore document ID for the vehicle.
@@ -93,7 +95,10 @@ class VehicleObject {
   /// [code] is the DTC to add. Only adds if not already present.
   void addDiagnosticTroubleCode(String code) {
     if (!diagnosticTroubleCodes.contains(code)) {
+      AppLogger.logInfo('Code $code added');
       diagnosticTroubleCodes.add(code);
+    } else {
+      AppLogger.logWarning('Code $code is already present');
     }
   }
 
@@ -106,6 +111,7 @@ class VehicleObject {
 
   /// Clears all diagnostic trouble codes from the vehicle.
   void clearDiagnosticTroubleCodes() {
+    AppLogger.logInfo('Current Codes: $diagnosticTroubleCodes');
     diagnosticTroubleCodes.clear();
   }
 

@@ -1,6 +1,7 @@
 import 'package:automotiq_app/widgets/summary_status_box.dart';
 import 'package:flutter/material.dart';
 import '../services/dtc_database_service.dart';
+import 'package:automotiq_app/utils/logger.dart';
 
 class CurrentStatusWidget extends StatefulWidget {
   final List<String> dtcs;
@@ -19,6 +20,9 @@ class _CurrentStatusWidgetState extends State<CurrentStatusWidget> {
   @override
   void initState() {
     super.initState();
+    AppLogger.logInfo(
+      'Initializing CurrentStatusWidget with DTCs: ${widget.dtcs}',
+    );
     _dtcFuture = _loadDtcDetails();
   }
 
@@ -26,6 +30,7 @@ class _CurrentStatusWidgetState extends State<CurrentStatusWidget> {
   void didUpdateWidget(covariant CurrentStatusWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.dtcs != widget.dtcs) {
+      AppLogger.logInfo('DTCs updated, reloading details: ${widget.dtcs}');
       _dtcFuture = _loadDtcDetails();
     }
   }
@@ -35,6 +40,13 @@ class _CurrentStatusWidgetState extends State<CurrentStatusWidget> {
     for (final code in widget.dtcs) {
       final info = await DtcDatabaseService().getDtc(code);
       result[code] = info;
+      if (info['description']?.isEmpty ?? true) {
+        AppLogger.logWarning('No description found for DTC: $code');
+      } else {
+        AppLogger.logInfo(
+          'Loaded description for DTC $code: ${info['description']}',
+        );
+      }
     }
     return result;
   }
@@ -49,24 +61,37 @@ class _CurrentStatusWidgetState extends State<CurrentStatusWidget> {
         }
 
         if (snapshot.hasError) {
-          return Text('Error loading DTCs: ${snapshot.error}');
+          AppLogger.logError('Error loading DTCs: ${snapshot.error}');
+          return const Text('Error loading DTC details');
         }
 
-        final dtcDetails = snapshot.data!;
+        final dtcDetails = snapshot.data ?? {};
+
+        if (widget.dtcs.isEmpty) {
+          return const Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SummaryStatusBox(hasIssues: false),
+              SizedBox(height: 16),
+              Text(
+                'No DTCs detected',
+                style: TextStyle(color: Colors.greenAccent),
+              ),
+            ],
+          );
+        }
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             SummaryStatusBox(hasIssues: widget.dtcs.isNotEmpty),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
             Column(
               children: widget.dtcs.map((code) {
                 final description =
-                    dtcDetails[code]?['description'] ??
-                    'No description available';
-                // final cause =
-                //     dtcDetails[code]?['cause'] ?? 'No cause available';
-
+                    dtcDetails[code]?['description']?.isNotEmpty ?? false
+                    ? dtcDetails[code]!['description']!
+                    : 'Description not available';
                 return Card(
                   margin: const EdgeInsets.symmetric(vertical: 6),
                   child: ListTile(
@@ -80,16 +105,6 @@ class _CurrentStatusWidgetState extends State<CurrentStatusWidget> {
                     ),
                     onTap: () {
                       // TODO: To be added in a future release
-                      // Navigator.push(
-                      //   context,
-                      //   MaterialPageRoute(
-                      //     builder: (_) => DtcDetailScreen(
-                      //       code: code,
-                      //       description: description,
-                      //       cause: cause,
-                      //     ),
-                      //   ),
-                      // );
                     },
                   ),
                 );

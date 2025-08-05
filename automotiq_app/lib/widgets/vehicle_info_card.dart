@@ -22,10 +22,12 @@ class VehicleInfoCard extends StatefulWidget {
 class _VehicleInfoCardState extends State<VehicleInfoCard> {
   final ScrollController _scrollController = ScrollController();
   double _fadeOpacity = 0.0;
+  late VehicleObject _currentVehicle; // Track current vehicle state
 
   @override
   void initState() {
     super.initState();
+    _currentVehicle = widget.vehicle; // Initialize with widget.vehicle
     _scrollController.addListener(() {
       final appBarHeight = MediaQuery.of(context).size.height * 0.3;
       final offset = _scrollController.offset.clamp(0.0, appBarHeight);
@@ -33,6 +35,14 @@ class _VehicleInfoCardState extends State<VehicleInfoCard> {
         _fadeOpacity = (offset / appBarHeight).clamp(0.0, 1.0);
       });
     });
+  }
+
+  @override
+  void didUpdateWidget(covariant VehicleInfoCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.vehicle != widget.vehicle) {
+      _currentVehicle = widget.vehicle;
+    }
   }
 
   @override
@@ -60,13 +70,78 @@ class _VehicleInfoCardState extends State<VehicleInfoCard> {
             slivers: [
               SliverToBoxAdapter(child: SizedBox(height: imageHeight)),
               SliverToBoxAdapter(
-                child: VehicleDetailsCard(vehicle: widget.vehicle),
+                child: VehicleDetailsCard(
+                  vehicle: _currentVehicle, // Pass current vehicle
+                  onRefresh: _refreshDtcCodes, // Pass refresh callback
+                ),
               ),
             ],
           ),
         ),
       ],
     );
+  }
+
+  Future<void> _refreshDtcCodes() async {
+    final bluetoothManager = Provider.of<BluetoothManager?>(
+      context,
+      listen: false,
+    );
+    final vehicleProvider = Provider.of<VehicleProvider>(
+      context,
+      listen: false,
+    );
+
+    try {
+      List<String> newDtcs;
+      if (widget.vehicle.id == 'demo') {
+        newDtcs = await loadRandomDtcCodes();
+      } else if (bluetoothManager != null &&
+          widget.vehicle.deviceId.isNotEmpty) {
+        newDtcs = (await bluetoothManager.getVehicleDTCs())
+            .map((code) => code.toUpperCase())
+            .toList();
+      } else {
+        AppLogger.logWarning('No valid device or demo mode not active');
+        return;
+      }
+
+      // Create a new VehicleObject with updated DTCs
+      final updatedVehicle = widget.vehicle.copyWith(
+        diagnosticTroubleCodes: newDtcs,
+      );
+
+      // Update Firestore via VehicleProvider
+      await vehicleProvider.updateVehicle(updatedVehicle);
+
+      // Update local state to trigger rebuild
+      setState(() {
+        _currentVehicle = updatedVehicle;
+      });
+
+      AppLogger.logInfo(
+        'DTC codes updated: ${updatedVehicle.diagnosticTroubleCodes}',
+      );
+    } catch (e) {
+      AppLogger.logError('Failed to refresh DTC codes: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to refresh DTC codes: $e'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    }
+  }
+
+  Future<List<String>> loadRandomDtcCodes() async {
+    Set<String> codesSet = {};
+    while (codesSet.length < 2) {
+      String? codeNullable = await DtcDatabaseService().getRandomDtcCode();
+      if (codeNullable != null) {
+        codesSet.add(codeNullable.toUpperCase());
+      }
+    }
+    return codesSet.toList();
   }
 }
 
@@ -83,19 +158,14 @@ class VehicleImagePlaceholder extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Opacity(
-      opacity: fadeOpacity.clamp(
-        0.0,
-        1.0,
-      ), // Ensures opacity stays within bounds
+      opacity: fadeOpacity.clamp(0.0, 1.0),
       child: Container(
         height: height,
         width: double.infinity,
         color: Colors.black,
         alignment: Alignment.center,
         child: const Image(
-          image: AssetImage(
-            'assets/images/Sedan_Wireframe.png',
-          ), // TODO: Add vehicle selection logic
+          image: AssetImage('assets/images/Sedan_Wireframe.png'),
           fit: BoxFit.cover,
         ),
       ),
@@ -105,16 +175,19 @@ class VehicleImagePlaceholder extends StatelessWidget {
 
 class VehicleDetailsCard extends StatefulWidget {
   final VehicleObject vehicle;
+  final VoidCallback onRefresh; // Callback for refresh button
 
-  const VehicleDetailsCard({super.key, required this.vehicle});
+  const VehicleDetailsCard({
+    super.key,
+    required this.vehicle,
+    required this.onRefresh,
+  });
 
   @override
   State<VehicleDetailsCard> createState() => _VehicleDetailsCardState();
 }
 
 class _VehicleDetailsCardState extends State<VehicleDetailsCard> {
-  VehicleObject get vehicle => widget.vehicle;
-
   String _mapConnectionStateToString(DeviceConnectionState state) {
     switch (state) {
       case DeviceConnectionState.connected:
@@ -125,64 +198,6 @@ class _VehicleDetailsCardState extends State<VehicleDetailsCard> {
         return 'Disconnecting...';
       case DeviceConnectionState.disconnected:
         return 'Disconnected';
-    }
-  }
-
-  Future<List<String>> loadRandomDtcCodes() async {
-    Set<String> codesSet = {};
-
-    // Keep fetching until we have 2 unique codes
-    while (codesSet.length < 2) {
-      String? codeNullable = await DtcDatabaseService().getRandomDtcCode();
-      codesSet.add(codeNullable);
-    }
-
-    return codesSet.toList();
-  }
-
-  Future<void> _refreshDtcCodes() async {
-    final bluetoothManager = Provider.of<BluetoothManager?>(
-      context,
-      listen: false,
-    );
-    final vehicleProvider = Provider.of<VehicleProvider>(
-      context,
-      listen: false,
-    );
-
-    if (vehicle.id == 'demo') {
-      // Demo mode: Load random DTC codes
-      try {
-        final codes = await loadRandomDtcCodes();
-        setState(() {
-          vehicle.clearDiagnosticTroubleCodes();
-          codes.forEach(vehicle.addDiagnosticTroubleCode);
-        });
-      } catch (e) {
-        AppLogger.logError('Failed to load demo DTC codes: $e');
-      }
-    } else if (bluetoothManager != null && vehicle.deviceId.isNotEmpty) {
-      // Real vehicle: Fetch DTCs from OBD2 device
-      try {
-        final dtcs = await bluetoothManager.getVehicleDTCs();
-        setState(() {
-          vehicle.clearDiagnosticTroubleCodes();
-          dtcs.forEach(vehicle.addDiagnosticTroubleCode);
-        });
-        // Update Firestore via VehicleProvider
-        await vehicleProvider.updateVehicle(vehicle);
-        AppLogger.logInfo(
-          'DTC codes updated: ${vehicle.diagnosticTroubleCodes}',
-        );
-      } catch (e) {
-        AppLogger.logError('Failed to refresh DTC codes: $e');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to refresh DTC codes: $e'),
-            backgroundColor: Colors.redAccent,
-          ),
-        );
-      }
     }
   }
 
@@ -201,10 +216,7 @@ class _VehicleDetailsCardState extends State<VehicleDetailsCard> {
             spacing: 30,
             children: [
               IconButton(
-                onPressed: () {
-                  AppLogger.logInfo("Refresh button pressed");
-                  _refreshDtcCodes();
-                },
+                onPressed: widget.onRefresh, // Use callback
                 icon: const Icon(Icons.refresh_rounded),
                 style: IconButton.styleFrom(
                   foregroundColor: Colors.white,
@@ -220,8 +232,9 @@ class _VehicleDetailsCardState extends State<VehicleDetailsCard> {
                   Navigator.push(
                     context,
                     MaterialPageRoute<void>(
-                      builder: (context) =>
-                          DiagnosisScreen(dtcs: vehicle.diagnosticTroubleCodes),
+                      builder: (context) => DiagnosisScreen(
+                        dtcs: widget.vehicle.diagnosticTroubleCodes,
+                      ),
                     ),
                   );
                 },
@@ -267,15 +280,15 @@ class _VehicleDetailsCardState extends State<VehicleDetailsCard> {
                 children: [
                   ConnectionStatusWidget(
                     bluetoothManager: bluetoothManager,
-                    vehicle: vehicle,
+                    vehicle: widget.vehicle,
                     stateMapper: _mapConnectionStateToString,
                   ),
-                  CurrentStatusWidget(dtcs: vehicle.diagnosticTroubleCodes),
+                  CurrentStatusWidget(
+                    dtcs: widget.vehicle.diagnosticTroubleCodes,
+                  ),
                   const SizedBox(height: 16),
-                  // Text('VIN: ${vehicle.vin.isEmpty ? "N/A" : vehicle.vin}'),
-                  // const SizedBox(height: 8),
                   Text(
-                    'Odometer: ${vehicle.odometer == 0 ? "N/A" : "${vehicle.odometer} miles"}',
+                    'Odometer: ${widget.vehicle.odometer == 0 ? "N/A" : "${widget.vehicle.odometer} miles"}',
                   ),
                 ],
               ),
@@ -318,7 +331,7 @@ class ConnectionStatusWidget extends StatelessWidget {
       initialData: bluetoothManager!.getDeviceState(),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
-          AppLogger.logError(snapshot.error);
+          AppLogger.logError('Connection status error: ${snapshot.error}');
           return Center(
             child: Padding(
               padding: const EdgeInsets.all(18.0),
