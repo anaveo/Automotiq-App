@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import '../models/user_model.dart';
+import '../objects/user_object.dart';
 import '../repositories/user_repository.dart';
 import '../utils/logger.dart';
 
@@ -7,8 +7,8 @@ class UserProvider with ChangeNotifier {
   final UserRepository repository;
   final String? uid;
 
-  UserModel? _user;
-  UserModel? get user => _user;
+  UserObject? _user;
+  UserObject? get user => _user;
 
   bool _isLoading = false; // Default to false for null UID
   bool get isLoading => _isLoading;
@@ -32,7 +32,7 @@ class UserProvider with ChangeNotifier {
       // Create user document if it doesn't exist
       await repository.createUserDocIfNotExists(
         uid!,
-        UserModel(uid: uid!, createdAt: DateTime.now(), demoMode: true),
+        UserObject(uid: uid!, createdAt: DateTime.now(), demoMode: true),
       );
       AppLogger.logInfo('User document created or verified for UID: $uid');
 

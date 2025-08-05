@@ -1,19 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:uuid/uuid.dart';
-import '../models/vehicle_model.dart';
+import '../objects/vehicle_object.dart';
 import '../repositories/vehicle_repository.dart';
 import '../utils/logger.dart';
 
 class VehicleProvider extends ChangeNotifier {
   final VehicleRepository _vehicleRepository;
   late FirebaseAuth _firebaseAuth;
-  List<VehicleModel> _vehicles = [];
-  VehicleModel? _selected;
+  List<VehicleObject> _vehicles = [];
+  VehicleObject? _selected;
   final Uuid _uuid = const Uuid();
 
   // Demo vehicle for testing purposes
-  final VehicleModel demoVehicle = VehicleModel(
+  final VehicleObject demoVehicle = VehicleObject(
     id: 'demo',
     name: 'Demo Vehicle',
     deviceId: '',
@@ -25,8 +25,8 @@ class VehicleProvider extends ChangeNotifier {
 
   bool _isLoading = false;
 
-  List<VehicleModel> get vehicles => _vehicles;
-  VehicleModel? get selectedVehicle => _selected;
+  List<VehicleObject> get vehicles => _vehicles;
+  VehicleObject? get selectedVehicle => _selected;
   bool get isLoading => _isLoading;
   bool _demoMode = true;
 
@@ -70,7 +70,7 @@ class VehicleProvider extends ChangeNotifier {
     }
   }
 
-  void selectVehicle(VehicleModel vehicle) {
+  void selectVehicle(VehicleObject vehicle) {
     if (_vehicles.contains(vehicle) || vehicle == demoVehicle) {
       _selected = vehicle;
       notifyListeners();
@@ -97,7 +97,7 @@ class VehicleProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> addVehicle(VehicleModel newVehicle) async {
+  Future<void> addVehicle(VehicleObject newVehicle) async {
     final user = _firebaseAuth.currentUser;
     if (user == null) {
       AppLogger.logError(StateError('No user is signed in'));
@@ -127,7 +127,7 @@ class VehicleProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> updateVehicle(VehicleModel updatedVehicle) async {
+  Future<void> updateVehicle(VehicleObject updatedVehicle) async {
     final user = _firebaseAuth.currentUser;
     if (user == null) {
       AppLogger.logError(StateError('No user is signed in'));

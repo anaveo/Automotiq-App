@@ -10,7 +10,7 @@ import '../providers/vehicle_provider.dart';
 import '../utils/logger.dart';
 import '../widgets/vehicle_dropdown.dart';
 import '../widgets/vehicle_info_card.dart';
-import '../models/vehicle_model.dart';
+import '../objects/vehicle_object.dart';
 import 'dart:async';
 
 class HomeScreen extends StatefulWidget {
@@ -72,7 +72,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _attemptConnection(
     BluetoothManager bluetoothManager,
-    VehicleModel vehicle,
+    VehicleObject vehicle,
   ) async {
     try {
       AppLogger.logInfo('Attempting to connect to device: ${vehicle.deviceId}');
@@ -295,7 +295,7 @@ class _EmptyView extends StatelessWidget {
 }
 
 class _ContentView extends StatelessWidget {
-  final VehicleModel? selectedVehicle;
+  final VehicleObject? selectedVehicle;
   final String obdData;
 
   const _ContentView({this.selectedVehicle, required this.obdData});

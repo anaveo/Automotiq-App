@@ -1,5 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:automotiq_app/models/vehicle_model.dart';
+import 'package:automotiq_app/objects/vehicle_object.dart';
 import 'package:automotiq_app/utils/logger.dart';
 import 'dart:async';
 
@@ -17,7 +17,7 @@ class VehicleRepository {
   ///
   /// Throws [ArgumentError] if [uid] is empty.
   /// Throws an [Exception] if fetching fails and no data is available in the offline cache.
-  Future<List<VehicleModel>> getVehicles(String uid) async {
+  Future<List<VehicleObject>> getVehicles(String uid) async {
     if (uid.isEmpty) throw ArgumentError('User ID cannot be empty.');
 
     try {
@@ -35,7 +35,7 @@ class VehicleRepository {
 
       // Retrieve data and return
       return snapshot.docs
-          .map((doc) => VehicleModel.fromMap(doc.id, doc.data()))
+          .map((doc) => VehicleObject.fromMap(doc.id, doc.data()))
           .toList();
     } catch (e) {
       rethrow;
@@ -46,7 +46,7 @@ class VehicleRepository {
   ///
   /// Throws [ArgumentError] if required IDs are empty.
   /// Returns the ID of the vehicle being added.
-  Future<String> addVehicle(String uid, VehicleModel newVehicle) async {
+  Future<String> addVehicle(String uid, VehicleObject newVehicle) async {
     if (uid.isEmpty) throw ArgumentError('User ID cannot be empty.');
     if (newVehicle.id.isEmpty)
       throw ArgumentError('Vehicle ID cannot be empty.');
@@ -89,7 +89,7 @@ class VehicleRepository {
   ///
   /// Throws [ArgumentError] if [uid] or [vehicle.id] are empty.
   /// Throws an [Exception] if the vehicle does not exist in the cache.
-  Future<void> updateVehicle(String uid, VehicleModel vehicle) async {
+  Future<void> updateVehicle(String uid, VehicleObject vehicle) async {
     if (uid.isEmpty) throw ArgumentError('User ID cannot be empty.');
     if (vehicle.id.isEmpty) throw ArgumentError('Vehicle ID cannot be empty.');
 

@@ -4,14 +4,14 @@ import 'package:automotiq_app/widgets/current_status_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_reactive_ble/flutter_reactive_ble.dart';
 import 'package:provider/provider.dart';
-import '../models/vehicle_model.dart';
+import '../objects/vehicle_object.dart';
 import '../services/bluetooth_manager.dart';
 import '../utils/logger.dart';
 import '../services/dtc_database_service.dart';
 import '../providers/vehicle_provider.dart';
 
 class VehicleInfoCard extends StatefulWidget {
-  final VehicleModel vehicle;
+  final VehicleObject vehicle;
 
   const VehicleInfoCard({super.key, required this.vehicle});
 
@@ -104,7 +104,7 @@ class VehicleImagePlaceholder extends StatelessWidget {
 }
 
 class VehicleDetailsCard extends StatefulWidget {
-  final VehicleModel vehicle;
+  final VehicleObject vehicle;
 
   const VehicleDetailsCard({super.key, required this.vehicle});
 
@@ -113,7 +113,7 @@ class VehicleDetailsCard extends StatefulWidget {
 }
 
 class _VehicleDetailsCardState extends State<VehicleDetailsCard> {
-  VehicleModel get vehicle => widget.vehicle;
+  VehicleObject get vehicle => widget.vehicle;
 
   String _mapConnectionStateToString(DeviceConnectionState state) {
     switch (state) {
@@ -289,7 +289,7 @@ class _VehicleDetailsCardState extends State<VehicleDetailsCard> {
 
 class ConnectionStatusWidget extends StatelessWidget {
   final BluetoothManager? bluetoothManager;
-  final VehicleModel vehicle;
+  final VehicleObject vehicle;
   final String Function(DeviceConnectionState) stateMapper;
 
   const ConnectionStatusWidget({

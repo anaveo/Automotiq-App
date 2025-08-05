@@ -28,7 +28,7 @@ void main() {
     when(mockCollection.doc(testUserId)).thenReturn(mockDocument);
     when(mockDocument.collection('vehicles')).thenReturn(mockCollection);
   });
-group('getVehicles', () {
+  group('getVehicles', () {
     test('returns list of vehicles', () async {
       when(mockCollection.get()).thenAnswer((_) async => mockSnapshot);
       when(mockSnapshot.docs).thenReturn([mockDocSnapshot]);
@@ -72,14 +72,13 @@ group('getVehicles', () {
         'odometer': 10000,
       };
 
-      final vehicle = VehicleModel.fromMap(testVehicleId, vehicleData);
+      final vehicle = VehicleObject.fromMap(testVehicleId, vehicleData);
       final result = await repository.addVehicle(testUserId, vehicle);
       expect(result, 'newVehicleId');
 
       // Use content match instead of instance match
       verify(mockCollection.add(argThat(equals(vehicle.toMap())))).called(1);
     });
-
 
     test('does not mutate original input map', () async {
       final originalMap = {'deviceId': 'test device'};
@@ -88,22 +87,52 @@ group('getVehicles', () {
       when(mockCollection.add(any)).thenAnswer((_) async => mockDocument);
       when(mockDocument.id).thenReturn('vehicleId');
 
-      await repository.addVehicle(testUserId, VehicleModel.fromMap(testVehicleId, inputCopy));
+      await repository.addVehicle(
+        testUserId,
+        VehicleObject.fromMap(testVehicleId, inputCopy),
+      );
       expect(inputCopy, originalMap);
     });
 
     test('throws on empty userId', () async {
-      expect(() => repository.addVehicle('', VehicleModel.fromMap(testVehicleId, {'name': 'Test Vehicle'})), throwsArgumentError);
+      expect(
+        () => repository.addVehicle(
+          '',
+          VehicleObject.fromMap(testVehicleId, {'name': 'Test Vehicle'}),
+        ),
+        throwsArgumentError,
+      );
     });
 
     test('throws on missing or empty deviceId', () async {
-      expect(() => repository.addVehicle(testUserId, VehicleModel.fromMap(testVehicleId, {'vin': 'VIN123'})), throwsArgumentError);
-      expect(() => repository.addVehicle(testUserId, VehicleModel.fromMap(testVehicleId, {'deviceId': '', 'vin': 'VIN123'})), throwsArgumentError);
+      expect(
+        () => repository.addVehicle(
+          testUserId,
+          VehicleObject.fromMap(testVehicleId, {'vin': 'VIN123'}),
+        ),
+        throwsArgumentError,
+      );
+      expect(
+        () => repository.addVehicle(
+          testUserId,
+          VehicleObject.fromMap(testVehicleId, {
+            'deviceId': '',
+            'vin': 'VIN123',
+          }),
+        ),
+        throwsArgumentError,
+      );
     });
 
     test('throws on Firestore failure', () async {
       when(mockCollection.add(any)).thenThrow(Exception('Firestore error'));
-      expect(() => repository.addVehicle(testUserId, VehicleModel.fromMap(testVehicleId, {'deviceId': 'test device'})), throwsException);
+      expect(
+        () => repository.addVehicle(
+          testUserId,
+          VehicleObject.fromMap(testVehicleId, {'deviceId': 'test device'}),
+        ),
+        throwsException,
+      );
       verify(mockCollection.add(any)).called(1);
     });
   });
@@ -123,11 +152,17 @@ group('getVehicles', () {
     });
 
     test('throws on empty userId', () async {
-      expect(() => repository.removeVehicle('', testVehicleId), throwsArgumentError);
+      expect(
+        () => repository.removeVehicle('', testVehicleId),
+        throwsArgumentError,
+      );
     });
 
     test('throws on empty vehicleId', () async {
-      expect(() => repository.removeVehicle(testUserId, ''), throwsArgumentError);
+      expect(
+        () => repository.removeVehicle(testUserId, ''),
+        throwsArgumentError,
+      );
     });
 
     test('throws on non-existent vehicleId', () async {
@@ -135,7 +170,10 @@ group('getVehicles', () {
       when(mockDocument.get()).thenAnswer((_) async => mockDocSnapshot);
       when(mockDocSnapshot.exists).thenReturn(false);
 
-      expect(() => repository.removeVehicle(testUserId, testVehicleId), throwsArgumentError);
+      expect(
+        () => repository.removeVehicle(testUserId, testVehicleId),
+        throwsArgumentError,
+      );
 
       verify(mockCollection.doc(testVehicleId)).called(1);
       verify(mockDocument.get()).called(1);
@@ -148,7 +186,10 @@ group('getVehicles', () {
       when(mockDocSnapshot.exists).thenReturn(true);
       when(mockDocument.delete()).thenThrow(Exception('Firestore error'));
 
-      expect(() => repository.removeVehicle(testUserId, testVehicleId), throwsException);
+      expect(
+        () => repository.removeVehicle(testUserId, testVehicleId),
+        throwsException,
+      );
 
       verify(mockCollection.doc(testVehicleId)).called(1);
       verify(mockDocument.get()).called(1);

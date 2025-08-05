@@ -1,5 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:automotiq_app/models/user_model.dart';
+import 'package:automotiq_app/objects/user_object.dart';
 import 'package:automotiq_app/utils/logger.dart';
 import 'dart:async';
 
@@ -20,7 +20,7 @@ class UserRepository {
   ///
   /// Throws [ArgumentError] if [uid] is empty.
   /// Throws an [Exception] if creation fails and no operation is queued.
-  Future<void> createUserDocIfNotExists(String uid, UserModel newUser) async {
+  Future<void> createUserDocIfNotExists(String uid, UserObject newUser) async {
     if (uid.isEmpty) throw ArgumentError('User ID cannot be empty');
 
     final docRef = _usersRef.doc(uid);
@@ -67,7 +67,7 @@ class UserRepository {
   ///
   /// Throws [ArgumentError] if [uid] is empty.
   /// Throws an [Exception] if fetching fails and no data is available in the offline cache.
-  Future<UserModel> getUser(String uid) async {
+  Future<UserObject> getUser(String uid) async {
     if (uid.isEmpty) throw ArgumentError('User ID cannot be empty');
 
     try {
@@ -83,7 +83,7 @@ class UserRepository {
         throw Exception('User document not found or empty for UID: $uid');
       }
 
-      return UserModel.fromMap(
+      return UserObject.fromMap(
         snapshot.id,
         snapshot.data()! as Map<String, dynamic>,
       );
@@ -96,7 +96,7 @@ class UserRepository {
         if (!doc.exists || doc.data() == null) {
           throw Exception('User document not found or empty for UID: $uid');
         }
-        return UserModel.fromMap(doc.id, doc.data()! as Map<String, dynamic>);
+        return UserObject.fromMap(doc.id, doc.data()! as Map<String, dynamic>);
       }
       throw Exception('Failed to fetch user profile: ${e.message}');
     } catch (e) {

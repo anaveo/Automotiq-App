@@ -1,7 +1,7 @@
 import 'package:automotiq_app/providers/user_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../models/vehicle_model.dart';
+import '../objects/vehicle_object.dart';
 import '../providers/vehicle_provider.dart';
 import '../utils/logger.dart';
 
@@ -21,7 +21,7 @@ class VehicleDropdown extends StatelessWidget {
       ...demoVehicle,
       ...vehicleProvider.vehicles,
     ].toSet().toList();
-    VehicleModel? selected = vehicleProvider.selectedVehicle;
+    VehicleObject? selected = vehicleProvider.selectedVehicle;
 
     // Validate selected vehicle
     if (selected != null && !allVehicles.contains(selected)) {
@@ -59,7 +59,7 @@ class VehicleDropdown extends StatelessWidget {
     }
 
     return DropdownButtonHideUnderline(
-      child: DropdownButton<VehicleModel>(
+      child: DropdownButton<VehicleObject>(
         value: selected,
         icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white),
         dropdownColor: const Color.fromARGB(255, 20, 20, 20),
@@ -69,12 +69,12 @@ class VehicleDropdown extends StatelessWidget {
             final name = vehicle.name.length > 16
                 ? '${vehicle.name.substring(0, 16)}…'
                 : vehicle.name;
-            return DropdownMenuItem<VehicleModel>(
+            return DropdownMenuItem<VehicleObject>(
               value: vehicle,
               child: Text(name),
             );
           }),
-          DropdownMenuItem<VehicleModel>(
+          DropdownMenuItem<VehicleObject>(
             value: null,
             onTap: () => navigateToAddVehicle(context),
             child: const Row(

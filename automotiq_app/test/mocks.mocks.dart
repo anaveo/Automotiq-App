@@ -7,7 +7,7 @@ import 'dart:async' as _i7;
 import 'dart:typed_data' as _i14;
 import 'dart:ui' as _i18;
 
-import 'package:automotiq_app/models/user_model.dart' as _i8;
+import 'package:automotiq_app/objects/user_object.dart' as _i8;
 import 'package:automotiq_app/models/vehicle_model.dart' as _i9;
 import 'package:automotiq_app/providers/auth_provider.dart' as _i17;
 import 'package:automotiq_app/providers/vehicle_provider.dart' as _i20;
@@ -155,7 +155,7 @@ class _FakeSnapshotMetadata_19 extends _i1.SmartFake
     : super(parent, parentInvocation);
 }
 
-class _FakeUserModel_20 extends _i1.SmartFake implements _i8.UserModel {
+class _FakeUserModel_20 extends _i1.SmartFake implements _i8.UserObject {
   _FakeUserModel_20(Object parent, Invocation parentInvocation)
     : super(parent, parentInvocation);
 }
@@ -165,7 +165,7 @@ class _FakeFirebaseAuth_21 extends _i1.SmartFake implements _i4.FirebaseAuth {
     : super(parent, parentInvocation);
 }
 
-class _FakeVehicle_22 extends _i1.SmartFake implements _i9.VehicleModel {
+class _FakeVehicle_22 extends _i1.SmartFake implements _i9.VehicleObject {
   _FakeVehicle_22(Object parent, Invocation parentInvocation)
     : super(parent, parentInvocation);
 }
@@ -2043,7 +2043,10 @@ class MockUserRepository extends _i1.Mock implements _i15.UserRepository {
           as _i6.FirebaseFirestore);
 
   @override
-  _i7.Future<void> createUserDocIfNotExists(String? uid, _i8.UserModel? newUser) =>
+  _i7.Future<void> createUserDocIfNotExists(
+    String? uid,
+    _i8.UserObject? newUser,
+  ) =>
       (super.noSuchMethod(
             Invocation.method(#createUserIfNotExists, [uid, newUser]),
             returnValue: _i7.Future<void>.value(),
@@ -2052,14 +2055,14 @@ class MockUserRepository extends _i1.Mock implements _i15.UserRepository {
           as _i7.Future<void>);
 
   @override
-  _i7.Future<_i8.UserModel> getUser(String? uid) =>
+  _i7.Future<_i8.UserObject> getUser(String? uid) =>
       (super.noSuchMethod(
             Invocation.method(#getUser, [uid]),
-            returnValue: _i7.Future<_i8.UserModel>.value(
+            returnValue: _i7.Future<_i8.UserObject>.value(
               _FakeUserModel_20(this, Invocation.method(#getUser, [uid])),
             ),
           )
-          as _i7.Future<_i8.UserModel>);
+          as _i7.Future<_i8.UserObject>);
 
   @override
   _i7.Future<void> updateField(String? uid, String? field, dynamic value) =>
@@ -2091,15 +2094,17 @@ class MockVehicleRepository extends _i1.Mock implements _i16.VehicleRepository {
           as _i6.FirebaseFirestore);
 
   @override
-  _i7.Future<List<_i9.VehicleModel>> getVehicles(String? uid) =>
+  _i7.Future<List<_i9.VehicleObject>> getVehicles(String? uid) =>
       (super.noSuchMethod(
             Invocation.method(#getVehicles, [uid]),
-            returnValue: _i7.Future<List<_i9.VehicleModel>>.value(<_i9.VehicleModel>[]),
+            returnValue: _i7.Future<List<_i9.VehicleObject>>.value(
+              <_i9.VehicleObject>[],
+            ),
           )
-          as _i7.Future<List<_i9.VehicleModel>>);
+          as _i7.Future<List<_i9.VehicleObject>>);
 
   @override
-  _i7.Future<String> addVehicle(String? uid, _i9.VehicleModel? newVehicle) =>
+  _i7.Future<String> addVehicle(String? uid, _i9.VehicleObject? newVehicle) =>
       (super.noSuchMethod(
             Invocation.method(#addVehicle, [uid, newVehicle]),
             returnValue: _i7.Future<String>.value(
@@ -2252,12 +2257,12 @@ class MockVehicleProvider extends _i1.Mock implements _i20.VehicleProvider {
   }
 
   @override
-  List<_i9.VehicleModel> get vehicles =>
+  List<_i9.VehicleObject> get vehicles =>
       (super.noSuchMethod(
             Invocation.getter(#vehicles),
-            returnValue: <_i9.VehicleModel>[],
+            returnValue: <_i9.VehicleObject>[],
           )
-          as List<_i9.VehicleModel>);
+          as List<_i9.VehicleObject>);
 
   @override
   bool get isLoading =>
@@ -2285,13 +2290,13 @@ class MockVehicleProvider extends _i1.Mock implements _i20.VehicleProvider {
           as _i7.Future<void>);
 
   @override
-  void selectVehicle(_i9.VehicleModel? vehicle) => super.noSuchMethod(
+  void selectVehicle(_i9.VehicleObject? vehicle) => super.noSuchMethod(
     Invocation.method(#selectVehicle, [vehicle]),
     returnValueForMissingStub: null,
   );
 
   @override
-  _i7.Future<void> addVehicle(_i9.VehicleModel? newVehicle) =>
+  _i7.Future<void> addVehicle(_i9.VehicleObject? newVehicle) =>
       (super.noSuchMethod(
             Invocation.method(#addVehicle, [newVehicle]),
             returnValue: _i7.Future<void>.value(),
@@ -2336,7 +2341,7 @@ class MockVehicleProvider extends _i1.Mock implements _i20.VehicleProvider {
 /// A class which mocks [Vehicle].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockVehicle extends _i1.Mock implements _i9.VehicleModel {
+class MockVehicle extends _i1.Mock implements _i9.VehicleObject {
   MockVehicle() {
     _i1.throwOnMissingStub(this);
   }
@@ -2489,7 +2494,7 @@ class MockVehicle extends _i1.Mock implements _i9.VehicleModel {
   );
 
   @override
-  _i9.VehicleModel copyWith({
+  _i9.VehicleObject copyWith({
     String? deviceId,
     String? id,
     String? name,
@@ -2521,7 +2526,7 @@ class MockVehicle extends _i1.Mock implements _i9.VehicleModel {
               }),
             ),
           )
-          as _i9.VehicleModel);
+          as _i9.VehicleObject);
 }
 
 /// A class which mocks [BleService].

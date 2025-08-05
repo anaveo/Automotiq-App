@@ -12,7 +12,7 @@ void main() {
   late MockVehicleRepository mockVehicleRepository;
   late VehicleProvider vehicleProvider;
   late StreamController<User?> authStateController;
-  late VehicleModel mockVehicle;
+  late VehicleObject mockVehicle;
 
   setUpAll(() {
     authStateController = StreamController<User?>.broadcast();
@@ -27,7 +27,9 @@ void main() {
     mockUser = MockUser();
     mockVehicleRepository = MockVehicleRepository();
     mockVehicle = MockVehicle();
-    when(mockFirebaseAuth.authStateChanges()).thenAnswer((_) => authStateController.stream);
+    when(
+      mockFirebaseAuth.authStateChanges(),
+    ).thenAnswer((_) => authStateController.stream);
     when(mockFirebaseAuth.currentUser).thenReturn(null);
     when(mockUser.uid).thenReturn('test-uid');
     vehicleProvider = VehicleProvider(
@@ -39,7 +41,9 @@ void main() {
   group('loadVehicles', () {
     test('loads vehicles for signed-in user', () async {
       when(mockFirebaseAuth.currentUser).thenReturn(mockUser);
-      when(mockVehicleRepository.getVehicles('test-uid')).thenAnswer((_) async => [mockVehicle]);
+      when(
+        mockVehicleRepository.getVehicles('test-uid'),
+      ).thenAnswer((_) async => [mockVehicle]);
       authStateController.add(mockUser); // Simulate signed-in user
       await Future.microtask(() {}); // Wait for stream processing
 
@@ -63,7 +67,13 @@ void main() {
       expect(vehicleProvider.selectedVehicle, isNull);
       await expectLater(
         vehicleProvider.loadVehicles(),
-        throwsA(isA<StateError>().having((e) => e.toString(), 'message', 'Bad state: No user is signed in')),
+        throwsA(
+          isA<StateError>().having(
+            (e) => e.toString(),
+            'message',
+            'Bad state: No user is signed in',
+          ),
+        ),
       );
       expect(vehicleProvider.isLoading, false);
       expect(vehicleProvider.vehicles, isEmpty);
@@ -73,7 +83,9 @@ void main() {
 
     test('handles Firestore error', () async {
       when(mockFirebaseAuth.currentUser).thenReturn(mockUser);
-      when(mockVehicleRepository.getVehicles('test-uid')).thenThrow(Exception('Firestore error'));
+      when(
+        mockVehicleRepository.getVehicles('test-uid'),
+      ).thenThrow(Exception('Firestore error'));
       authStateController.add(mockUser); // Simulate signed-in user
       await Future.microtask(() {}); // Wait for stream processing
 
@@ -82,7 +94,13 @@ void main() {
       expect(vehicleProvider.selectedVehicle, isNull);
       await expectLater(
         vehicleProvider.loadVehicles(),
-        throwsA(isA<Exception>().having((e) => e.toString(), 'message', 'Exception: Firestore error')),
+        throwsA(
+          isA<Exception>().having(
+            (e) => e.toString(),
+            'message',
+            'Exception: Firestore error',
+          ),
+        ),
       );
       expect(vehicleProvider.isLoading, false);
       expect(vehicleProvider.vehicles, isEmpty);
@@ -92,7 +110,9 @@ void main() {
 
     test('handles empty vehicle list', () async {
       when(mockFirebaseAuth.currentUser).thenReturn(mockUser);
-      when(mockVehicleRepository.getVehicles('test-uid')).thenAnswer((_) async => []);
+      when(
+        mockVehicleRepository.getVehicles('test-uid'),
+      ).thenAnswer((_) async => []);
       authStateController.add(mockUser); // Simulate signed-in user
       await Future.microtask(() {}); // Wait for stream processing
 
@@ -110,7 +130,9 @@ void main() {
   group('selectVehicle', () {
     test('selects valid vehicle', () async {
       when(mockFirebaseAuth.currentUser).thenReturn(mockUser);
-      when(mockVehicleRepository.getVehicles('test-uid')).thenAnswer((_) async => [mockVehicle]);
+      when(
+        mockVehicleRepository.getVehicles('test-uid'),
+      ).thenAnswer((_) async => [mockVehicle]);
       authStateController.add(mockUser); // Simulate signed-in user
       await Future.microtask(() {}); // Wait for stream processing
 
@@ -124,7 +146,9 @@ void main() {
 
     test('handles invalid vehicle selection', () async {
       when(mockFirebaseAuth.currentUser).thenReturn(mockUser);
-      when(mockVehicleRepository.getVehicles('test-uid')).thenAnswer((_) async => [mockVehicle]);
+      when(
+        mockVehicleRepository.getVehicles('test-uid'),
+      ).thenAnswer((_) async => [mockVehicle]);
       authStateController.add(mockUser); // Simulate signed-in user
       await Future.microtask(() {}); // Wait for stream processing
 
@@ -147,9 +171,14 @@ void main() {
       mockAuth = MockFirebaseAuth();
       mockUser = MockUser();
       mockVehicleRepository = MockVehicleRepository();
-      vehicleProvider = VehicleProvider(vehicleRepository: mockVehicleRepository, firebaseAuth: mockAuth);
+      vehicleProvider = VehicleProvider(
+        vehicleRepository: mockVehicleRepository,
+        firebaseAuth: mockAuth,
+      );
 
-      when(mockAuth.authStateChanges()).thenAnswer((_) => Stream.value(mockUser));
+      when(
+        mockAuth.authStateChanges(),
+      ).thenAnswer((_) => Stream.value(mockUser));
       when(mockAuth.currentUser).thenReturn(mockUser);
       when(mockUser.uid).thenReturn('testUserId');
 
@@ -166,8 +195,13 @@ void main() {
         'odometer': 15000,
       };
 
-      final VehicleModel vehicle = VehicleModel.fromMap('newVehicleId', vehicleData);
-      when(mockVehicleRepository.addVehicle('testUserId', vehicle)).thenAnswer((_) async => 'newVehicleId');
+      final VehicleObject vehicle = VehicleObject.fromMap(
+        'newVehicleId',
+        vehicleData,
+      );
+      when(
+        mockVehicleRepository.addVehicle('testUserId', vehicle),
+      ).thenAnswer((_) async => 'newVehicleId');
 
       await vehicleProvider.addVehicle(vehicle);
 
@@ -180,8 +214,12 @@ void main() {
     });
 
     test('handles default values for missing fields', () async {
-      final VehicleModel vehicle = VehicleModel.fromMap('minimalId', {'deviceId': 'test device'});
-      when(mockVehicleRepository.addVehicle('testUserId', vehicle)).thenAnswer((_) async => 'minimalId');
+      final VehicleObject vehicle = VehicleObject.fromMap('minimalId', {
+        'deviceId': 'test device',
+      });
+      when(
+        mockVehicleRepository.addVehicle('testUserId', vehicle),
+      ).thenAnswer((_) async => 'minimalId');
 
       await vehicleProvider.addVehicle(vehicle);
 
@@ -200,7 +238,10 @@ void main() {
     test('logs error and returns when no user signed in', () async {
       when(mockAuth.currentUser).thenReturn(null);
       final vehicleData = {'deviceId': 'test device'};
-      final VehicleModel vehicle = VehicleModel.fromMap('minimalId', vehicleData);
+      final VehicleObject vehicle = VehicleObject.fromMap(
+        'minimalId',
+        vehicleData,
+      );
 
       await vehicleProvider.addVehicle(vehicle);
 
@@ -210,8 +251,12 @@ void main() {
     });
 
     test('throws and logs error on Firestore failure', () async {
-      final VehicleModel vehicle = VehicleModel.fromMap('minimalId', {'deviceId': 'test device'});
-      when(mockVehicleRepository.addVehicle('testUserId', vehicle)).thenThrow(Exception('Firestore error'));
+      final VehicleObject vehicle = VehicleObject.fromMap('minimalId', {
+        'deviceId': 'test device',
+      });
+      when(
+        mockVehicleRepository.addVehicle('testUserId', vehicle),
+      ).thenThrow(Exception('Firestore error'));
 
       expect(() => vehicleProvider.addVehicle(vehicle), throwsException);
       expect(vehicleProvider.vehicles, isEmpty);
@@ -230,45 +275,65 @@ void main() {
       mockAuth = MockFirebaseAuth();
       mockUser = MockUser();
       mockVehicleRepository = MockVehicleRepository();
-      vehicleProvider = VehicleProvider(vehicleRepository: mockVehicleRepository, firebaseAuth: mockAuth);
+      vehicleProvider = VehicleProvider(
+        vehicleRepository: mockVehicleRepository,
+        firebaseAuth: mockAuth,
+      );
 
       when(mockAuth.currentUser).thenReturn(mockUser);
       when(mockUser.uid).thenReturn('testUserId');
 
       // Pre-populate vehicles using addVehicle mock
-      VehicleModel initialVehicle = VehicleModel.fromMap(testVehicleId, {'deviceId': 'test device'});
-      when(mockVehicleRepository.addVehicle('testUserId', initialVehicle)).thenAnswer((_) async => testVehicleId);
+      VehicleObject initialVehicle = VehicleObject.fromMap(testVehicleId, {
+        'deviceId': 'test device',
+      });
+      when(
+        mockVehicleRepository.addVehicle('testUserId', initialVehicle),
+      ).thenAnswer((_) async => testVehicleId);
       vehicleProvider.addVehicle(initialVehicle); // Sets initial state
     });
 
     test('removes vehicle successfully', () async {
-      when(mockVehicleRepository.removeVehicle('testUserId', testVehicleId)).thenAnswer((_) async {});
+      when(
+        mockVehicleRepository.removeVehicle('testUserId', testVehicleId),
+      ).thenAnswer((_) async {});
 
       await vehicleProvider.removeVehicle(testVehicleId);
 
       expect(vehicleProvider.vehicles, isEmpty);
       expect(vehicleProvider.selectedVehicle, isNull);
-      verify(mockVehicleRepository.removeVehicle('testUserId', testVehicleId)).called(1);
+      verify(
+        mockVehicleRepository.removeVehicle('testUserId', testVehicleId),
+      ).called(1);
       expect(vehicleProvider.isLoading, false);
     });
 
     test('updates selected to first vehicle if multiple exist', () async {
       // Add second vehicle to test selection update
-      VehicleModel secondVehicle = VehicleModel.fromMap(testVehicleId, {'name': 'Second Car', 'deviceId': 'test device'});
-      when(mockVehicleRepository.addVehicle('testUserId', secondVehicle)).thenAnswer((_) async => 'id2');
+      VehicleObject secondVehicle = VehicleObject.fromMap(testVehicleId, {
+        'name': 'Second Car',
+        'deviceId': 'test device',
+      });
+      when(
+        mockVehicleRepository.addVehicle('testUserId', secondVehicle),
+      ).thenAnswer((_) async => 'id2');
       await vehicleProvider.addVehicle(secondVehicle);
       expect(vehicleProvider.vehicles.length, 2);
       // Set selected to second vehicle
       vehicleProvider.selectVehicle(vehicleProvider.vehicles[1]);
 
-      when(mockVehicleRepository.removeVehicle('testUserId', testVehicleId)).thenAnswer((_) async {});
+      when(
+        mockVehicleRepository.removeVehicle('testUserId', testVehicleId),
+      ).thenAnswer((_) async {});
 
       await vehicleProvider.removeVehicle(testVehicleId);
 
       expect(vehicleProvider.vehicles.length, 1);
       expect(vehicleProvider.vehicles[0].id, 'id2');
       expect(vehicleProvider.selectedVehicle, vehicleProvider.vehicles[0]);
-      verify(mockVehicleRepository.removeVehicle('testUserId', testVehicleId)).called(1);
+      verify(
+        mockVehicleRepository.removeVehicle('testUserId', testVehicleId),
+      ).called(1);
       expect(vehicleProvider.isLoading, false);
     });
 
@@ -284,22 +349,36 @@ void main() {
     });
 
     test('throws and logs error on Firestore failure', () async {
-      when(mockVehicleRepository.removeVehicle('testUserId', testVehicleId)).thenThrow(Exception('Firestore error'));
+      when(
+        mockVehicleRepository.removeVehicle('testUserId', testVehicleId),
+      ).thenThrow(Exception('Firestore error'));
 
-      expect(() => vehicleProvider.removeVehicle(testVehicleId), throwsException);
+      expect(
+        () => vehicleProvider.removeVehicle(testVehicleId),
+        throwsException,
+      );
       expect(vehicleProvider.vehicles.length, 1);
       expect(vehicleProvider.selectedVehicle, vehicleProvider.vehicles[0]);
-      verify(mockVehicleRepository.removeVehicle('testUserId', testVehicleId)).called(1);
+      verify(
+        mockVehicleRepository.removeVehicle('testUserId', testVehicleId),
+      ).called(1);
       expect(vehicleProvider.isLoading, false);
     });
 
     test('handles non-existent vehicleId', () async {
-      when(mockVehicleRepository.removeVehicle('testUserId', 'nonExistentId')).thenThrow(ArgumentError('Vehicle not found'));
+      when(
+        mockVehicleRepository.removeVehicle('testUserId', 'nonExistentId'),
+      ).thenThrow(ArgumentError('Vehicle not found'));
 
-      expect(() => vehicleProvider.removeVehicle('nonExistentId'), throwsArgumentError);
+      expect(
+        () => vehicleProvider.removeVehicle('nonExistentId'),
+        throwsArgumentError,
+      );
       expect(vehicleProvider.vehicles.length, 1);
       expect(vehicleProvider.selectedVehicle, vehicleProvider.vehicles[0]);
-      verify(mockVehicleRepository.removeVehicle('testUserId', 'nonExistentId')).called(1);
+      verify(
+        mockVehicleRepository.removeVehicle('testUserId', 'nonExistentId'),
+      ).called(1);
       expect(vehicleProvider.isLoading, false);
     });
   });
