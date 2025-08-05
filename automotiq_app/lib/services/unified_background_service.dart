@@ -609,29 +609,15 @@ class UnifiedBackgroundService extends ChangeNotifier {
   Future<String> _createDiagnosisPrompt(List<String> dtcs) async {
     final descriptions = await getDtcDescriptions(dtcs);
     return """
-    You are an AI auto mechanic assistant helping everyday drivers understand their vehicle's diagnostic trouble codes (DTCs).
+    You are an auto mechanic assistant helping everyday drivers understand their vehicle's diagnostic trouble codes (DTCs).
 
     DIAGNOSTIC CODES TO ANALYZE: ${descriptions.join(', ')}
-
-    For each DTC, provide exactly 4 sections in this order:
-
-    **SECTION 1 - Code Explanation (Required)**
-    Explain what the code means in simple terms. Maximum 5 sentences.
-
-    **SECTION 2 - Possible Causes (Required)** 
-    List potential causes as bullet points starting with "-"
-
-    **SECTION 3 - DIY Fixes (Required)**
-    List safe, easy fixes for average drivers as numbered steps. If no safe DIY fixes exist, write "No safe DIY fixes recommended."
-
-    **SECTION 4 - Professional Help (Required)**
-    Always include: "For complex repairs or if you're unsure, consult a qualified mechanic. Use the app's chat feature with photos for additional DIY guidance."
 
     Follow this exact format. Be concise and avoid technical jargon.
 
     FORMAT TEMPLATE FOR EACH CODE:
 
-    ## [CODE 1] [CODE 1 DESCRIPTION]
+    ## [CODE] [CODE DESCRIPTION]
 
     [Simple explanation in 1-3 sentences]
 
@@ -646,12 +632,6 @@ class UnifiedBackgroundService extends ChangeNotifier {
     3. [Additional steps as needed]
 
     OR if no safe DIY fixes: "No safe DIY fixes recommended."
-    ---
-    
-    ## [Additional codes as needed] [Additional descriptions as needed]
-
-    ## Professional Recommendation
-    For complex repairs or if you're unsure, consult a qualified mechanic. Use the app's chat feature with photos for additional DIY guidance.
     """;
   }
 

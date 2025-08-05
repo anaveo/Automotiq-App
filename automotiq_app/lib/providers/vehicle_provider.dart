@@ -21,7 +21,7 @@ class VehicleProvider extends ChangeNotifier {
     vin: '4S3OMBAO2A4050702',
     year: 2002,
     odometer: 20618,
-    diagnosticTroubleCodes: ['P0420', 'P0118'],
+    diagnosticTroubleCodes: ['P0118'],
   );
 
   /// Indicates if vehicle data is being loaded.
