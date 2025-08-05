@@ -1,5 +1,5 @@
 import 'dart:io';
-import 'package:automotiq_app/models/model_config_object.dart';
+import 'package:automotiq_app/objects/model_config_object.dart';
 import 'package:automotiq_app/utils/logger.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_gemma/flutter_gemma.dart';
@@ -13,10 +13,14 @@ class ModelService {
   String? _downloadError;
 
   ModelService({required String variant})
-      : _modelConfig = ModelConfigObject.values.firstWhere(
-          (e) => e.name == (variant.isEmpty ? dotenv.env['GEMMA_MODEL_CONFIG'] : variant),
-          orElse: () => throw Exception('Model variant $variant not found in GemmaModel enum'),
-        );
+    : _modelConfig = ModelConfigObject.values.firstWhere(
+        (e) =>
+            e.name ==
+            (variant.isEmpty ? dotenv.env['GEMMA_MODEL_CONFIG'] : variant),
+        orElse: () => throw Exception(
+          'Model variant $variant not found in GemmaModel enum',
+        ),
+      );
 
   String? get downloadError => _downloadError;
   ModelConfigObject get modelConfig => _modelConfig;
@@ -33,7 +37,6 @@ class ModelService {
 
       AppLogger.logInfo('Checking model at path: $filePath');
       return file.existsSync();
-      
     } catch (e) {
       AppLogger.logError(e);
       return false;
@@ -55,7 +58,8 @@ class ModelService {
       }
 
       final request = http.Request('GET', Uri.parse(modelConfig.url));
-      request.headers['Authorization'] = 'Bearer ${dotenv.env['HUGGINGFACE_API_KEY']}';
+      request.headers['Authorization'] =
+          'Bearer ${dotenv.env['HUGGINGFACE_API_KEY']}';
 
       if (downloadedBytes > 0) {
         request.headers['Range'] = 'bytes=$downloadedBytes-';

@@ -3,50 +3,89 @@ import 'package:automotiq_app/services/model_service.dart';
 import 'package:automotiq_app/utils/logger.dart';
 import 'package:flutter_gemma/flutter_gemma.dart';
 
+/// Manages the state of machine learning model download, initialization, and chat functionality.
 class ModelProvider extends ChangeNotifier {
   final ModelService _modelService;
   InferenceChat? _globalAgent;
 
-  // Model download states
+  /// Tracks download progress (0.0 to 1.0).
   double _downloadProgress = 0.0;
+
+  /// Indicates if the model is currently downloading.
   bool _modelDownloading = false;
+
+  /// Indicates if the model has been downloaded.
   bool _modelDownloaded = false;
 
-  // Model initialization states
+  /// Indicates if the model is currently initializing.
   bool _modelInitializing = false;
+
+  /// Indicates if the model has been initialized.
   bool _modelInitialized = false;
 
-  // Chat initialization states
+  /// Indicates if the chat is currently initializing.
   bool _chatInitializing = false;
+
+  /// Indicates if the chat has been initialized.
   bool _chatInitialized = false;
 
-  // Inference state
+  /// Indicates if the model is generating a response.
   bool _isResponding = false;
-  bool get isResponding => _isResponding;
 
-  String? _downloadError;
-  String? _initializeError;
-
-  double get modelDownloadProgress => _downloadProgress;
-  bool get isModelDownloading => _modelDownloading;
-  bool get isModelDownloaded => _modelDownloaded;
-
-  bool get isModelInitializing => _modelInitializing;
-  bool get isModelInitialized => _modelInitialized;
-
-  bool get isChatInitializing => _chatInitializing;
-  bool get isChatInitialized => _chatInitialized;
-
-  String? get downloadError => _downloadError;
-  String? get initializeError => _initializeError;
-
+  /// Current inference model, if initialized.
   InferenceModel? get inferenceModel => _modelService.inferenceModel;
+
+  /// Global chat instance for user interactions.
   InferenceChat? get globalAgent => _globalAgent;
 
-  ModelProvider({required String variant}) : _modelService = ModelService(variant: variant) {
+  /// Progress of model download (0.0 to 1.0).
+  double get modelDownloadProgress => _downloadProgress;
+
+  /// Indicates if the model is downloading.
+  bool get isModelDownloading => _modelDownloading;
+
+  /// Indicates if the model has been downloaded.
+  bool get isModelDownloaded => _modelDownloaded;
+
+  /// Indicates if the model is initializing.
+  bool get isModelInitializing => _modelInitializing;
+
+  /// Indicates if the model has been initialized.
+  bool get isModelInitialized => _modelInitialized;
+
+  /// Indicates if the chat is initializing.
+  bool get isChatInitializing => _chatInitializing;
+
+  /// Indicates if the chat has been initialized.
+  bool get isChatInitialized => _chatInitialized;
+
+  /// Indicates if the model is generating a response.
+  bool get isResponding => _isResponding;
+
+  /// Error message from download failure, if any.
+  String? _downloadError;
+
+  /// Error message from initialization failure, if any.
+  String? _initializeError;
+
+  /// Gets the download error, if any.
+  String? get downloadError => _downloadError;
+
+  /// Gets the initialization error, if any.
+  String? get initializeError => _initializeError;
+
+  /// Constructor for ModelProvider.
+  ///
+  /// [variant] specifies the model variant to use.
+  ModelProvider({required String variant})
+    : _modelService = ModelService(variant: variant) {
     startModelDownload();
   }
 
+  /// Initiates the model download process.
+  ///
+  /// Skips if already downloading or downloaded.
+  /// Updates progress and notifies listeners.
   Future<void> startModelDownload() async {
     if (_modelDownloading || _modelDownloaded) {
       AppLogger.logInfo('Model already downloading or downloaded');
@@ -81,6 +120,10 @@ class ModelProvider extends ChangeNotifier {
     }
   }
 
+  /// Initializes the machine learning model.
+  ///
+  /// Skips if already initializing or initialized.
+  /// Notifies listeners on state changes.
   Future<void> initializeModel() async {
     if (_modelInitializing || _modelInitialized) {
       AppLogger.logInfo('Model already initializing or initialized');
@@ -105,6 +148,10 @@ class ModelProvider extends ChangeNotifier {
     }
   }
 
+  /// Initializes the global chat instance for user interactions.
+  ///
+  /// Skips if already initializing or initialized.
+  /// Configures chat with model settings.
   Future<void> initializeGlobalChat() async {
     if (_chatInitializing || _chatInitialized) {
       AppLogger.logInfo('Global chat already initializing or initialized');
@@ -134,6 +181,11 @@ class ModelProvider extends ChangeNotifier {
     }
   }
 
+  /// Handles user messages and generates responses using the global chat.
+  ///
+  /// [message] is the user's input.
+  /// [messages] is the conversation history.
+  /// [onToken] is called with response tokens as they are generated.
   Future<void> handleUserMessage(
     Message message,
     List<Map<String, dynamic>> messages,
@@ -170,6 +222,10 @@ class ModelProvider extends ChangeNotifier {
     }
   }
 
+  /// Creates a new chat instance with custom settings.
+  ///
+  /// Allows configuration of [temperature], [randomSeed], [topK], [supportImage], [tools], and [supportsFunctionCalls].
+  /// Returns a new [InferenceChat] instance.
   Future<InferenceChat> createChat({
     double? temperature,
     int? randomSeed,
@@ -188,10 +244,14 @@ class ModelProvider extends ChangeNotifier {
     );
   }
 
+  /// Clears the global chat's conversation history.
   Future<void> resetChat() async {
     await _globalAgent?.clearHistory();
   }
 
+  /// Closes the model and resets chat state.
+  ///
+  /// Clears [_globalAgent] and resets initialization flags.
   Future<void> closeModel() async {
     try {
       if (_globalAgent != null) {
@@ -208,6 +268,7 @@ class ModelProvider extends ChangeNotifier {
     }
   }
 
+  /// Disposes of resources and closes the model.
   @override
   void dispose() {
     closeModel();

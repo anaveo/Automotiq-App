@@ -5,6 +5,7 @@ import '../objects/vehicle_object.dart';
 import '../repositories/vehicle_repository.dart';
 import '../utils/logger.dart';
 
+/// Manages vehicle data state and interactions with Firestore for the app's UI.
 class VehicleProvider extends ChangeNotifier {
   final VehicleRepository _vehicleRepository;
   late FirebaseAuth _firebaseAuth;
@@ -12,7 +13,7 @@ class VehicleProvider extends ChangeNotifier {
   VehicleObject? _selected;
   final Uuid _uuid = const Uuid();
 
-  // Demo vehicle for testing purposes
+  /// Demo vehicle for testing purposes in demo mode.
   final VehicleObject demoVehicle = VehicleObject(
     id: 'demo',
     name: 'Demo Vehicle',
@@ -20,26 +21,45 @@ class VehicleProvider extends ChangeNotifier {
     vin: '4S3OMBAO2A4050702',
     year: 2002,
     odometer: 20618,
-    diagnosticTroubleCodes: ['P0420', 'P0325'],
+    diagnosticTroubleCodes: ['P0420', 'P0118'],
   );
 
+  /// Indicates if vehicle data is being loaded.
   bool _isLoading = false;
 
+  /// List of vehicles for the current user.
   List<VehicleObject> get vehicles => _vehicles;
+
+  /// Currently selected vehicle, or null if none selected.
   VehicleObject? get selectedVehicle => _selected;
+
+  /// Indicates if data loading is in progress.
   bool get isLoading => _isLoading;
+
+  /// Tracks demo mode state.
   bool _demoMode = true;
 
+  /// Constructor for VehicleProvider.
+  ///
+  /// [vehicleRepository] handles Firestore interactions.
+  /// [firebaseAuth] provides user authentication state.
   VehicleProvider({
     required VehicleRepository vehicleRepository,
     required FirebaseAuth firebaseAuth,
   }) : _vehicleRepository = vehicleRepository,
        _firebaseAuth = firebaseAuth;
 
+  /// Updates the FirebaseAuth instance.
+  ///
+  /// [auth] is the new FirebaseAuth instance to use.
   void updateAuth(FirebaseAuth auth) {
     _firebaseAuth = auth;
   }
 
+  /// Loads vehicles for the current user from Firestore.
+  ///
+  /// Throws [StateError] if no user is signed in.
+  /// Updates [_vehicles] and [_selected], notifying listeners.
   Future<void> loadVehicles() async {
     final user = _firebaseAuth.currentUser;
     if (user == null) {
@@ -54,7 +74,6 @@ class VehicleProvider extends ChangeNotifier {
       _isLoading = true;
       notifyListeners();
       _vehicles = await _vehicleRepository.getVehicles(user.uid);
-      // Set selected to first vehicle if available, otherwise null (demoVehicle handled externally)
       _setValidSelectedVehicle();
       AppLogger.logInfo(
         'Loaded ${_vehicles.length} vehicle(s) for UID: ${_firebaseAuth.currentUser?.uid}',
@@ -70,6 +89,10 @@ class VehicleProvider extends ChangeNotifier {
     }
   }
 
+  /// Selects a vehicle for detailed viewing or interaction.
+  ///
+  /// [vehicle] must be in [_vehicles] or be the [demoVehicle].
+  /// Notifies listeners if selection is valid.
   void selectVehicle(VehicleObject vehicle) {
     if (_vehicles.contains(vehicle) || vehicle == demoVehicle) {
       _selected = vehicle;
@@ -79,14 +102,19 @@ class VehicleProvider extends ChangeNotifier {
     }
   }
 
-  /// Updates the selected vehicle when demo mode changes.
+  /// Updates demo mode and adjusts selected vehicle accordingly.
+  ///
+  /// [isDemoMode] determines if demo mode is active.
+  /// Notifies listeners after updating.
   void updateDemoMode(bool isDemoMode) {
     _demoMode = isDemoMode;
     _setValidSelectedVehicle();
     notifyListeners();
   }
 
-  /// Sets _selected to a valid vehicle or null based on current state.
+  /// Sets [_selected] to a valid vehicle or null based on state.
+  ///
+  /// Selects first vehicle if available, demo vehicle in demo mode, or null.
   void _setValidSelectedVehicle() {
     if (_vehicles.isNotEmpty) {
       _selected = _vehicles.first;
@@ -97,6 +125,11 @@ class VehicleProvider extends ChangeNotifier {
     }
   }
 
+  /// Adds a new vehicle to Firestore and local state.
+  ///
+  /// [newVehicle] is the vehicle to add.
+  /// Generates a client-side UUID for the vehicle ID.
+  /// Throws [StateError] if no user is signed in.
   Future<void> addVehicle(VehicleObject newVehicle) async {
     final user = _firebaseAuth.currentUser;
     if (user == null) {
@@ -108,14 +141,11 @@ class VehicleProvider extends ChangeNotifier {
       _isLoading = true;
       notifyListeners();
 
-      // Generate client-side ID and include it in the VehicleModel
       final vehicleId = _uuid.v4();
       final newVehicleWithId = newVehicle.copyWith(id: vehicleId);
 
-      // Add vehicle to Firestore
       await _vehicleRepository.addVehicle(user.uid, newVehicleWithId);
 
-      // Prioritize new vehicle
       _vehicles.insert(0, newVehicleWithId);
       _selected = newVehicleWithId;
     } catch (e) {
@@ -127,6 +157,11 @@ class VehicleProvider extends ChangeNotifier {
     }
   }
 
+  /// Updates an existing vehicle in Firestore and local state.
+  ///
+  /// [updatedVehicle] contains the updated vehicle data.
+  /// Throws [StateError] if no user is signed in.
+  /// Prevents updates to demo vehicle.
   Future<void> updateVehicle(VehicleObject updatedVehicle) async {
     final user = _firebaseAuth.currentUser;
     if (user == null) {
@@ -143,10 +178,8 @@ class VehicleProvider extends ChangeNotifier {
       _isLoading = true;
       notifyListeners();
 
-      // Update Firestore
       await _vehicleRepository.updateVehicle(user.uid, updatedVehicle);
 
-      // Update local vehicles list
       final index = _vehicles.indexWhere((v) => v.id == updatedVehicle.id);
       if (index != -1) {
         _vehicles[index] = updatedVehicle;
@@ -157,7 +190,6 @@ class VehicleProvider extends ChangeNotifier {
         _vehicles.add(updatedVehicle);
       }
 
-      // Update selected vehicle if it matches
       if (_selected?.id == updatedVehicle.id) {
         _selected = updatedVehicle;
       }
@@ -170,6 +202,10 @@ class VehicleProvider extends ChangeNotifier {
     }
   }
 
+  /// Removes a vehicle from Firestore and local state.
+  ///
+  /// [vehicleId] is the ID of the vehicle to remove.
+  /// Throws [StateError] if no user is signed in.
   Future<void> removeVehicle(String vehicleId) async {
     final user = _firebaseAuth.currentUser;
     if (user == null) {

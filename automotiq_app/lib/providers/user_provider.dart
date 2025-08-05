@@ -3,25 +3,40 @@ import '../objects/user_object.dart';
 import '../repositories/user_repository.dart';
 import '../utils/logger.dart';
 
+/// Manages user data state and interactions with Firestore for the app's UI.
 class UserProvider with ChangeNotifier {
   final UserRepository repository;
   final String? uid;
 
+  /// Current user data, or null if not loaded or unavailable.
   UserObject? _user;
+
+  /// Gets the current user data.
   UserObject? get user => _user;
 
-  bool _isLoading = false; // Default to false for null UID
+  /// Indicates if user data is being loaded.
+  bool _isLoading = false;
+
+  /// Gets the loading state.
   bool get isLoading => _isLoading;
 
+  /// Constructor for UserProvider.
+  ///
+  /// [repository] handles Firestore interactions.
+  /// [uid] is the user ID, or null if no user is signed in.
+  /// Initializes user data if [uid] is provided.
   UserProvider({required this.repository, required this.uid}) {
     if (uid != null) {
-      _isLoading = true; // Set loading only if UID exists
+      _isLoading = true;
       _initializeUser();
     } else {
       notifyListeners();
     }
   }
 
+  /// Initializes user data by creating or verifying user document.
+  ///
+  /// Creates a user document if it doesn't exist and loads the user profile.
   Future<void> _initializeUser() async {
     if (uid == null) return;
 
@@ -29,14 +44,12 @@ class UserProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      // Create user document if it doesn't exist
       await repository.createUserDocIfNotExists(
         uid!,
         UserObject(uid: uid!, createdAt: DateTime.now(), demoMode: true),
       );
       AppLogger.logInfo('User document created or verified for UID: $uid');
 
-      // Load user profile
       _user = await repository.getUser(uid!);
       AppLogger.logInfo('User profile loaded for UID: $uid');
     } catch (e) {
@@ -48,6 +61,10 @@ class UserProvider with ChangeNotifier {
     }
   }
 
+  /// Loads or refreshes the user profile from Firestore.
+  ///
+  /// Skips if no [uid] is provided.
+  /// Updates [_user] and notifies listeners.
   Future<void> loadUserProfile() async {
     if (uid == null) return;
 
@@ -66,21 +83,23 @@ class UserProvider with ChangeNotifier {
     }
   }
 
+  /// Updates the demo mode setting for the user.
+  ///
+  /// [value] is the new demo mode state.
+  /// Optimistically updates local state before Firestore.
+  /// Reverts on failure.
   Future<void> setDemoMode(bool value) async {
     if (uid == null || _user == null) return;
 
     try {
-      // Optimistically update local model
       _user = _user!.copyWith(demoMode: value);
       notifyListeners();
 
-      // Update Firestore
       await repository.updateField(uid!, 'demoMode', value);
 
       AppLogger.logInfo('Demo mode updated to $value for UID: $uid');
     } catch (e) {
       AppLogger.logError(e);
-      // Revert optimistic update here if needed
       _user = _user!.copyWith(demoMode: !value);
     } finally {
       notifyListeners();
