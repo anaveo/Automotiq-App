@@ -127,6 +127,49 @@ class VehicleProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> updateVehicle(VehicleModel updatedVehicle) async {
+    final user = _firebaseAuth.currentUser;
+    if (user == null) {
+      AppLogger.logError(StateError('No user is signed in'));
+      return;
+    }
+
+    if (updatedVehicle.id == 'demo') {
+      AppLogger.logWarning('Cannot update demo vehicle');
+      return;
+    }
+
+    try {
+      _isLoading = true;
+      notifyListeners();
+
+      // Update Firestore
+      await _vehicleRepository.updateVehicle(user.uid, updatedVehicle);
+
+      // Update local vehicles list
+      final index = _vehicles.indexWhere((v) => v.id == updatedVehicle.id);
+      if (index != -1) {
+        _vehicles[index] = updatedVehicle;
+      } else {
+        AppLogger.logWarning(
+          'Vehicle ${updatedVehicle.id} not found in local list',
+        );
+        _vehicles.add(updatedVehicle);
+      }
+
+      // Update selected vehicle if it matches
+      if (_selected?.id == updatedVehicle.id) {
+        _selected = updatedVehicle;
+      }
+    } catch (e) {
+      AppLogger.logError(e);
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
   Future<void> removeVehicle(String vehicleId) async {
     final user = _firebaseAuth.currentUser;
     if (user == null) {

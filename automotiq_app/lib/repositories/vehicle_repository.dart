@@ -6,7 +6,7 @@ import 'dart:async';
 class VehicleRepository {
   final FirebaseFirestore firestore;
 
-  /// Constructor for UserRepository.
+  /// Constructor for VehicleRepository.
   ///
   /// [firestoreInstance] is an optional parameter to allow dependency injection
   /// for testing. Defaults to [FirebaseFirestore.instance] if not provided.
@@ -42,7 +42,7 @@ class VehicleRepository {
     }
   }
 
-  /// Adds a vehicle from the Firestore database.
+  /// Adds a vehicle to the Firestore database.
   ///
   /// Throws [ArgumentError] if required IDs are empty.
   /// Returns the ID of the vehicle being added.
@@ -85,6 +85,73 @@ class VehicleRepository {
     }
   }
 
+  /// Updates a vehicle's diagnostic trouble codes, odometer, and name in the Firestore database.
+  ///
+  /// Throws [ArgumentError] if [uid] or [vehicle.id] are empty.
+  /// Throws an [Exception] if the vehicle does not exist in the cache.
+  Future<void> updateVehicle(String uid, VehicleModel vehicle) async {
+    if (uid.isEmpty) throw ArgumentError('User ID cannot be empty.');
+    if (vehicle.id.isEmpty) throw ArgumentError('Vehicle ID cannot be empty.');
+
+    final docRef = firestore
+        .collection('users')
+        .doc(uid)
+        .collection('vehicles')
+        .doc(vehicle.id);
+
+    try {
+      // Ensure vehicle exists in cache
+      final docSnap = await docRef.get(const GetOptions(source: Source.cache));
+      if (!docSnap.exists) {
+        throw ArgumentError(
+          'Vehicle ${vehicle.id} does not exist for user $uid',
+        );
+      }
+
+      // Perform the update operation for diagnosticTroubleCodes, odometer, and name
+      unawaited(
+        docRef
+            .update({
+              'diagnosticTroubleCodes': vehicle.diagnosticTroubleCodes,
+              'odometer': vehicle.odometer,
+              'name': vehicle.name,
+            })
+            .then((_) {
+              AppLogger.logInfo(
+                'Vehicle update for ${vehicle.id} (diagnosticTroubleCodes, odometer, name) was successfully queued or completed.',
+              );
+            })
+            .catchError((error) {
+              // If the update Future fails, it's due to a non-network issue
+              // like permissions, not because the device is offline.
+              AppLogger.logError(
+                'Error during background vehicle update operation: $error',
+              );
+            }),
+      );
+    } on FirebaseException catch (e) {
+      // Handle errors from the initial docRef.get() call
+      if (e.code == 'unavailable') {
+        AppLogger.logWarning(
+          'Offline mode detected during vehicle existence check. Update will be queued.',
+        );
+        unawaited(
+          docRef.update({
+            'diagnosticTroubleCodes': vehicle.diagnosticTroubleCodes,
+            'odometer': vehicle.odometer,
+            'name': vehicle.name,
+          }),
+        );
+      } else {
+        throw Exception(
+          'Failed to update vehicle due to a Firebase error: ${e.message}',
+        );
+      }
+    } catch (e) {
+      rethrow;
+    }
+  }
+
   /// Removes a vehicle from the Firestore database.
   ///
   /// Throws [ArgumentError] if [uid] or [vehicleId] are empty, or if the
@@ -107,7 +174,7 @@ class VehicleRepository {
         throw ArgumentError('Vehicle $vehicleId does not exist for user $uid');
       }
 
-      // Perform the delete operation.
+      // Perform the delete operation
       unawaited(
         docRef
             .delete()
@@ -123,7 +190,7 @@ class VehicleRepository {
             }),
       );
     } on FirebaseException catch (e) {
-      // This catches errors from the initial docRef.get() call.
+      // This catches errors from the initial docRef.get() call
       if (e.code == 'unavailable') {
         AppLogger.logWarning(
           'Offline mode detected during vehicle existence check. Deletion will be queued.',
