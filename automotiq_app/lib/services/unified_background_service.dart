@@ -609,34 +609,48 @@ class UnifiedBackgroundService extends ChangeNotifier {
   Future<String> _createDiagnosisPrompt(List<String> dtcs) async {
     final descriptions = await getDtcDescriptions(dtcs);
     return """
-    You are an AI auto mechanic assistant. Your job is to help everyday drivers understand their vehicle's health based on diagnostic trouble codes (DTCs).
+    You are an AI auto mechanic assistant helping everyday drivers understand their vehicle's diagnostic trouble codes (DTCs).
 
-    The vehicle has reported the following DTCs: ${descriptions.join(', ')}.
+    DIAGNOSTIC CODES TO ANALYZE: ${descriptions.join(', ')}
 
-    For each issue, answer the following using the markdown format. Ensure that each subsection only contains what is requested (i.e. do not put possible causes when explaining what it means):
-    1) Explain what the DTC code means in simple terms. This subsection shall be under 5 sentences.
-    2) Suggest possible causes. This subsection shall be in a bulleted list.
-    3) Recommend easy fixes if they are safe and doable for the average person. This subsection shall be in a numbered list
-    4) If and only if the repair is too technical or risky, recommend visiting a qualified mechanic.
-    5) If the user needs help with a DIY fix, recommend using the app's chat feature and uploading a photo of the issue to get more help.
+    For each DTC, provide exactly 4 sections in this order:
 
-    Please use the below markdown structure for your response:
-    ## <DTC>
-    <Subsection 1 contents>
-    ## <Possible causes>
-    - <Subsection 2 item 1>
-    - <Subsection 2 item 2>
-    - <Remaining subsection 2 contents>
-    ## <How to fix>
-    1. <Subsection 2 item 1>
-    2. <Subsection 2 item 2>
-    3. <Remaining subsection contents>
-    <divider here>
+    **SECTION 1 - Code Explanation (Required)**
+    Explain what the code means in simple terms. Maximum 5 sentences.
 
-    <Subsection 4 contents (if needed)>
-    <Subsection 5 contents (if needed)>
+    **SECTION 2 - Possible Causes (Required)** 
+    List potential causes as bullet points starting with "-"
 
-    Your response should be concise, clear, and helpful to someone who is not a car expert.
+    **SECTION 3 - DIY Fixes (Required)**
+    List safe, easy fixes for average drivers as numbered steps. If no safe DIY fixes exist, write "No safe DIY fixes recommended."
+
+    **SECTION 4 - Professional Help (Required)**
+    Always include: "For complex repairs or if you're unsure, consult a qualified mechanic. Use the app's chat feature with photos for additional DIY guidance."
+
+    FORMAT TEMPLATE FOR EACH CODE:
+
+    ## [CODE] - [Brief Description]
+
+    [Simple explanation in 3-5 sentences]
+
+    ### Possible Causes
+    - [Cause 1]
+    - [Cause 2]
+    - [Additional causes as needed]
+
+    ### How to Fix
+    1. [Safe DIY step 1]
+    2. [Safe DIY step 2]
+    3. [Additional steps as needed]
+
+    OR if no safe DIY fixes: "No safe DIY fixes recommended."
+
+    ### Professional Recommendation
+    For complex repairs or if you're unsure, consult a qualified mechanic. Use the app's chat feature with photos for additional DIY guidance.
+
+    ---
+
+    Follow this exact format for each DTC. Be concise and avoid technical jargon.
     """;
   }
 
