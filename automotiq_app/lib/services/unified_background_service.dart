@@ -628,12 +628,12 @@ class UnifiedBackgroundService extends ChangeNotifier {
     Always include: "For complex repairs or if you're unsure, consult a qualified mechanic. Use the app's chat feature with photos for additional DIY guidance."
 
     Follow this exact format. Be concise and avoid technical jargon.
-    
+
     FORMAT TEMPLATE FOR EACH CODE:
 
     ## [CODE 1] [CODE 1 DESCRIPTION]
 
-    [Simple explanation in 3-5 sentences]
+    [Simple explanation in 1-3 sentences]
 
     ### Possible Causes
     - [Cause 1]

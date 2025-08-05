@@ -135,7 +135,7 @@ class _VehicleInfoCardState extends State<VehicleInfoCard> {
 
   Future<List<String>> loadRandomDtcCodes() async {
     Set<String> codesSet = {};
-    while (codesSet.length < 2) {
+    while (codesSet.length < 1) {
       String? codeNullable = await DtcDatabaseService().getRandomDtcCode();
       if (codeNullable != null) {
         codesSet.add(codeNullable.toUpperCase());
