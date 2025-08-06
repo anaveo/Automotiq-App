@@ -403,7 +403,7 @@ class UnifiedBackgroundService extends ChangeNotifier {
       }
 
       // Check if nearing token limit and prune history
-      if (estimatedTokens >= 200) {
+      if (estimatedTokens >= 600) {
         await _pruneHistoryForTokenLimit(chat);
         AppLogger.logInfo(
           'Chat session reset due to token limit',
@@ -411,6 +411,13 @@ class UnifiedBackgroundService extends ChangeNotifier {
         );
       }
 
+      // Clear context and add new message
+      await chat.addQueryChunk(
+        Message.text(
+          text: 'Focus on the following new chat message only.',
+          isUser: false,
+        ),
+      );
       await chat.addQueryChunk(message);
       final responseStream = chat.generateChatResponseAsync();
       String fullResponse = '';
@@ -431,6 +438,7 @@ class UnifiedBackgroundService extends ChangeNotifier {
                 sender: 'bot',
                 id: '${messageId}_bot',
                 timestamp: _messages[botIndex].timestamp,
+                image: _messages[botIndex].image,
               );
               notifyListeners();
               await _saveMessages();
@@ -447,6 +455,7 @@ class UnifiedBackgroundService extends ChangeNotifier {
                   sender: 'bot',
                   id: '${messageId}_bot',
                   timestamp: _messages[botIndex].timestamp,
+                  image: _messages[botIndex].image,
                 );
                 notifyListeners();
                 await _saveMessages();
@@ -472,17 +481,16 @@ class UnifiedBackgroundService extends ChangeNotifier {
           final botIndex = _messages.indexWhere(
             (msg) => msg.id == '${messageId}_bot',
           );
-          if (botIndex != -1) {
+          if (botIndex != -1 && !_isDisposed) {
             _messages[botIndex] = ChatMessage(
               text: 'Error: $error',
               sender: 'bot',
               id: '${messageId}_bot',
               timestamp: _messages[botIndex].timestamp,
+              image: _messages[botIndex].image,
             );
-            if (!_isDisposed) {
-              notifyListeners();
-              await _saveMessages();
-            }
+            notifyListeners();
+            await _saveMessages();
           }
         },
         onDone: () async {
@@ -524,6 +532,7 @@ class UnifiedBackgroundService extends ChangeNotifier {
             sender: 'bot',
             id: '${messageId}_bot',
             timestamp: _messages[botIndex].timestamp,
+            image: _messages[botIndex].image,
           );
           notifyListeners();
           await _saveMessages();
