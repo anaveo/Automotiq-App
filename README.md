@@ -18,8 +18,8 @@ The app supports both demo mode for new users and full OBD2 device integration f
 ## Links
 
 - **Demo Video**: [https://www.youtube.com/watch?v=XCygbZQzIXk](https://www.youtube.com/watch?v=XCygbZQzIXk)
-- **Kaggle Page**: [TODO]
-- **Technical Writeup**: [Automotiq_Technical_Report.pdf](docs/Automotiq_Technical_Report.pdf)
+- **Kaggle Page**: [Automotiq Writeup](https://www.kaggle.com/competitions/google-gemma-3n-hackathon/writeups/automotiq)
+- **Technical Writeup**: [Automotiq_Technical_Report](https://docs.google.com/document/d/1NaSmV_ecknKgS9iraA1aurAfaYGH5axJuQmfqBeLvPk/edit?usp=sharing)
 - **Landing Page**: [automotiq.ai](https://www.automotiq.ai)
 
 ## Installation
