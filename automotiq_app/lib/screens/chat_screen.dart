@@ -403,7 +403,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     );
 
     if (confirmed == true && !_isDisposed && mounted) {
-      await _backgroundService.clearChatMessages();
+      await _backgroundService.deleteMessages(InferenceType.chat);
     }
   }
 

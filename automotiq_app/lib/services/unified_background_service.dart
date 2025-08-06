@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:core';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:automotiq_app/utils/logger.dart';
@@ -367,6 +368,7 @@ class UnifiedBackgroundService extends ChangeNotifier {
     return _enqueueRequest(request);
   }
 
+  // Executes chat inference for a given message
   Future<String> _executeChatInference(
     String messageId,
     String text,
@@ -388,6 +390,26 @@ class UnifiedBackgroundService extends ChangeNotifier {
         'Executing chat inference: type=${message.hasImage ? "image+text" : "text"}, text="$text"',
         'UnifiedBackgroundService._executeChatInference',
       );
+
+      // Estimate token count using fullHistory
+      num estimatedTokens = 0;
+      for (final msg in chat.fullHistory as List<dynamic>) {
+        estimatedTokens += await chat.session.sizeInTokens(
+          (msg as Message).text,
+        );
+        if ((msg).hasImage) {
+          estimatedTokens += 257;
+        }
+      }
+
+      // Check if nearing token limit and prune history
+      if (estimatedTokens >= 200) {
+        await _pruneHistoryForTokenLimit(chat);
+        AppLogger.logInfo(
+          'Chat session reset due to token limit',
+          'UnifiedBackgroundService._executeChatInference',
+        );
+      }
 
       await chat.addQueryChunk(message);
       final responseStream = chat.generateChatResponseAsync();
@@ -430,14 +452,22 @@ class UnifiedBackgroundService extends ChangeNotifier {
                 await _saveMessages();
               }
             } catch (e, stackTrace) {
-              AppLogger.logError(e, stackTrace);
+              AppLogger.logError(
+                e,
+                stackTrace,
+                'UnifiedBackgroundService._executeChatInference',
+              );
             }
           }
         },
-        onError: (error, stackTrace) {
+        onError: (error, stackTrace) async {
           if (_isDisposed) return;
 
-          AppLogger.logError(error, stackTrace);
+          AppLogger.logError(
+            error,
+            stackTrace,
+            'UnifiedBackgroundService._executeChatInference',
+          );
 
           final botIndex = _messages.indexWhere(
             (msg) => msg.id == '${messageId}_bot',
@@ -451,15 +481,15 @@ class UnifiedBackgroundService extends ChangeNotifier {
             );
             if (!_isDisposed) {
               notifyListeners();
-              _saveMessages();
+              await _saveMessages();
             }
           }
         },
-        onDone: () {
-          if (!_isDisposed) {
-            _activeInferences.remove(messageId);
-            notifyListeners();
-          }
+        onDone: () async {
+          if (_isDisposed) return;
+
+          _activeInferences.remove(messageId);
+          notifyListeners();
           AppLogger.logInfo(
             'Chat response completed: $fullResponse',
             'UnifiedBackgroundService._executeChatInference',
@@ -501,43 +531,6 @@ class UnifiedBackgroundService extends ChangeNotifier {
       }
 
       rethrow;
-    }
-  }
-
-  Future<void> clearChatMessages() async {
-    if (_isDisposed) return;
-
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove('chat_messages');
-      _messages.clear();
-
-      // Cancel chat-related streams and remove from queue
-      final chatInferences = _activeInferences.entries
-          .where((entry) => entry.value.type == InferenceType.chat)
-          .toList();
-
-      for (final entry in chatInferences) {
-        entry.value.subscription.cancel();
-        _activeInferences.remove(entry.key);
-      }
-
-      // Cancel queued chat requests
-      _requestQueue.removeWhere((request) {
-        if (request.type == InferenceType.chat) {
-          if (!request.completer.isCompleted) {
-            request.completer.completeError('Chat cleared');
-          }
-          return true;
-        }
-        return false;
-      });
-
-      if (!_isDisposed) {
-        notifyListeners();
-      }
-    } catch (e, stackTrace) {
-      AppLogger.logError(e, stackTrace);
     }
   }
 
@@ -583,6 +576,263 @@ class UnifiedBackgroundService extends ChangeNotifier {
       await prefs.setStringList('diagnosis_results', encoded);
     } catch (e, stackTrace) {
       AppLogger.logError(e, stackTrace);
+    }
+  }
+
+  // Executes diagnosis inference for given DTCs
+  Future<String> _executeDiagnosisInference(
+    String diagnosisKey,
+    List<String> dtcs,
+    dynamic chat,
+  ) async {
+    if (_isDisposed) return '';
+
+    final completer = Completer<void>();
+    final prompt = await _createDiagnosisPrompt(dtcs);
+
+    try {
+      // Initialize diagnosis entry
+      _diagnoses[diagnosisKey] ??= DiagnosisResult(
+        dtcs: dtcs,
+        prompt: prompt,
+        output: '',
+        id: diagnosisKey,
+        isComplete: false,
+      );
+
+      // Estimate token count using fullHistory
+      num estimatedTokens = 0;
+      for (final msg in chat.fullHistory as List<dynamic>) {
+        estimatedTokens += await chat.session.sizeInTokens(
+          (msg as Message).text,
+        );
+        if ((msg).hasImage) {
+          estimatedTokens += 257;
+        }
+      }
+
+      // Check if nearing token limit and prune history, preserving current diagnosis
+      if (estimatedTokens >= 200) {
+        await _pruneHistoryForTokenLimit(
+          chat,
+          activeDiagnosisKey: diagnosisKey,
+          activeDtcs: dtcs,
+        );
+        AppLogger.logInfo(
+          'Diagnosis session reset due to token limit for DTCs: ${dtcs.join(', ')}',
+          'UnifiedBackgroundService._executeDiagnosisInference',
+        );
+      }
+
+      // Clear context and add new diagnosis prompt
+      await chat.addQueryChunk(
+        Message.text(
+          text: 'Focus on the following new DTC diagnosis request only.',
+          isUser: false,
+        ),
+      );
+      await chat.addQueryChunk(Message.text(text: prompt, isUser: true));
+
+      final responseStream = chat.generateChatResponseAsync();
+      String responseText = '';
+
+      AppLogger.logInfo(
+        'Executing diagnosis inference for DTCs: ${dtcs.join(', ')}',
+        'UnifiedBackgroundService._executeDiagnosisInference',
+      );
+
+      final streamSubscription = responseStream.listen(
+        (response) async {
+          if (_isDisposed) return;
+
+          if (response is TextResponse) {
+            responseText += response.token;
+
+            // Reinitialize diagnosis entry if removed
+            if (!_diagnoses.containsKey(diagnosisKey)) {
+              _diagnoses[diagnosisKey] = DiagnosisResult(
+                dtcs: dtcs,
+                prompt: prompt,
+                output: responseText,
+                id: diagnosisKey,
+                isComplete: false,
+              );
+              AppLogger.logWarning(
+                'Reinitialized diagnosis entry for key $diagnosisKey during inference',
+                'UnifiedBackgroundService._executeDiagnosisInference',
+              );
+            } else {
+              _diagnoses[diagnosisKey] = _diagnoses[diagnosisKey]!.copyWith(
+                output: responseText,
+              );
+            }
+
+            if (!_isDisposed) {
+              notifyListeners();
+              await _saveDiagnoses();
+            }
+          } else if (response is FunctionCallResponse) {
+            try {
+              final finalResponse = await chat.generateChatResponse();
+              if (!_diagnoses.containsKey(diagnosisKey)) {
+                _diagnoses[diagnosisKey] = DiagnosisResult(
+                  dtcs: dtcs,
+                  prompt: prompt,
+                  output: finalResponse.toString(),
+                  id: diagnosisKey,
+                  isComplete: true,
+                );
+                AppLogger.logWarning(
+                  'Reinitialized diagnosis entry for key $diagnosisKey during function call',
+                  'UnifiedBackgroundService._executeDiagnosisInference',
+                );
+              } else {
+                _diagnoses[diagnosisKey] = _diagnoses[diagnosisKey]!.copyWith(
+                  output: finalResponse.toString(),
+                  isComplete: true,
+                );
+              }
+              if (!_isDisposed) {
+                notifyListeners();
+                await _saveDiagnoses();
+              }
+            } catch (e, stackTrace) {
+              AppLogger.logError(
+                e,
+                stackTrace,
+                'UnifiedBackgroundService._executeDiagnosisInference',
+              );
+              if (!_diagnoses.containsKey(diagnosisKey)) {
+                _diagnoses[diagnosisKey] = DiagnosisResult(
+                  dtcs: dtcs,
+                  prompt: prompt,
+                  output: responseText,
+                  id: diagnosisKey,
+                  isComplete: true,
+                  error: 'Error processing function call: $e',
+                );
+                AppLogger.logWarning(
+                  'Reinitialized diagnosis entry for key $diagnosisKey due to function call error',
+                  'UnifiedBackgroundService._executeDiagnosisInference',
+                );
+              } else {
+                _diagnoses[diagnosisKey] = _diagnoses[diagnosisKey]!.copyWith(
+                  error: 'Error processing function call: $e',
+                  isComplete: true,
+                );
+              }
+              if (!_isDisposed) {
+                notifyListeners();
+                await _saveDiagnoses();
+              }
+            }
+          }
+        },
+        onError: (error, stackTrace) async {
+          if (_isDisposed) return;
+
+          AppLogger.logError(
+            error,
+            stackTrace,
+            'UnifiedBackgroundService._executeDiagnosisInference',
+          );
+
+          if (!_diagnoses.containsKey(diagnosisKey)) {
+            _diagnoses[diagnosisKey] = DiagnosisResult(
+              dtcs: dtcs,
+              prompt: prompt,
+              output: responseText,
+              id: diagnosisKey,
+              isComplete: true,
+              error: 'Inference failed: $error',
+            );
+            AppLogger.logWarning(
+              'Reinitialized diagnosis entry for key $diagnosisKey due to inference error',
+              'UnifiedBackgroundService._executeDiagnosisInference',
+            );
+          } else {
+            _diagnoses[diagnosisKey] = _diagnoses[diagnosisKey]!.copyWith(
+              error: 'Inference failed: $error',
+              isComplete: true,
+            );
+          }
+          if (!_isDisposed) {
+            notifyListeners();
+            await _saveDiagnoses();
+          }
+        },
+        onDone: () async {
+          if (_isDisposed) return;
+
+          if (_diagnoses.containsKey(diagnosisKey) &&
+              !_diagnoses[diagnosisKey]!.isComplete) {
+            _diagnoses[diagnosisKey] = _diagnoses[diagnosisKey]!.copyWith(
+              isComplete: true,
+            );
+            if (!_isDisposed) {
+              notifyListeners();
+              await _saveDiagnoses();
+            }
+          }
+
+          _activeInferences.remove(diagnosisKey);
+          completer.complete();
+          notifyListeners();
+
+          AppLogger.logInfo(
+            'Diagnosis completed for DTCs: ${dtcs.join(', ')}',
+            'UnifiedBackgroundService._executeDiagnosisInference',
+          );
+        },
+      );
+
+      if (!_isDisposed) {
+        _activeInferences[diagnosisKey] = ActiveInference(
+          id: diagnosisKey,
+          type: InferenceType.diagnosis,
+          subscription: streamSubscription,
+          completer: completer,
+        );
+        notifyListeners();
+      }
+
+      await completer.future;
+      return _diagnoses[diagnosisKey]?.id ?? '';
+    } catch (e, stackTrace) {
+      AppLogger.logError(
+        e,
+        stackTrace,
+        'UnifiedBackgroundService._executeDiagnosisInference',
+      );
+
+      if (!_diagnoses.containsKey(diagnosisKey) && !_isDisposed) {
+        _diagnoses[diagnosisKey] = DiagnosisResult(
+          dtcs: dtcs,
+          prompt: prompt,
+          output: '',
+          id: diagnosisKey,
+          isComplete: true,
+          error: 'Inference failed: $e',
+        );
+        AppLogger.logWarning(
+          'Reinitialized diagnosis entry for key $diagnosisKey due to outer error',
+          'UnifiedBackgroundService._executeDiagnosisInference',
+        );
+        notifyListeners();
+        await _saveDiagnoses();
+      } else if (!_isDisposed) {
+        _diagnoses[diagnosisKey] = _diagnoses[diagnosisKey]!.copyWith(
+          error: 'Inference failed: $e',
+          isComplete: true,
+        );
+        notifyListeners();
+        await _saveDiagnoses();
+      }
+
+      _activeInferences.remove(diagnosisKey);
+      completer.complete();
+
+      rethrow;
     }
   }
 
@@ -715,140 +965,6 @@ class UnifiedBackgroundService extends ChangeNotifier {
     return _enqueueRequest(request);
   }
 
-  Future<String> _executeDiagnosisInference(
-    String diagnosisKey,
-    List<String> dtcs,
-    dynamic chat,
-  ) async {
-    if (_isDisposed) return '';
-
-    final completer = Completer<void>();
-    final prompt = await _createDiagnosisPrompt(dtcs);
-
-    try {
-      await chat.addQueryChunk(
-        Message.text(text: 'Reset context for new diagnosis', isUser: false),
-      );
-      await chat.addQueryChunk(Message.text(text: prompt, isUser: true));
-
-      final responseStream = chat.generateChatResponseAsync();
-      String responseText = '';
-
-      AppLogger.logInfo(
-        'Executing diagnosis inference for DTCs: ${dtcs.join(', ')}',
-        'UnifiedBackgroundService._executeDiagnosisInference',
-      );
-
-      final streamSubscription = responseStream.listen(
-        (response) async {
-          if (_isDisposed) return;
-
-          if (response is TextResponse) {
-            responseText += response.token;
-
-            _diagnoses[diagnosisKey] = _diagnoses[diagnosisKey]!.copyWith(
-              output: responseText,
-            );
-            if (!_isDisposed) {
-              notifyListeners();
-              await _saveDiagnoses();
-            }
-          } else if (response is FunctionCallResponse) {
-            try {
-              final finalResponse = await chat.generateChatResponse();
-              _diagnoses[diagnosisKey] = _diagnoses[diagnosisKey]!.copyWith(
-                output: finalResponse.toString(),
-                isComplete: true,
-              );
-              if (!_isDisposed) {
-                notifyListeners();
-                await _saveDiagnoses();
-              }
-            } catch (e, stackTrace) {
-              AppLogger.logError(e, stackTrace);
-              if (!_isDisposed) {
-                _diagnoses[diagnosisKey] = _diagnoses[diagnosisKey]!.copyWith(
-                  error: 'Error processing function call: $e',
-                  isComplete: true,
-                );
-                notifyListeners();
-                await _saveDiagnoses();
-              }
-            }
-          }
-        },
-        onError: (error, stackTrace) {
-          if (_isDisposed) return;
-
-          AppLogger.logError(error, stackTrace);
-
-          _diagnoses[diagnosisKey] = _diagnoses[diagnosisKey]!.copyWith(
-            error: 'Inference failed: $error',
-            isComplete: true,
-          );
-          if (!_isDisposed) {
-            notifyListeners();
-            _saveDiagnoses();
-          }
-        },
-        onDone: () {
-          if (_isDisposed) return;
-
-          if (_diagnoses.containsKey(diagnosisKey) &&
-              !_diagnoses[diagnosisKey]!.isComplete) {
-            _diagnoses[diagnosisKey] = _diagnoses[diagnosisKey]!.copyWith(
-              isComplete: true,
-            );
-            notifyListeners();
-            _saveDiagnoses();
-          }
-
-          _activeInferences.remove(diagnosisKey);
-          completer.complete();
-          notifyListeners();
-
-          AppLogger.logInfo(
-            'Diagnosis completed for DTCs: ${dtcs.join(', ')}',
-            'UnifiedBackgroundService._executeDiagnosisInference',
-          );
-        },
-      );
-
-      if (!_isDisposed) {
-        _activeInferences[diagnosisKey] = ActiveInference(
-          id: diagnosisKey,
-          type: InferenceType.diagnosis,
-          subscription: streamSubscription,
-          completer: completer,
-        );
-        notifyListeners();
-      }
-
-      await completer.future;
-      return _diagnoses[diagnosisKey]?.id ?? '';
-    } catch (e, stackTrace) {
-      AppLogger.logError(
-        e,
-        stackTrace,
-        'UnifiedBackgroundService._executeDiagnosisInference',
-      );
-
-      if (!_isDisposed) {
-        _diagnoses[diagnosisKey] = _diagnoses[diagnosisKey]!.copyWith(
-          error: 'Inference failed: $e',
-          isComplete: true,
-        );
-        notifyListeners();
-        await _saveDiagnoses();
-      }
-
-      _activeInferences.remove(diagnosisKey);
-      completer.complete();
-
-      rethrow;
-    }
-  }
-
   DiagnosisResult? getDiagnosisForDtcs(List<String> dtcs) {
     if (_isDisposed) return null;
     final key = _generateDiagnosisKey(dtcs);
@@ -873,56 +989,50 @@ class UnifiedBackgroundService extends ChangeNotifier {
         );
   }
 
+  // Deletes a specific diagnosis result for the given DTCs
   Future<void> clearDiagnosis(List<String> dtcs) async {
     if (_isDisposed) return;
 
-    final key = _generateDiagnosisKey(dtcs);
+    try {
+      final key = _generateDiagnosisKey(dtcs);
 
-    // Cancel active stream if exists
-    _activeInferences[key]?.subscription.cancel();
-    _activeInferences.remove(key);
-
-    // Cancel queued request if exists
-    _cancelQueuedRequest(key);
-
-    // Remove from storage
-    _diagnoses.remove(key);
-    await _saveDiagnoses();
-    if (!_isDisposed) {
-      notifyListeners();
-    }
-  }
-
-  Future<void> clearAllDiagnoses() async {
-    if (_isDisposed) return;
-
-    // Cancel diagnosis-related streams
-    final diagnosisInferences = _activeInferences.entries
-        .where((entry) => entry.value.type == InferenceType.diagnosis)
-        .toList();
-
-    for (final entry in diagnosisInferences) {
-      entry.value.subscription.cancel();
-      _activeInferences.remove(entry.key);
-    }
-
-    // Cancel queued diagnosis requests
-    _requestQueue.removeWhere((request) {
-      if (request.type == InferenceType.diagnosis) {
-        if (!request.completer.isCompleted) {
-          request.completer.completeError('Diagnoses cleared');
-        }
-        return true;
+      // Cancel active stream if exists
+      final inference = _activeInferences[key];
+      if (inference != null) {
+        await inference.subscription.cancel();
+        _activeInferences.remove(key);
+        AppLogger.logInfo(
+          'Cancelled active inference for DTC key: $key',
+          'UnifiedBackgroundService.clearDiagnosis',
+        );
       }
-      return false;
-    });
 
-    // Clear storage
-    _diagnoses.clear();
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('diagnosis_results');
-    if (!_isDisposed) {
-      notifyListeners();
+      // Cancel queued request if exists
+      _cancelQueuedRequest(key);
+
+      // Remove from storage
+      if (_diagnoses.remove(key) != null) {
+        await _saveDiagnoses();
+        if (!_isDisposed) {
+          notifyListeners();
+        }
+        AppLogger.logInfo(
+          'Diagnosis cleared for DTCs: ${dtcs.join(', ')}',
+          'UnifiedBackgroundService.clearDiagnosis',
+        );
+      }
+
+      AppLogger.logInfo(
+        'No diagnosis found for DTCs: ${dtcs.join(', ')}',
+        'UnifiedBackgroundService.clearDiagnosis',
+      );
+    } catch (e, stackTrace) {
+      AppLogger.logError(
+        e,
+        stackTrace,
+        'UnifiedBackgroundService.clearDiagnosis',
+      );
+      rethrow;
     }
   }
 
@@ -931,7 +1041,171 @@ class UnifiedBackgroundService extends ChangeNotifier {
   Future<void> clearAll() async {
     if (_isDisposed) return;
 
-    await Future.wait([clearChatMessages(), clearAllDiagnoses()]);
+    await deleteMessages(InferenceType.chat);
+    await deleteMessages(InferenceType.diagnosis);
+  }
+
+  // Helper method to prune chat messages and diagnoses when token count is too large
+  Future<void> _pruneHistoryForTokenLimit(
+    dynamic chat, {
+    String? activeDiagnosisKey,
+    List<String>? activeDtcs,
+  }) async {
+    try {
+      // Prune chat messages to last 5
+      final preservedMessages = _messages.length > 5
+          ? _messages.sublist(_messages.length - 5)
+          : List<ChatMessage>.from(_messages);
+      _messages.clear();
+      _messages.addAll(preservedMessages);
+
+      // Prune diagnoses to last 2 DTCs, preserving active diagnosis if provided
+      final sortedDiagnoses = _diagnoses.values.toList()
+        ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
+      final lastTwoDtcs = sortedDiagnoses
+          .take(2)
+          .expand((d) => d.dtcs)
+          .toSet()
+          .toList();
+      _diagnoses.clear();
+
+      // Add active diagnosis if it exists
+      if (activeDiagnosisKey != null && activeDtcs != null) {
+        final prompt = await _createDiagnosisPrompt(activeDtcs);
+        _diagnoses[activeDiagnosisKey] = DiagnosisResult(
+          dtcs: activeDtcs,
+          prompt: prompt,
+          output: _diagnoses[activeDiagnosisKey]?.output ?? '',
+          id: activeDiagnosisKey,
+          isComplete: false,
+        );
+      }
+
+      // Add last 2 DTCs if not already included
+      if (lastTwoDtcs.isNotEmpty &&
+          (activeDtcs == null ||
+              !lastTwoDtcs.every((dtc) => activeDtcs.contains(dtc)))) {
+        final prompt = await _createDiagnosisPrompt(lastTwoDtcs);
+        _diagnoses[_generateDiagnosisKey(lastTwoDtcs)] = DiagnosisResult(
+          dtcs: lastTwoDtcs,
+          prompt: prompt,
+          output: '',
+          isComplete: false,
+        );
+      }
+
+      // Update SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList(
+        'chat_messages',
+        _messages.map((msg) => json.encode(msg.toJson())).toList(),
+      );
+      await prefs.setStringList(
+        'diagnosis_results',
+        _diagnoses.values
+            .map((result) => json.encode(result.toJson()))
+            .toList(),
+      );
+
+      // Reset model history with preserved data
+      final history = preservedMessages
+          .map(
+            (msg) => Message.text(text: msg.text, isUser: msg.sender == 'user'),
+          )
+          .toList();
+      if (lastTwoDtcs.isNotEmpty) {
+        history.insert(
+          0,
+          Message.text(
+            text: await _createDiagnosisPrompt(lastTwoDtcs),
+            isUser: false,
+          ),
+        );
+      }
+      if (activeDtcs != null && activeDiagnosisKey != null) {
+        history.insert(
+          0,
+          Message.text(
+            text: await _createDiagnosisPrompt(activeDtcs),
+            isUser: false,
+          ),
+        );
+      }
+      await chat.clearHistory(replayHistory: history);
+
+      if (!_isDisposed) {
+        notifyListeners();
+      }
+      AppLogger.logInfo(
+        'History pruned to last 5 chat messages and last 2 DTCs, preserved active diagnosis: $activeDiagnosisKey',
+        'UnifiedBackgroundService._pruneHistoryForTokenLimit',
+      );
+    } catch (e, stackTrace) {
+      AppLogger.logError(
+        e,
+        stackTrace,
+        'UnifiedBackgroundService._pruneHistoryForTokenLimit',
+      );
+      rethrow;
+    }
+  }
+
+  // Deletes all messages of the specified inference type
+  Future<void> deleteMessages(InferenceType type) async {
+    if (_isDisposed) return;
+
+    try {
+      // Cancel relevant streams and queued requests
+      final inferences = _activeInferences.entries
+          .where((entry) => entry.value.type == type)
+          .toList();
+
+      for (final entry in inferences) {
+        await entry.value.subscription.cancel();
+        _activeInferences.remove(entry.key);
+      }
+
+      _requestQueue.removeWhere((request) {
+        if (request.type == type) {
+          if (!request.completer.isCompleted) {
+            request.completer.completeError(
+              '${type.toString().split('.').last} messages cleared',
+            );
+          }
+          return true;
+        }
+        return false;
+      });
+
+      // Clear in-memory and storage based on type
+      final prefs = await SharedPreferences.getInstance();
+      if (type == InferenceType.chat) {
+        _messages.clear();
+        await prefs.remove('chat_messages');
+        AppLogger.logInfo(
+          'All chat messages cleared',
+          'UnifiedBackgroundService.deleteMessages',
+        );
+      } else {
+        _diagnoses.clear();
+        await prefs.remove('diagnosis_results');
+        AppLogger.logInfo(
+          'All diagnoses cleared',
+          'UnifiedBackgroundService.deleteMessages',
+        );
+      }
+
+      if (!_isDisposed) {
+        notifyListeners();
+      }
+    } catch (e, stackTrace) {
+      AppLogger.logError(
+        e,
+        stackTrace,
+        'UnifiedBackgroundService.deleteMessages.$type',
+      );
+      rethrow;
+    }
   }
 
   @override

@@ -161,9 +161,11 @@ class AccountSettingsScreen extends StatelessWidget {
                                   );
                                   try {
                                     await modelProvider.resetChat();
+
                                     final prefs =
                                         await SharedPreferences.getInstance();
                                     await prefs.remove('chat_messages');
+                                    await prefs.remove('diagnosis_results');
                                     // Close loading dialog
                                     Navigator.pop(context);
                                     ScaffoldMessenger.of(context).showSnackBar(
